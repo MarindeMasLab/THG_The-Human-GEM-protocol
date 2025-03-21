@@ -11,16 +11,25 @@ from typing import Dict, List
 import cobra
 from cobra.io import read_sbml_model
 import dill
+import sys
+import pdb
+
+# Determine the current file's directory and the project root.
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.join(current_dir, "..")
+
+# Add the project root to sys.path to access top-level folders like 'functions' and 'models'
+if project_root not in sys.path:
+    sys.path.append(project_root)
 
 # reimports for type hints
-from class_generate_database import *
-from class_generate_database import compound as CompoundType
-from class_generate_database import gene as GeneType
-from class_generate_database import reaction as ReactionType
-from equations_generate_database import * 
-from functions_generate_database import *
-from pattern_generate_database import *
-
+from functions.class_generate_database import *
+from functions.class_generate_database import compound as CompoundType
+from functions.class_generate_database import gene as GeneType
+from functions.class_generate_database import reaction as ReactionType
+from functions.pattern_generate_database import *
+from functions.function_bm_gdb import * 
+from functions.equations_bm_gdb import *
 
 def cobra_reconstruction(
     model_name: str,
@@ -112,7 +121,7 @@ def cobra_reconstruction(
         comp = location_dict[comp_desc.lower()]
         return f"{iden}_{comp}"
 
-    from gpr.ast_gpr import sanitize_gpr
+    from functions.gpr.ast_gpr import sanitize_gpr
     # reactions
     reactions = [
         cobra.Reaction(
@@ -261,12 +270,20 @@ LOGGER = logging.getLogger(__name__)
 session = setup_biocyc_session()
 
 #### Initial Parameters
-ListOfPaths = "files/human_kegg_pathways.txt"  # in the current folder
-ModelCompounds = "files/extra_compounds.txt"  # in the current folder
-ExtraFormula = "files/extra_formula.txt"
+# Determine the current file's directory and the project root.
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.join(current_dir, "..")
+
+# Add the project root to sys.path to access top-level folders like 'functions' and 'models'
+if project_root not in sys.path:
+    sys.path.append(project_root)
+
+ListOfPaths = os.path.join(project_root, "files", "human_kegg_pathways.txt" )
+ModelCompounds = os.path.join(project_root, "files", "extra_compounds.txt")
+ExtraFormula = os.path.join(project_root, "files", "extra_formula.txt")
 ModelReactions = ""
 ModelGenes = ""
-EnsblDB = "files/ensembl"  # From Ensembl database: ensembl gene ID vs Entrez vs Name.
+EnsblDB = os.path.join(project_root, "files", "ensembl")  # From Ensembl database: ensembl gene ID vs Entrez vs Name.
 time = 20  # Time to download url: Parameter defined in function getHtml
 Path = (
     open(ListOfPaths, "r").read().split("\n")
@@ -275,11 +292,11 @@ Compound = (
     open(ModelCompounds, "r").read().split("\n")
 )  
 EF = [_f for _f in open(ExtraFormula, "r").read().split("\n") if _f]
-Output = "model/Human_Database.xml"  # Output model
+Output = os.path.join(project_root, "models", "Human_Database.xml")  # Output model
 ModID = Output
 ModName = Output
-variablesFile = "files/model_variables.pkl"  # File where the working environment is saved
-specialCompounds = "files/special_compounds.txt"  # File where we save the IDs of the compounds with a (group)n in their formula
+variablesFile = os.path.join(project_root, "files", "model_variables.pkl")  # File where the working environment is saved
+specialCompounds = os.path.join(project_root, "files", "special_compounds.txt")  # File where we save the IDs of the compounds with a (group)n in their formula
 open(specialCompounds, "w").close()  # Erase or create the file
 
 
@@ -570,7 +587,7 @@ while g < len(GPRList):
             z = z + 1
     g = g + 1
 
-with open("files/pre_sbml_raw.pk", "wb") as f:
+with open(os.path.join(project_root, "files", "pre_sbml_raw.pk"), "wb") as f:
     dill.dump(
         {
             "name": ModName,
@@ -614,7 +631,7 @@ for CSL in Compartment_CL:
     LipidMasterlistOfID.append(ID)
 
 
-with open("files/pre_sbml_pos_comp.pk", "wb") as f:
+with open(os.path.join(project_root, "files", "pre_sbml_pos_comp.pk"), "wb") as f:
     dill.dump(
         {
             "name": ModName,
@@ -631,7 +648,7 @@ with open("files/pre_sbml_pos_comp.pk", "wb") as f:
         f,
     )
 
-with open('files/pre_sbml_pos_comp.pk', 'rb') as f:
+with open(os.path.join(project_root, "files", "pre_sbml_pos_comp.pk"), 'rb') as f:
     data = pickle.load(f)
 #with open('files/pre_sbml_pos_comp.pk', 'rb') as f:
 #  data = f.read()

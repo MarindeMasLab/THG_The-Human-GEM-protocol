@@ -1,13 +1,24 @@
-from functions_create_figure import *
+import os
+import sys
+import pdb
+# Determine the current file's directory and the project root.
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.join(current_dir, "..")
+# Add the project root to sys.path to access top-level folders like 'functions' and 'models'
+if project_root not in sys.path:
+    sys.path.append(project_root)
+
+from functions.functions_create_figure import *
+
 
 # Load Models
 
-model1 = cobra.io.read_sbml_model('models/Human-GEM_2022-06-21.xml')
-model12 = cobra.io.read_sbml_model('models/THG-beta1.xml')
-model15 = cobra.io.read_sbml_model('models/THG-beta2.xml')
-modelTHG = cobra.io.read_sbml_model('models/THG-2023-02-25.xml')
+model1 = cobra.io.read_sbml_model(os.path.join(project_root, "models", 'Human-GEM_2022-06-21.xml'))
+model12 = cobra.io.read_sbml_model(os.path.join(project_root, "models", 'THG-beta1.xml'))
+model15 = cobra.io.read_sbml_model(os.path.join(project_root, "models", 'THG-beta2.xml'))
+modelTHG = cobra.io.read_sbml_model(os.path.join(project_root, "models", 'THG-2023-02-25.xml'))
 
-file = 'reports/THG-beta-1_vs_Human1.xlsx'
+file = os.path.join(current_dir,"reports", 'THG-beta-1_vs_Human1.xlsx')
 # file = 'reports/THG-beta-2_vs_Human1.xlsx'
 # file = 'reports/THG_vs_Human1.xlsx'
 
@@ -46,7 +57,7 @@ ax.tick_params(axis='both',labelsize=size)
 ax.legend([x,y,z], ['add','replace','no change'],fontsize=size, title='Group',title_fontsize=size)
 plt.xlabel('xlabel', fontsize=size)
 #plt.show()
-plt.savefig("figures/metabolites_annot_group-THG-beta-1_vs_Human1.svg", format="svg")
+plt.savefig(os.path.join(current_dir,"figures", "metabolites_annot_group-THG-beta-1_vs_Human1.svg"), format="svg")
 
 
 # Compare Reactions: MB reactions, GPR, KEGG IDs (model1 vs model12) 
@@ -81,7 +92,7 @@ ax.tick_params(axis='both',labelsize=size)
 ax.legend([x,y,z], ['add','replace','no change'],fontsize=size, title='Group',title_fontsize=size)
 plt.xlabel('xlabel', fontsize=size)
 #plt.show()
-plt.savefig("figures/reaction_annot_group-THG-beta-1_vs_Human1.svg", format="svg")
+plt.savefig(os.path.join(current_dir,"figures","reaction_annot_group-THG-beta-1_vs_Human1.svg"), format="svg")
 
 
 # Compare Genes: Ensembl IDs (model1 vs model12) 
@@ -116,7 +127,7 @@ ax.tick_params(axis='both',labelsize=size)
 ax.legend([x,y,z], ['add','replace','no change'],fontsize=size, title='Group',title_fontsize=size)
 plt.xlabel('xlabel', fontsize=size)
 #plt.show()
-plt.savefig("figures/genes_annot_group.svg", format="svg")
+plt.savefig(os.path.join(current_dir,"figures","genes_annot_group.svg"), format="svg")
 
 
 # Compare non annotated metabolites (model1 vs model12 vs model15 vs modelTHG)
@@ -138,7 +149,7 @@ ax.tick_params(axis='both',labelsize=size)
 plt.xticks([0,5,15,20,25,30])
 plt.xlabel('', fontsize=size)
 #plt.show()
-plt.savefig("figures/non_annotated_metabolites-THG-beta-1_vs_THG-beta-1_vs_Human1.svg", format="svg")
+plt.savefig(os.path.join(current_dir,"figures","non_annotated_metabolites-THG-beta-1_vs_THG-beta-1_vs_Human1.svg"), format="svg")
 
 
 # MEMOTE (model1 vs model12 vs model15 vs modelTHG)
@@ -166,7 +177,7 @@ plt.xlabel('%', fontsize=size)
 plt.xticks([0,20,40,60,80,100])
 plt.title('MEMOTE (categories)',size=17)
 #plt.show()
-plt.savefig("figures/MEMOTE-THG_vs_THG-beta-1_vs_THG-beta-1_vs_Human1.svg", format="svg")
+plt.savefig(os.path.join(current_dir,"figures","MEMOTE-THG_vs_THG-beta-1_vs_THG-beta-1_vs_Human1.svg"), format="svg")
 
 
 # Compare components in model (model1 vs model12 vs model15 vs modelTHG)
@@ -193,7 +204,7 @@ ax.legend([x,y,z,h], ['THG','THG-beta-2','THG-beta-1','Reference GEM'],fontsize=
 plt.xlabel('', fontsize=size)
 plt.title('About (model components)',fontsize=size)
 #plt.show()
-plt.savefig("figures/odel_components-THG_vs_THG-beta-1_vs_THG-beta-1_vs_Human1.svg", format="svg")
+plt.savefig(os.path.join(current_dir,"figures","model_components-THG_vs_THG-beta-1_vs_THG-beta-1_vs_Human1.svg"), format="svg")
 
 
 # Compare compartment in model (model12 vs model15)
@@ -226,7 +237,7 @@ plt.yticks(fontsize=size)
 plt.xticks(fontsize=size)
 plt.yticks([0,300,600,900,1200,1500])
 #plt.show()
-plt.savefig("figures/isoenzyme_in_new_compartment_reactions-THG-beta-1_vs_THG-beta-2.svg", format="svg")
+plt.savefig(os.path.join(current_dir,"figures","isoenzyme_in_new_compartment_reactions-THG-beta-1_vs_THG-beta-2.svg"), format="svg")
 
 
 # Results of text similarity algorithm to identify metabolites

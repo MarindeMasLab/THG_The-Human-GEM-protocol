@@ -1,11 +1,23 @@
-from functions_compare_models import *
+import os
+import sys
+import pdb
+
+# Determine the current file's directory and the project root.
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.join(current_dir, "..")
+# Add the project root to sys.path to access top-level folders like 'functions' and 'models'
+if project_root not in sys.path:
+    sys.path.append(project_root)
+
+from functions.functions_compare_models import *
 
 
-model = read_sbml_model('models/THG-2023-02-25.xml') # new model
-model2 = read_sbml_model('models/Human-GEM_2022-06-21.xml') # org. model
+
+model = read_sbml_model(os.path.join(project_root, "models", "THG-2023-02-25.xml")) # new model
+model2 = read_sbml_model(os.path.join(project_root, "models", "Human-GEM_2022-06-21.xml")) # org. model
 
 
-Output = xlsxwriter.Workbook("reports/THG_vs_Human1.xlsx")
+Output = xlsxwriter.Workbook(os.path.join(current_dir,"reports", "THG_vs_Human1.xlsx"))
 
 
 MODEL = Output.add_worksheet("MODEL")
