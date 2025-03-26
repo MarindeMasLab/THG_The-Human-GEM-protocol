@@ -770,7 +770,7 @@ def process_reaction(x, model_sink, model_transport, tolerance):
         model_sink_x.reactions.get_by_id(x).lower_bound = tolerance * 10
 
         # Perform gap-filling calculation
-        solution = gapfill(model_sink_x, model_transport, iterations=1, lower_bound=tolerance, penalties=None, exchange_reactions=False, demand_reactions=False)
+        solution = gapfill(model_sink_x, model_transport, iterations=1, lower_bound=tolerance*10, penalties=None, exchange_reactions=False, demand_reactions=False)
 
         # If no solution is found, check if an extracellular metabolite exists in the model
         if not solution[0]:
@@ -806,7 +806,7 @@ def process_reaction(x, model_sink, model_transport, tolerance):
                 del(ex_rxn_in_xth_extracel_metabolite)
                 del(xth_metabolite)
                 # Perform gap-filling calculation again
-                solution = gapfill(model_sink_x, model_transport, iterations=1, lower_bound=tolerance, penalties=None, exchange_reactions=False, demand_reactions=False)
+                solution = gapfill(model_sink_x, model_transport, iterations=1, lower_bound=tolerance*10, penalties=None, exchange_reactions=False, demand_reactions=False)
             del(xth_extracel_metabolite)
 
         # If no solution is found, change the direction of the reaction and perform gap-filling calculation again
@@ -826,7 +826,7 @@ def process_reaction(x, model_sink, model_transport, tolerance):
             model_sink_x.reactions.get_by_id(x).upper_bound = 1000
             model_sink_x.reactions.get_by_id(x).lower_bound = tolerance * 10
             # Perform gap-filling calculation
-            solution = gapfill(model_sink_x, model_transport, iterations=1, lower_bound=tolerance, penalties=None, exchange_reactions=False, demand_reactions=False)
+            solution = gapfill(model_sink_x, model_transport, iterations=1, lower_bound=tolerance*10, penalties=None, exchange_reactions=False, demand_reactions=False)
 
             if not solution[0]:
                 # Extract the extracellular metabolite name associated with the xth sink reaction
@@ -854,7 +854,7 @@ def process_reaction(x, model_sink, model_transport, tolerance):
                         del(ex_reaction)
                     del(ex_rxn_in_xth_extracel_metabolite)
                     del(xth_metabolite)
-                    solution = gapfill(model_sink_x, model_transport, iterations=1, lower_bound=tolerance, penalties=None, exchange_reactions=False, demand_reactions=False)
+                    solution = gapfill(model_sink_x, model_transport, iterations=1, lower_bound=tolerance*10, penalties=None, exchange_reactions=False, demand_reactions=False)
 
                 del(xth_extracel_metabolite)
                 

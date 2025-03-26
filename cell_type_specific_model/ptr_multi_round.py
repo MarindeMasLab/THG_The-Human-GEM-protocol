@@ -782,7 +782,7 @@ def process_reaction(x, model_sink, model_transport, tolerance):
 
         # Try gap-filling with the original setup:
         try:
-            solution = gapfill(model_sink_x, model_transport, iterations=1, lower_bound=tolerance, penalties=None,
+            solution = gapfill(model_sink_x, model_transport, iterations=1, lower_bound=tolerance*10, penalties=None,
                                 exchange_reactions=False, demand_reactions=False)
         except Exception as e:
             print("Gapfill error for reaction {} with original setup: {}".format(x, e))
@@ -824,7 +824,7 @@ def process_reaction(x, model_sink, model_transport, tolerance):
                     del(ex_rxn_in_xth_extracel_metabolite)
                     del(xth_metabolite)
                     # Perform gap-filling calculation again
-                    solution = gapfill(model_sink_x, model_transport, iterations=1, lower_bound=tolerance, penalties=None, exchange_reactions=False, demand_reactions=False)
+                    solution = gapfill(model_sink_x, model_transport, iterations=1, lower_bound=tolerance*10, penalties=None, exchange_reactions=False, demand_reactions=False)
                 del(xth_extracel_metabolite)
             except Exception as e:
                 print("Extracellular exchange attempt failed for reaction {}: {}".format(x, e))
@@ -852,7 +852,7 @@ def process_reaction(x, model_sink, model_transport, tolerance):
                     model_sink_x.reactions.get_by_id(x).lower_bound = -1000
                     model_sink_x.reactions.get_by_id(x).upper_bound = -tolerance * 10
                 # Perform gap-filling calculation
-                solution = gapfill(model_sink_x, model_transport, iterations=1, lower_bound=tolerance, penalties=None, exchange_reactions=False, demand_reactions=False)
+                solution = gapfill(model_sink_x, model_transport, iterations=1, lower_bound=tolerance*10, penalties=None, exchange_reactions=False, demand_reactions=False)
 
             except Exception as e:
                 print("Reversal attempt failed for reaction {}: {}".format(x, e))
@@ -886,7 +886,7 @@ def process_reaction(x, model_sink, model_transport, tolerance):
                             del(ex_reaction)
                         del(ex_rxn_in_xth_extracel_metabolite)
                         del(xth_metabolite)
-                        solution = gapfill(model_sink_x, model_transport, iterations=1, lower_bound=tolerance, penalties=None, exchange_reactions=False, demand_reactions=False)
+                        solution = gapfill(model_sink_x, model_transport, iterations=1, lower_bound=tolerance*10, penalties=None, exchange_reactions=False, demand_reactions=False)
 
                     del(xth_extracel_metabolite)
 

@@ -417,7 +417,10 @@ def main():
     optimal_bm_solution_sink = model_sink.optimize()
     optimal_bm_sink = optimal_bm_solution_sink.objective_value
     model_sink.reactions.get_by_id(bm).lower_bound = optimal_bm_sink*factor # minimum allowed for BM # Define minimum BM (1/2 of optimal)
-
+    
+    model_transport_final = cobra.Model("model_transport_final") #model to store transport reactions relevant to the original model
+    final_reactions_added = []
+    
     # # Identify transport reactions to reduce the number of dead-end metabolites
 
     # add_new_reactions = identify_transport_reaction_to_dead_end_metabolite (model_sink, model_transport, round_id=1)
@@ -425,11 +428,28 @@ def main():
     # # Add new transport reactions to the original model
 
     # add_new_reactions_unique = set(add_new_reactions)
-    model_transport_final = cobra.Model("model_transport_final") #model to store transport reactions relevant to the original model
-    final_reactions_added = []
-
     # print("Number of new reactions that may be tested for stoichiometry: ", len(add_new_reactions_unique))
 
+    # for x in add_new_reactions_unique:
+            
+    #             print("Testing reaction: ", x.id)
+    #             model_original.add_reactions([x.copy()])
+    #             sol = model_original.optimize()
+    #             print("Objective value: ", sol.objective_value, "Status: ", sol.status)
+
+    #             #make these TR reversible:
+    #             model_original.reactions.get_by_id(x.id).lower_bound = -1000
+    #             model_original.reactions.get_by_id(x.id).upper_bound = 1000
+
+    #             if sol.objective_value > 0: #if the reaction is feasible, add it to the model
+    #                 print("The following reaction will be added: ", x.id)
+    #                 final_reactions_added.append(x.id)
+    #                 model_transport_final.add_reactions([x.copy()])
+    #             else:
+    #                 print("The following reaction will not be added: ", x.id)
+    #                 model_original.remove_reactions([x.id])
+
+    # print("Number of new reactions added after testing: ", len(final_reactions_added))
 
 
     # For endoB, the add_new_reactions_unique is empty, as gapfilling was not successful for any of them
@@ -443,22 +463,18 @@ def main():
                 sol = model_original.optimize()
                 print("Objective value: ", sol.objective_value, "Status: ", sol.status)
 
-                # #make these TR reversible:
-                # model_original.reactions.get_by_id(x.id).lower_bound = -1000
-                # model_original.reactions.get_by_id(x.id).upper_bound = 1000
-
                 if sol.objective_value > 0: #if the reaction is feasible, add it to the model
                     print("The following reaction will be added: ", x.id)
+                    #make these TR reversible:
+                    model_original.reactions.get_by_id(x.id).lower_bound = -1000
+                    model_original.reactions.get_by_id(x.id).upper_bound = 1000
                     final_reactions_added.append(x.id)
                     model_transport_final.add_reactions([x.copy()])
                 else:
                     print("The following reaction will not be added: ", x.id)
                     model_original.remove_reactions([x.id])
 
-
     print("Number of new reactions added after testing: ", len(final_reactions_added))
-
-    pdb.set_trace()
 
     # Find number of dead-end metabolites after adding transport reactions
     _, DeadEnd_S_left, DeadEnd_P_left=ident_final_dead_end_metabolites(model_original)
