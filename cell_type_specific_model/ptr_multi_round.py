@@ -1157,7 +1157,7 @@ def putative_tr(gem, compartments, sheetname, bm, factor, resume_round = None):
             pickle.dump(combined_dead_end_metabolites, file)
 
 
-    elif resume_round==2:
+    if resume_round<=2:
 
         if os.path.exists(os.path.join(project_root, 'models','model_after_round1.xml')) and os.path.exists(os.path.join(project_root, 'files','final_reactions_added_round1.pkl')):
             model_original = cobra.io.read_sbml_model(os.path.join(project_root, 'models','model_after_round1.xml'))
@@ -1259,7 +1259,7 @@ def putative_tr(gem, compartments, sheetname, bm, factor, resume_round = None):
         with open(os.path.join(project_root, 'files','Total_DeadEnd_M_left_round2.pkl'), 'wb') as file:
             pickle.dump(combined_dead_end_metabolites, file) #save the list of total dead-end metabolites left after adding the transport reactions
 
-    elif resume_round==3:
+    if resume_round<=3:
 
         # Resume from Round 3: load saved model from Round 2
         if os.path.exists(os.path.join(project_root, 'models','model_full_THG_round2.xml')) and os.path.exists(os.path.join(project_root, 'files','final_reactions_added_THG_round2.pkl')) and os.path.exists(os.path.join(project_root, 'files','futilecycle_mets_THG_round2.pkl')):
@@ -1376,8 +1376,8 @@ Now, invoke the function in the main code
 
 if __name__ == '__main__':
     freeze_support()
-    gem = os.path.join(project_root, "models", "model_full_THG_try2.xml")  
-    sheetname = "EndoB"
+    gem = os.path.join(project_root, "models", "THG_endoA_boundary.xml")  
+    sheetname = "EndoA"
 
     compartments = os.path.join(project_root, 'files', 'ListOfCompartments_sept2024.xlsx')
 

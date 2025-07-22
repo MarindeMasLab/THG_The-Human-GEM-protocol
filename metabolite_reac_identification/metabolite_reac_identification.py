@@ -1,13 +1,24 @@
-from function_metabolite_identification import *
-from function_reac_identification import *
-from function_annotate_cobra_model import *
+
 import cobra.io
 import numpy as np
 import re
+import os
+import sys
 
+# Determine the current file's directory and the project root.
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.join(current_dir, "..")
 
-model = 'models/Human-GEM_2022-06-21.xml'
-database = 'models/Human Database.xml'
+# Add the project root to sys.path to access top-level folders like 'functions' and 'models'
+if project_root not in sys.path:
+    sys.path.append(project_root)
+
+from functions.function_metabolite_identification import *
+from functions.function_reac_identification import *
+from functions.function_annotate_cobra_model import *
+
+model = os.path.join(project_root, "models", "Human-GEM_2022-06-21.xml")
+database = os.path.join(project_root, "models", "Human Database.xml")
 
 cobra_model = cobra.io.read_sbml_model(model)
 
