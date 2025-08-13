@@ -1376,7 +1376,7 @@ Now, invoke the function in the main code
 
 if __name__ == '__main__':
     freeze_support()
-    gem = os.path.join(project_root, "models", "model_full_THG_try2.xml")  
+    gem = os.path.join(project_root, "models", "THG-beta2.xml")  
     sheetname = "EndoB"
 
     compartments = os.path.join(project_root, 'files', 'ListOfCompartments_sept2024.xlsx')
