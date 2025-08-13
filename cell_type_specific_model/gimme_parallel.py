@@ -7,9 +7,15 @@ from cobra.util import create_stoichiometric_matrix
 import pdb
 from cobra.flux_analysis import flux_variability_analysis
 import multiprocessing
-
+import sys
 from troppo.methods.reconstruction.gimme import GIMME, GIMMEProperties
 
+# Determine the current file's directory and the project root.
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.join(current_dir, "..")
+# Add the project root to sys.path to access top-level folders like 'functions' and 'models'
+if project_root not in sys.path:
+    sys.path.append(project_root)
 
 def build_expression_dict_from_original(original_rxn_ids, expression_rxns_sample):
     """
@@ -53,7 +59,7 @@ def get_extended_scores(modified_model, original_expr_dict):
                 extended_scores.append(0.0)
     return np.array(extended_scores)
 
-def split_reversible_exchanges(model, original_expr_dict, exchange_reactions, min_bound=1e-5, fva_filename="reversible_fva.csv"):
+def split_reversible_exchanges(model, original_expr_dict, exchange_reactions, min_bound=1e-5, fva_filename=os.path.join(project_root, 'files', "reversible_fva.csv")):
     """
     Splits reversible exchange reactions into two irreversible reactions.
     Uses batch FVA (or loads precomputed results from fva_filename) to determine the flux capacity 
@@ -127,7 +133,7 @@ def split_reversible_exchanges(model, original_expr_dict, exchange_reactions, mi
     updated_expression = get_extended_scores(model, original_expr_dict)
     return model, split_mapping, updated_expression
 
-def update_irreversible_exchanges(model, exchange_reactions, min_bound=1e-5, fva_filename="irreversible_rxns_fva.csv"):
+def update_irreversible_exchanges(model, exchange_reactions, min_bound=1e-5, fva_filename=os.path.join(project_root, 'files', "irreversible_rxns_fva.csv")):
     """
     Updates the bounds of irreversible exchange reactions based on FVA analysis.
     
@@ -336,12 +342,12 @@ def gimme_parallel(model, expressionRxns, exchange_reactions, num_workers = 2):
     model.reactions.get_by_id('MAR13082').lower_bound = 0.2 * biomass_max
 
     # Update irreversible exchange reactions.
-    irreversible_fva_filename = os.path.join('transcriptomics', 'irreversible_rxns_fva.csv')
+    irreversible_fva_filename = os.path.join(project_root, 'files', 'irreversible_rxns_fva.csv')
     model = update_irreversible_exchanges(model, exchange_reactions, fva_filename=irreversible_fva_filename)
 
     # Use the first sample to build an expression dictionary for splitting reversible reactions.
     sample0_expr_dict = build_expression_dict_from_original(original_rxn_ids, expressionRxns[:, 0])
-    reversible_fva_filename = os.path.join('transcriptomics', 'reversible_rxns_fva.csv')
+    reversible_fva_filename = os.path.join(project_root, 'files', 'reversible_rxns_fva.csv')
     model, split_mapping, _ = split_reversible_exchanges(model, sample0_expr_dict, exchange_reactions,
                                                          fva_filename=reversible_fva_filename)
 
@@ -374,7 +380,6 @@ def gimme_parallel(model, expressionRxns, exchange_reactions, num_workers = 2):
 
     # Parallelize over samples using ProcessPoolExecutor.
     with ProcessPoolExecutor(max_workers=num_workers, mp_context=ctx) as executor:
-    #with ProcessPoolExecutor(max_workers=num_workers) as executor:
 
         # Submit a job for each sample.
         futures = {
@@ -402,9 +407,8 @@ def gimme_parallel(model, expressionRxns, exchange_reactions, num_workers = 2):
             all_solutions[:, sample_idx] = net_solution
 
     # Save the aggregated solutions.
-    output_file = os.path.join('transcriptomics', 'allsolutions_gimme_parallel.csv')
+    output_file = os.path.join(project_root, 'files', 'allsolutions_gimme_parallel.csv')
     pd.DataFrame(all_solutions).to_csv(output_file, index=False, header=False)
-    print(f"All solutions saved to {output_file}")
 
     # Reset the objective to its original state.
     model.objective = original_objective
@@ -413,17 +417,14 @@ def gimme_parallel(model, expressionRxns, exchange_reactions, num_workers = 2):
 # Example main function to run the parallelized GIMME.
 def main():
     #model_path = os.path.join('transcriptomics', 'model_full_THG.xml')
-    expressionRxns = pd.read_csv(os.path.join('transcriptomics', 'expressionRxns_endoB.csv'), header=None).values
-    exchange_rs = pd.read_csv('common_rs_endoB.txt', header=None).values.flatten().tolist()
-    model_path = "model_full_THG_try2.xml"
+    expressionRxns = pd.read_csv(os.path.join(project_root, 'files', 'expressionRxns.csv'), header=None).values
+    exchange_rs = pd.read_csv(os.path.join(project_root, 'files', 'common_rs.txt'), header=None).values.flatten().tolist()
 
-    expressionRxns = pd.read_csv("run_endoA_2602/expressionRxns.csv", header=None).values
-    exchange_rs = pd.read_csv("run_endoA_2602/common_rs_endoA.txt", header=None).values.flatten().tolist()
-    model_path="run_endoA_2602/model_full_THG.xml"
+    model_path = os.path.join(project_root, 'models', 'model_full_THG.xml')
     model = cobra.io.read_sbml_model(model_path)
 
     output_file = gimme_parallel(model, expressionRxns, exchange_rs, num_workers=1)
-    print("GIMME parallel run complete.")
+    print("GIMME parallel run complete, results saved to:", output_file)
 
 if __name__ == "__main__":
     main()

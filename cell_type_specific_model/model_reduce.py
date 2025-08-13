@@ -7,9 +7,10 @@ from cobra.flux_analysis import flux_variability_analysis
 import os
 import pickle
 import matplotlib.pyplot as plt
+import sys
 
 '''
-Analyzes metabolic reaction activity across samples, reduces the model by removing low-activity reactions, and restores functionality through gap-filling.
+Analyzes metabolic reaction activity across samples, tailors the model by removing low-activity reactions, and restores functionality through gap-filling.
 
 Inputs (set by default)
 ----------
@@ -20,8 +21,8 @@ Inputs (set by default)
 
 Outputs
 ----------
-    model_reduced.xml: SBML file for reduced model excluding zero-activity reactions.
-    model_after_gapfilling.xml: SBML file for reduced model after gap-filling.
+    model_tailored.xml: SBML file for tailored model excluding zero-activity reactions.
+    model_after_gapfilling.xml: SBML file for tailored model after gap-filling.
     compartments_info.txt: Text file with reaction presence and blocked reaction data by compartment.
 
 Description
@@ -29,17 +30,23 @@ Description
     1. Loads flux data from iMAT, discretizes fluxes, and computes mean presence of each reaction across samples.
     2. Groups reactions by presence levels and identifies consistently absent or present reactions.
     3. Identifies blocked reactions in the model by compartment and organizes reactions by presence group within compartments.
-    4. Creates a reduced model without absent reactions and saves it.
-    5. Removes genes and metabolites not associated with any reaction in the reduced model.
-    6. Performs gap-filling to ensure functionality in the reduced model, saving the gap-filled version for further analysis.
+    4. Creates a tailored model without absent reactions and saves it.
+    5. Removes genes and metabolites not associated with any reaction in the tailored model.
+    6. Performs gap-filling to ensure functionality in the tailored model, saving the gap-filled version for further analysis.
 '''
+
+# Determine the current file's directory and the project root.
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.join(current_dir, "..")
+# Add the project root to sys.path to access top-level folders like 'functions' and 'models'
+if project_root not in sys.path:
+    sys.path.append(project_root)
+
 
 def model_reduce(model, solutions_imat, output_model_path):
 
-    # Define base path for transcriptomics files
-    base_path = os.path.join('transcriptomics')
    
-    # #After running iMAT on our model, we have a .mat file with all the reactions as rows, and samples as columns. The values are the fluxes of the reactions in the samples.
+    # #After running GIMME  on our model, we have a file with all the reactions as rows, and samples as columns. The values are the fluxes of the reactions in the samples.
     
     #Check if data is in csv or mat format
     if solutions_imat.endswith('.mat'):
@@ -67,7 +74,7 @@ def model_reduce(model, solutions_imat, output_model_path):
     plt.ylabel('Frequency')
     plt.title('Mean presence of reactions in samples')
 
-    mean_presence_plot_path = os.path.join(base_path, 'mean_presence.png')
+    mean_presence_plot_path = os.path.join(current_dir, 'mean_presence_reactions.png')
     plt.savefig(mean_presence_plot_path)
 
     plt.close()
@@ -86,7 +93,7 @@ def model_reduce(model, solutions_imat, output_model_path):
 
     #Do a flux variability analysis on the model and see which Rs have min and max fluxes of 0
     #Check if a file with the reactions with min and max fluxes of 0 has already been created , called zero_flux_reactions.pk. If it has, load the file, if it hasn't, do the flux variability analysis and save the file
-    zero_flux_reactions_path = os.path.join(base_path, 'zero_flux_reactions.pk')
+    zero_flux_reactions_path = os.path.join(project_root, 'files', 'zero_flux_reactions.pk')
 
     if os.path.exists(zero_flux_reactions_path):
         
@@ -111,7 +118,7 @@ def model_reduce(model, solutions_imat, output_model_path):
     #See which compartment the blocked reactions are in
 
     #Print also the info in a text file called compartments_info.txt
-    compartments_info_path = os.path.join(base_path, 'compartments_info.txt')
+    compartments_info_path =os.path.join(current_dir, 'compartments_info.txt')
 
     compartments_info = open(compartments_info_path, "w")
     compartments_info.write("Information about blocked reactions in the model: \n\n")
@@ -230,60 +237,60 @@ def model_reduce(model, solutions_imat, output_model_path):
     compartments_info.close()
 
     #Create a model without the reactions in group1 (0 mean presence)
-    model_reduced = model.copy()
+    model_tailored = model.copy()
 
-    model_reduced.remove_reactions(group1) 
+    model_tailored.remove_reactions(group1) 
 
-    print("Number of reactions in reduced model: ", len(model_reduced.reactions))
-    print("Number of genes in reduced model: ", len(model_reduced.genes))
-    print("Number of metabolites in reduced model: ", len(model_reduced.metabolites))
+    print("Number of reactions in reduced model: ", len(model_tailored.reactions))
+    print("Number of genes in reduced model: ", len(model_tailored.genes))
+    print("Number of metabolites in reduced model: ", len(model_tailored.metabolites))
 
     #From this model, remove the genes and metabolites that are not associated with any reaction
 
-    mets_to_remove = [met for met in model_reduced.metabolites if len(met.reactions) == 0]
-    model_reduced.remove_metabolites(mets_to_remove)
+    mets_to_remove = [met for met in model_tailored.metabolites if len(met.reactions) == 0]
+    model_tailored.remove_metabolites(mets_to_remove)
 
-    genes_to_remove = [gene for gene in model_reduced.genes if len(gene.reactions) == 0]
+    genes_to_remove = [gene for gene in model_tailored.genes if len(gene.reactions) == 0]
     for gene in genes_to_remove:
-        model_reduced.genes.remove(gene)
+        model_tailored.genes.remove(gene)
 
     print("After removing genes and metabolites not associated with any reaction: ")
-    print("Number of reactions in reduced model: ", len(model_reduced.reactions))
-    print("Number of genes in reduced model: ", len(model_reduced.genes))
-    print("Number of metabolites in reduced model: ", len(model_reduced.metabolites))
+    print("Number of reactions in reduced model: ", len(model_tailored.reactions))
+    print("Number of genes in reduced model: ", len(model_tailored.genes))
+    print("Number of metabolites in reduced model: ", len(model_tailored.metabolites))
 
 
     #Save the reduced model
-    write_sbml_model(model_reduced, output_model_path)
+    write_sbml_model(model_tailored, output_model_path)
 
 
-    #Now perform gapfilling on model_reduced using the complete model as the universal model
+    #Now perform gapfilling on model_tailored using the complete model as the universal model
 
     tolerance = 0.001 #Same one used in PTR code
 
     #Try to optimize the model before gapfilling
-    solution = model_reduced.optimize()
+    solution = model_tailored.optimize()
     
     print("Optimization status:", solution.status)
     print("Objective value:", solution.objective_value)
         
     try:
-        gapfill_solution = gapfill(model_reduced, model, iterations=5, lower_bound=tolerance, penalties=None, exchange_reactions=False, demand_reactions=False)
+        gapfill_solution = gapfill(model_tailored, model, iterations=5, lower_bound=tolerance, penalties=None, exchange_reactions=False, demand_reactions=False)
         for solution in gapfill_solution:
             for reaction in solution:
-                model_reduced.add_reactions([reaction])
+                model_tailored.add_reactions([reaction])
                 print("Reaction added: ", reaction.id)
 
         # Check the updated reaction count after gapfilling
-        print("Number of reactions in the model for gapfilling after gapfilling: ", len(model_reduced.reactions))
+        print("Number of reactions in the model for gapfilling after gapfilling: ", len(model_tailored.reactions))
 
         #Check if gapfill solution is just a list of empty lists (i.e. gapfilling was not successful)
         if gapfill_solution == [[]]*len(gapfill_solution):
             print("Gapfilling was not successful")
         else:
             print("Gapfilling was successful, creating gapfilled model")
-            gapfilled_model_path = os.path.join(base_path, 'model_after_gapfilling.xml')
-            write_sbml_model(model_reduced, gapfilled_model_path)
+            gapfilled_model_path = os.path.join(project_root, 'models', 'model_after_gapfilling.xml')
+            write_sbml_model(model_tailored, gapfilled_model_path)
 
     except Exception as e:
         print("An error occurred during the gapfilling process:", str(e))
@@ -293,11 +300,10 @@ def model_reduce(model, solutions_imat, output_model_path):
 
 def main():
 
-    base_path = os.path.join('transcriptomics') #Define base path for transcriptomics files
-    model_path = os.path.join(base_path, 'model_full_THG_endoA.xml')
+    model_path = os.path.join(project_root, 'models', 'model_full_THG_endoA.xml')
 
-    output_model_path = os.path.join(base_path, 'model_reduced_endoA_gimme.xml')
-    solutions = os.path.join(base_path, 'allsolutions_gimme_parallel.csv')
+    output_model_path = os.path.join(project_root, 'models', 'model_tailored_endoA_gimme.xml')
+    solutions = os.path.join(project_root, 'files', 'allsolutions_gimme_parallel.csv')
 
     model = read_sbml_model(model_path)
     

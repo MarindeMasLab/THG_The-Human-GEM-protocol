@@ -427,13 +427,12 @@ def main():
       - Saves the processed expression values to a CSV file.
       - Reads exchange reaction IDs relevant in the specific cell type.
       - Runs the parallelized GIMME algorithm to obtain flux solutions.
-      - Calls model_reduce to generate a reduced model based on the flux solutions.
-      - Prints the output location of the reduced model.
+      - Calls model_reduce to generate a tailored model based on the flux solutions.
+      - Prints the output location of the tailored model.
     """
     # Define paths using os.path.join for cross-platform compatibility
-    base_path = os.path.join('transcriptomics')
-    model_path = 'model_full_THG_try2.xml' # Output PTR
-    lung_data= os.path.join(base_path, 'lung_data_gtex.csv') #GTEx expression data
+    model_path = os.path.join(project_root, 'models','model_full_THG_round2.xml') # Output model after adding transport reactions
+    lung_data= os.path.join(project_root, 'files', 'lung_data_gtex.csv') #GTEx expression data
     model = read_sbml_model(model_path)
 
     model = biomass_fix(model)
@@ -449,24 +448,24 @@ def main():
     expressionRxns = np.array(expressionRxns, dtype=np.float32)  # Use float32 for smaller memory footprint
 
     expressionRxns_df = pd.DataFrame(expressionRxns)
-    expression_rxns_path = os.path.join(base_path, 'expressionRxns_endoB.csv')
+    expression_rxns_path = os.path.join(project_root, 'files', 'expressionRxns.csv')
     expressionRxns_df.to_csv(expression_rxns_path, index=False, header=False)
 
     #Exchange reactions common between the general model and the cell type specific model (obtained from match_exch_rxns script)
-    exchange_rs = pd.read_csv('common_rs_endoB.txt', header=None).values.flatten().tolist()
+    exchange_rs = pd.read_csv(os.path.join(project_root, 'files','common_rs.txt'), header=None).values.flatten().tolist()
 
     # Create a copy for flux computations so that the original model remains unmodified
     #model_flux = model.copy()
     model_flux = copy.deepcopy(model)
     all_solutions = gimme(model_flux, expressionRxns, exchange_rs, num_workers=1)
     
-    #Reduce the model based on the flux solutions from the reconstruction algorithm
-    output_path = os.path.join(base_path, 'model_THG_endoB_reduced.xml') # Output path for the reduced model
+    #Tailor the model based on the flux solutions from the reconstruction algorithm
+    output_path = os.path.join(project_root, 'models', 'model_THG_endoA_tailored.xml') # Output path for the tailored model
     
     model_reduce(model, all_solutions, output_path)
 
-    print("Model reduced and saved to ", output_path)
-    
+    print("Model tailored and saved to ", output_path)
+
 
 if __name__ == "__main__":
     main()

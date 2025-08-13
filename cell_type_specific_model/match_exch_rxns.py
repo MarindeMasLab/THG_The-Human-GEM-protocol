@@ -7,6 +7,8 @@ import pdb
 import gurobipy
 import os
 import sys
+import re
+from cobra import Reaction
 
 # Determine the current file's directory and the project root.
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -15,134 +17,345 @@ project_root = os.path.join(current_dir, "..")
 if project_root not in sys.path:
     sys.path.append(project_root)
 
-def match_exch_rxns(model_new, model_base, match_df, tol=1e-9):
-    '''
-    Match exchange reactions between two models.
+from functions.function_metabolite_identification import generate_met_annotation, process_annotation
+from functions.functions_merge_metabolic_networks import network_metabolites_merge_3, network_genes_merge_2, network_reactions_merge_7
+reports_dir = os.path.join(project_root, 'metabolite_reac_identification', 'reports')
+
+def match_exch_rxns(model_new, model_base, tol=1e-9, add_rs: bool = False):
+    """
+    Match and update exchange reaction bounds by metabolite enrichment and network merging,
+    using original feasibility checks and bound-relax logic for matched reactions.
 
     Parameters
     ----------
     model_new : cobra.Model
         The model to modify.
     model_base : cobra.Model
-        The model to match to.
-    match_df : pandas.DataFrame
-        Dataframe with columns 'rxns' and 'rxnRecon3DID'.
-    
+        The reference model whose bounds will be applied.
+    tol : float
+        Tolerance for objective feasibility checks.
+    add_rs : bool
+        If True, add boundary reactions to the model_new that are in the model_base.
     Returns
     -------
-    cobra.Model
-        The modified model.
-    '''
-
+    model_modified : cobra.Model
+        The updated model_new with new exchange reaction bounds.
+    eq_rxns : list of tuples
+        Pairs of (new_rxn_id, base_rxn_id) that were matched.
+    noneq_rxns : list of str
+        Exchange reaction IDs in model_new that had no match.
+    inconsistent_rxns : list of str
+        Reactions flagged as inconsistent during merging.
+    """
+    # Copy model for modifications
     model_modified = model_new.copy()
+    logging.info(f"Total boundary reactions: {len(model_new.boundary)}")
 
-    objective_reaction = model_modified.objective.expression
-    logging.info(f"Objective reaction: {objective_reaction}")
-    reaction_ids_new_exchange = [reaction.id for reaction in model_new.boundary]
-    logging.info(f"Number of exchange reactions in new model: {len(reaction_ids_new_exchange)}")
-    reactions_found = 0
-    reactions_not_found = []
-    common_rs_list = [] # list of reactions that are found in both models, debug
+    # 1. Identify exchange reactions (single-metabolite)
+    exchange_rxns = [rxn for rxn in model_new.boundary if len(rxn.metabolites) == 1]
+    logging.info(f"Identified {len(exchange_rxns)} exchange reactions")
+    # 2. Enrich metabolites annotations
+    met_list = [
+        (met.name, met.formula, met.annotation, met.id)
+        for rxn in exchange_rxns for met in rxn.metabolites
+    ]
+
+    
+    annotated, unannotated = generate_met_annotation(met_list, out=os.path.join(reports_dir, 'met_annotation.tsv'))
+    logging.info(f"Annotated {len(annotated)} metabolites, unannotated: {len(unannotated)}")
+
+    cwd = os.getcwd()                                    # save current dir
+    os.chdir(project_root)
+    try:
+        annotation_map = process_annotation()            # now it finds reports/…
+    finally:
+        os.chdir(cwd)                                    # restore original dir
+    logging.info(f"Annotation map number of metabolites: {len(annotation_map)}")
+
+    for met_id, ann in annotation_map.items():
+        if met_id in model_modified.metabolites:
+            model_modified.metabolites.get_by_id(met_id).annotation.update(ann)
+
+    # 3. Build equivalence maps
+    _, eq_meta = network_metabolites_merge_3(model_modified.copy(), model_base.copy())
+    logging.info(f"Matched {len(eq_meta)} metabolites")
 
 
-    # first modify all the reactions that have been found
-    for index, row in match_df.iterrows():
-        new_name = row['rxns']
-        if new_name not in reaction_ids_new_exchange:
+    def core_id_from_model(met_id: str, model) -> str:
+        """
+        Return the compartment–free core ID for `met_id` by consulting the model.
+        Works for bracket, underscore, and flat-suffix styles.
+        """
+        try:
+            comp = model.metabolites.get_by_id(met_id).compartment
+        except KeyError:
+            return met_id                    # unknown → leave unchanged
+
+        if met_id.endswith(f'_{comp}'):
+            return met_id[:-(len(comp) + 1)]
+        if met_id.endswith(f'[{comp}]'):
+            return met_id[:-(len(comp) + 2)]
+        if met_id.endswith(comp):
+            return met_id[:-len(comp)]
+        return met_id
+
+
+    # 1. build map:  base-core → new-ID (underscore tags kept)
+    meta_to_new = {}
+    for new_id, base_id in eq_meta:                 # (new, base) from merge function
+        base_core = core_id_from_model(base_id, model_base)
+        new_core  = core_id_from_model(new_id,  model_new)
+        meta_to_new[base_core] = new_core
+
+
+    # 2. count boundary metabolites that are in the map
+    seen_base, seen_new = set(), set()
+    for r in model_base.boundary:
+        if len(r.metabolites) == 1:
+            core = core_id_from_model(next(iter(r.metabolites)).id, model_base)
+            if core in meta_to_new:
+                seen_base.add(core)
+
+    for r in model_new.boundary:
+        if len(r.metabolites) == 1:
+            core = core_id_from_model(next(iter(r.metabolites)).id, model_new)
+            if core in meta_to_new.values():
+                seen_new.add(core)
+
+    logging.info(f"Matched {len(seen_base)} metabolites in base-model boundary reactions")
+    logging.info(f"Matched {len(seen_new)} metabolites in new-model boundary reactions")
+
+    # 3. Find equivalent exchange reactions by metabolite mapping
+    eq_ex_rxns = []
+    ex_new  = [r for r in model_new.boundary  if len(r.metabolites) == 1]
+    ex_base = [r for r in model_base.boundary if len(r.metabolites) == 1]
+
+    for r_b in ex_base:
+        # base metabolite + compartment
+        met_b   = next(iter(r_b.metabolites))
+        core_b  = core_id_from_model(met_b.id, model_base)
+        comp_b  = met_b.compartment
+
+        # must have a mapping
+        if core_b not in meta_to_new:
             continue
-        base_name = str(row['rxnRecon3DID'])
-        if base_name != "":
-            base_name = base_name.replace('[', '(').replace(']', ')')
-            
-            try:
-                non_modified_new_bounds = deepcopy(model_modified.reactions.get_by_id(new_name).bounds)
-                
-                # This is the target of the try except code block
-                base_bounds = deepcopy(model_base.reactions.get_by_id(base_name).bounds)
-                model_modified.reactions.get_by_id(new_name).lower_bound = base_bounds[0]
-                model_modified.reactions.get_by_id(new_name).upper_bound = base_bounds[1]
-                
-                # All of this should not return errors if the code before works
-                opt = model_modified.optimize()
-                if opt.objective_value == None or opt.objective_value < tol:
-                    logging.warning(f'Reaction not feasible:{new_name}')
 
-                    # Relax bounds by increments of 0.1 until feasible
-                    increment = 0.1
-                    start_bounds = deepcopy(model_modified.reactions.get_by_id(new_name).bounds)
-                    while opt.objective_value == None or opt.objective_value < tol:
-                        
-                        # make new increment bounds
-                        increment_lb = round(start_bounds[0] - increment * abs(base_bounds[0]), 7)
-                        increment_ub = round(start_bounds[1] + increment * abs(base_bounds[1]), 7)
+        target_core = meta_to_new[core_b]
 
-                        # if the new bounds are too small, set to 0
-                        model_modified.reactions.get_by_id(new_name).lower_bound = 0 if abs(increment_lb) < tol else increment_lb
-                        model_modified.reactions.get_by_id(new_name).upper_bound = 0 if abs(increment_ub) < tol else increment_ub 
-                        opt = model_modified.optimize()
+        # look for a new‐model reaction on the same core **and** same compartment
+        for r_n in ex_new:
+            met_n  = next(iter(r_n.metabolites))
+            core_n = core_id_from_model(met_n.id, model_new)
+            comp_n = met_n.compartment
 
-                        # If increment is too large, break
-                        if increment >= 10: # 10 is arbitrary, means bounds can increase 10 times
-                            bounds_not_found = True
-                            break 
-                        increment += 0.1
-                    else:
-                        bounds_not_found = False
-                        logging.warning(f'Reaction feasible after increment:{new_name}')
-                        logging.info(f'Bounds in the base model:{base_bounds}')
-                        logging.info(f'Bounds in the new model:{model_modified.reactions.get_by_id(new_name).bounds}')
-                        logging.info(f'Objective value:{opt.objective_value}')
-                    # If increment is too large, revert bounds to original
-                    if bounds_not_found:
-                        logging.warning(f'Reaction not feasible after increment:{new_name}')
-                        model_modified.reactions.get_by_id(new_name).lower_bound = non_modified_new_bounds[0]
-                        model_modified.reactions.get_by_id(new_name).upper_bound = non_modified_new_bounds[1]
-                        opt_after = model_modified.optimize()
-                        if opt_after.objective_value == None:
-                            logging.error(f'Reaction not feasible after revert:{new_name}')
+            # both core and compartment must match
+            if core_n == target_core and comp_n == comp_b:
+                eq_ex_rxns.append((r_b.id, r_n.id))
+                break
+
+    logging.info(f"Matched {len(eq_ex_rxns)} boundary reactions via metabolites")
+
+    def rtype(r):
+        """Return 'EX', 'DM', 'SK', or None for single-metabolite boundary reactions."""
+        if len(r.metabolites) != 1:
+            return None
+        if r.id.startswith('EX_'):
+            return 'EX'
+        if r.id.startswith('DM_'):
+            return 'DM'
+        if r.id.startswith('SK_'):
+            return 'SK'
+        # fallback: decide from metabolite compartment
+        comp = next(iter(r.metabolites)).compartment.lower()
+        return 'EX' if comp in {'e', 'x', 'p', 'ext'} else 'DM'
+
+
+    # 4. Apply bounds matching with try/except and relaxation logic
+    reactions_found = 0
+    reactions_failed = []
+    for base_id,new_id in eq_ex_rxns:
+        try:
+            # ensure reactions exist
+            rxn_new = model_modified.reactions.get_by_id(new_id)
+            rxn_base = model_base.reactions.get_by_id(base_id)
+             #  only copy bounds when the reaction categories match
+            if rtype(rxn_base) != rtype(rxn_new):
+                logging.info(f"Skip: {base_id} ({rtype(rxn_base)}) → {new_id} ({rtype(rxn_new)})")
+                continue
+            # save original bounds
+            original_bounds = deepcopy(rxn_new.bounds)
+            base_bounds = deepcopy(rxn_base.bounds)
+            # set to base-model bounds
+            rxn_new.lower_bound, rxn_new.upper_bound = base_bounds
+
+            # test feasibility
+            opt = model_modified.optimize()
+            if opt.objective_value is None or opt.objective_value < tol:
+                logging.warning(f'Reaction not feasible: {new_id}')
+                # relax bounds incrementally
+                increment = 0.1
+                start_lb, start_ub = rxn_new.bounds
+                while opt.objective_value is None or opt.objective_value < tol:
+                    # compute new relaxed bounds
+                    lb = round(start_lb - increment * abs(base_bounds[0]), 7)
+                    ub = round(start_ub + increment * abs(base_bounds[1]), 7)
+                    rxn_new.lower_bound = 0 if abs(lb) < tol else lb
+                    rxn_new.upper_bound = 0 if abs(ub) < tol else ub
+                    opt = model_modified.optimize()
+                    if increment >= 10:
+                        bounds_not_found = True
+                        break
+                    increment += 0.1
+                else:
+                    bounds_not_found = False
+                    logging.warning(f'Reaction feasible after increment: {new_id}')
+                    logging.info(f'Base bounds: {base_bounds}, New bounds: {rxn_new.bounds}, Obj: {opt.objective_value}')
+
+                if bounds_not_found:
+                    logging.warning(f'Reaction not feasible after increment: {new_id}')
+                    # revert to original
+                    rxn_new.lower_bound, rxn_new.upper_bound = original_bounds
+                    opt2 = model_modified.optimize()
+                    if opt2.objective_value is None or opt2.objective_value < tol:
+                        logging.error(f'Reaction still infeasible after revert: {new_id}')
+                        reactions_failed.append(new_id)
                 else:
                     reactions_found += 1
-                    #print(reactions_found)
-                    common_rs_list.append(new_name) # debug
+            else:
+                reactions_found += 1
+        except Exception as e:
+            logging.error(f'Error processing reaction {new_id}: {e}')
+            reactions_failed.append(new_id)
 
-            except:
-                #print('Reaction not found in old model:', new_name)
-                reactions_not_found.append(new_name)
-    # after modifying all the reactions that have been found, set the bounds of the remaining reactions to 0
-    # and check if the model is still feasible
-    # if not, revert the bounds to the original bounds
-    for new_name in reactions_not_found:   
-        non_modified_new_bounds = deepcopy(model_modified.reactions.get_by_id(new_name).bounds)
-        if non_modified_new_bounds[0] == 0 or non_modified_new_bounds[1] == 0:
-            logging.error(f'Bound already 0:{new_name}')
-        #opt_debug_test = model_modified.optimize()
-        #logging.debug(f'Objective value debug:{opt_debug_test.objective_value}')
-        model_modified.reactions.get_by_id(new_name).lower_bound = 0
-        model_modified.reactions.get_by_id(new_name).upper_bound = 0
-        opt_0_bounds = model_modified.optimize()
+    logging.info(f'After attempts for bounds matching: Out of the {len(eq_ex_rxns)} reactions processed:')
+    logging.info(f'Matched reactions: {reactions_found}, Failed: {len(reactions_failed)}')
 
 
-        if opt_0_bounds.objective_value == None or opt_0_bounds.objective_value < tol:
-            logging.warning(f'Model not feasible when set to 0 bounds:{new_name}')
-            if non_modified_new_bounds[0] == 0 or non_modified_new_bounds[1] < tol:
-                logging.error(f'Saved bounds 0:{new_name}')
-            model_modified.reactions.get_by_id(new_name).lower_bound = non_modified_new_bounds[0]
-            model_modified.reactions.get_by_id(new_name).upper_bound = non_modified_new_bounds[1]
-            opt_0_after = model_modified.optimize()
-            logging.debug(f'Objective value after revert:{opt_0_after.objective_value}')
-            if opt_0_after.objective_value == None or opt_0_after.objective_value < tol:
-                logging.error(f'Model not feasible after 0 revert:{new_name}')
-                logging.error(f'Bounds in the new model:{model_modified.reactions.get_by_id(new_name).bounds}')
-                logging.error(f'Saved bounds:{non_modified_new_bounds}')
+    # 5. Add missing boundary reactions from base model to new model
 
-        
 
-    logging.info(f'Reactions found in old model: {reactions_found}')
-    logging.info(f'Reactions not found in old model: {len(reactions_not_found)}')
+    if add_rs:
 
-    metab_df = get_metab_df(model_modified, reactions_not_found)
+        # figure out the next MAR counter
+        # grab all existing MAR IDs in the model, e.g. “MAR09079”
+        mar_ids = [
+            rxn.id for rxn in model_modified.reactions
+            if rxn.id.startswith("MAR") and rxn.id[3:].isdigit()
+        ]
+        # extract their numeric parts
+        nums = [int(mid[3:]) for mid in mar_ids]
+        max_num = max(nums) if nums else 0
+        # width is how many digits the  MAR codes use (e.g. 5)
+        width = len(mar_ids[0]) - 3 if mar_ids else 5
+        next_counter = max_num + 1
 
-    return model_modified, metab_df , common_rs_list 
+        # Find which base‐cores never got a match  
+        matched_cores = {
+            core_id_from_model(
+                next(iter(model_base.reactions.get_by_id(b).metabolites)).id,
+                model_base
+            )
+            for b, _ in eq_ex_rxns
+        }
+
+        unmatched_cores = seen_base - matched_cores
+        print(f"{len(unmatched_cores)} cores still missing a boundary reaction match")
+
+        # For each missing core, clone its base boundary rxn into model_modified  
+        for core in unmatched_cores:
+            # find all base boundary reactions carrying that core
+            for r_b in ex_base:
+                met_b = next(iter(r_b.metabolites))
+                if core_id_from_model(met_b.id, model_base) != core:
+                    continue
+
+                # lookup the new‐model core
+                new_core = meta_to_new.get(core)
+                if new_core is None:
+                    # no mapping even at the metabolite level
+                    continue
+
+                # find the full new‐model metabolite ID with same compartment
+                candidates = [
+                    m for m in model_modified.metabolites
+                    if core_id_from_model(m.id, model_new) == new_core
+                    and m.compartment == met_b.compartment
+                ]
+                if not candidates:
+                    continue
+                new_met_id = candidates[0].id
+                met_obj    = model_modified.metabolites.get_by_id(new_met_id)
+
+                # make sure we don’t duplicate a same‐type rxn
+                t = rtype(r_b)
+                exists = any(
+                    len(r.metabolites)==1
+                    and rtype(r)==t
+                    and core_id_from_model(
+                        next(iter(r.metabolites)).id, model_new
+                    ) == new_core
+                    for r in model_modified.boundary
+                )
+                if exists:
+                    continue
+
+                # use the MAR‐code of the metabolite as the reaction ID 
+                new_rxn_id = f"MAR{next_counter:0{width}d}"
+                # ensure it’s unique
+                while new_rxn_id in model_modified.reactions:
+                    next_counter += 1
+                    new_rxn_id = f"MAR{next_counter:0{width}d}"
+
+                rxn_new = Reaction(new_rxn_id)
+                rxn_new.name        = f"Imported from {r_b.id}"
+                rxn_new.lower_bound, rxn_new.upper_bound = r_b.bounds
+                coeff = r_b.metabolites[met_b]
+                rxn_new.add_metabolites({met_obj: coeff})
+
+                model_modified.add_reactions([rxn_new])
+                logging.info(f"Added missing {t} reaction {new_rxn_id} for core {core}")
+
+                # register it so your bounds‐copy loop will include it
+                eq_ex_rxns.append((r_b.id, new_rxn_id))
+
+    logging.info(f"Modified {len(eq_ex_rxns)} reactions in new model")
+    #noneq_rxns are the reactions in the exchange rxns that are not in the eq_rxns list
+    exchange_rxns_ids = [rxn.id for rxn in exchange_rxns]
+    noneq_rxns = set(exchange_rxns_ids) - set([rxn[1] for rxn in eq_ex_rxns])
+    logging.info(f'Non-equivalent reactions: {len(noneq_rxns)}')
+    
+
+    # Zero-out unmatched reactions with revert logic
+    for rxn_id in noneq_rxns:
+        try:
+            rxn = model_modified.reactions.get_by_id(rxn_id)
+            orig = deepcopy(rxn.bounds)
+            rxn.lower_bound, rxn.upper_bound = 0, 0
+            opt0 = model_modified.optimize()
+            if opt0.objective_value is None or opt0.objective_value < tol:
+                logging.warning(f'Model infeasible setting 0 bounds: {rxn_id}')
+                # revert
+                rxn.lower_bound, rxn.upper_bound = orig
+                opt1 = model_modified.optimize()
+                if opt1.objective_value is None or opt1.objective_value < tol:
+                    logging.error(f'Infeasible after revert: {rxn_id}, bounds: {orig}')
+        except Exception as e:
+            logging.error(f'Error zeroing reaction {rxn_id}: {e}')
+
+
+    # 6. Prepare original metabolite DataFrame and common list
+
+    metab_df = get_metab_df(model_modified, noneq_rxns)
+    common_rs_list = [new_id for _, new_id in eq_ex_rxns]
+    common_rs_list = list(set(common_rs_list))  # remove duplicates
+    eq_ex_rxns = list(set(eq_ex_rxns))  # remove duplicates
+    logging.info(f'Common reactions number: {len(common_rs_list)}')
+    logging.info(f'Non-equivalent reactions number: {len(set(noneq_rxns))}')
+
+    # Return both original and new outputs
+    return model_modified, metab_df, common_rs_list, eq_ex_rxns, noneq_rxns
+
+
 
 def get_metab_df(model, reactions):
     '''
@@ -220,29 +433,32 @@ def get_metab_df(model, reactions):
     return metab_df
 
 if __name__ == '__main__':
-     
-    match_df = pd.read_csv(os.path.join(project_root, 'files','reactions.tsv'), sep='\t',header=0)
-    model_base = read_sbml_model(os.path.join(project_root, 'models','EC_3006_1.xml'))
-    model_new = read_sbml_model(os.path.join(project_root, 'models','THG-beta2.xml'))  
-    
+
+
+    model_base = read_sbml_model(os.path.join(project_root, 'models','EC_model_with_KEGG.xml'))
+    model_new = read_sbml_model(os.path.join(project_root, 'models','THG-beta2_endoA.xml'))  
+   
+    #use Gurobi as solver
     model_new.solver = 'gurobi'
     opt = model_new.optimize()
     logging.basicConfig(level=logging.DEBUG)
     print('Initial objective value:', opt.objective_value)
-    # model_new = pickle.load(open('pipeline/models/THG.pkl', 'rb'))
-    # model_base = pickle.load(open('pipeline/models/iEC3006.pkl', 'rb'))
-    return_model, metab_df, common_rs = match_exch_rxns(model_new, model_base, match_df) 
+    return_model, metab_df, common_rs, eq_ex_rxns, noneq_rxns = match_exch_rxns(model_new, model_base, tol=1e-9, add_rs=True)  
+    
     sol = return_model.optimize()
     print('Final new model objective value:', sol.objective_value)
     sol_base = model_base.optimize()
     print('Base model objective value:', sol_base.objective_value)
-    write_sbml_model(return_model, os.path.join(project_root, 'models','THG_EC_10_03.xml'))
+    write_sbml_model(return_model, os.path.join(project_root, 'models','THG_endoA_boundary.xml'))
     #metab_df.to_csv('pipeline/data/EC_THG_not_found_metabolites.csv', index=False)
-    metab_df.to_excel(os.path.join(project_root, 'files','EC_THG_not_found_metabolites.xlsx'), index=False)
+    metab_df.to_excel('EC_THG_not_found_metabolites.xlsx', index=False)
 
-    #write common reactions to file
+    #write common reactions to file for debug
     with open(os.path.join(project_root, 'files','common_rs.txt'), 'w') as f:
         for item in common_rs:
             f.write("%s\n" % item)
 
     print('Done')
+
+
+

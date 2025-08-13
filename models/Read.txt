@@ -1,8 +1,10 @@
-THG-beta1.1.xml Input model. New model with enriched annotation (version 1.1) developed in metabolite_reac_identification
-THG-beta1.1.1.xml: New model with enriched annotation (version 1.1) developed in metabolite_reac_identification
-THG-beta2-tmp.xml: Initial model
-THG-beta2.xml: THG-beta2 (corrects gene-protein-reaction association, identify isoenzyme activities and expand the model accordingly) developed by build_model.py 
-THG-beta1.xml: THG-beta1 (checks and corrects the mass balance consistency and improves annotation of the different moieties) developed by build_model.py
 Human-GEM_2022-06-21.xml: Reference human metabolism (Human1) model 
-Human Database.xml: Database developed (output file)
-THG-2023-02-25.xml: THG developed by merge_metabolic_netowrks_and_network_consistency.py
+Human Database.xml: Database developed 
+THG-2023-02-25.xml: Input THG, developed by merge_metabolic_netowrks_and_network_consistency.py
+THG-beta1: Model with all compartments, before filtering (output from build_model)
+THG-beta2: Model with all compartments, after filtering (output from build_model)
+THG-beta2_endoA: Model with endothelial compartments, after filtering (output from build_model)
+EC_model_with_KEGG: Endothelial model with bounds defined by exometabolomics data
+THG_endoA_boundary: THG model with boundary reactions bounds refinement (output from match_exch_rxns)
+model_after_round1, model_full_THG_round2, model_transport_after_round1, model_transport_final_THG_round2: Outputs from the multi-round addition of transport reactions. Those with transport in the name include only the transport reactions.
+model_THG_endoA_tailored: Streamlined model after the integration of transcriptomics data and removal of inactive reactions 
