@@ -150,7 +150,7 @@ def model_reduce(model, solutions_gimme, output_model_path):
     #See which compartment the blocked reactions are in
 
     #Print also the info in a text file called compartments_info.txt
-    compartments_info_path =os.path.join(current_dir, 'compartments_info.txt')
+    compartments_info_path =os.path.join(project_root, 'files', 'compartments_info.txt')
 
     compartments_info = open(compartments_info_path, "w")
     compartments_info.write("Information about blocked reactions in the model: \n\n")
@@ -230,8 +230,7 @@ def model_reduce(model, solutions_gimme, output_model_path):
             )
             print(f"Sheet '{group_name}' created ({len(rxn_ids)} reactions).")
 
-    import pdb
-    pdb.set_trace()
+
     #Print the number of reactions in each group
 
     print("Number of reactions in each group: \nGroup1: ", len(group1), "\nGroup2: ", len(group2), "\nGroup3: ", len(group3), "\nGroup4: ", len(group4), "\nGroup5: ", len(group5))

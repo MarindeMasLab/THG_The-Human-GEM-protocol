@@ -1,0 +1,76 @@
+ec_reaction	ec_met	thg_met
+DM_dctp(m)	dCTP	MAM01645e
+DM_dgtp(m)	dGTP	MAM01688e
+DM_dttp(m)	dTTP	MAM01753e
+DM_gpi_sig(er)	gpi_sig	MAM02022e
+DM_kdn_c	KDN	MAM00003c
+DM_melanin_c	Melanin	MAM03758c
+DM_sprm_c	Spermine	MAM02926e
+EX_adp	ADP	MAM01285e
+EX_dlnlcg(e)	Dilinoleoyl-glycerol	MAM00010e
+DM_4hrpo	3-(4-Hydroxyphenyl)pyruvate	MAM01005e
+DM_anth	Anthranilate	MAM01342e
+sink_pre_prot(r)	pre-protein	MAM00020r
+DM-Dem2emgacpail_prot_hs_r	dem2emgacpail_prot heparan sulfate	MAM01665e
+DM-Dgpi_prot_hs_r	dgpi_prot heparan sulfate	MAM01687e
+DM1p2cbxl	1-palmitoyl-2-linoleoyl-phosphatidylcholine	MAM00025c
+DM_glc1man_g	Glucose-1,3-Mannose Oligosaccharide	MAM03591c
+DM_glc3man_g	Glucose-1,2-(2)[Glucose-1,3]-Mannose Oligosaccharide	MAM03593c
+DM_gncore2_g	glcnac-alpha-1,4-core 2	MAM01955e
+DM_mem2emgacpail_prot_hs_r	mem2emgacpail_prot_hs	MAM00033r
+DM_n5m2masn_g	n5m2masn[g]	MAM00034g
+Dmidour	Idouronate	MAM00035c
+EXLkynr	kynurenine	MAM02319e
+EX_udpgal_e	UDP-alpha-D-galactose	MAM03107e
+EXcore2	Core2	MAM00038c
+Excspg_a	chondroitin sulfate A (GalNAc4S-GlcA) proteoglycan	MAM01517e
+Excspg_b	chondroitin sulfate B - dermatan sulfate (IdoA2S-GalNAc4S) proteoglycan	MAM01525e
+Excspg_c	chondroitin sulfate C (GalNAc6S-GlcA) proteoglycan	MAM01533e
+Excspg_d	chondroitin sulfate D (GlcNAc6S-GlcA2S) proteoglycan	MAM01543e
+EX_oh1	hydroxide	MAM02147e
+EX5MTP	5-methyltetrahydropteroyltriglutamate	MAM00044c
+Excspg_e	chondroitin sulfate E (GalNAc4,6diS-GlcA) proteoglycan	MAM01554e
+Ex_glc-D[e]	glucose	MAM01965e
+Ex_lac-L[e]	(S)-Lactate	MAM02403e
+Ex_cys_L[e]	L-Cysteine	MAM01628e
+Ex_so3[e]	Sulfite	MAM02949e
+EX_15HETE	15(R)-HETE	MAM00374c
+EX_13HODE	13(S)-HODE	MAM00336e
+EX_12(13)DHOME	12(13)-DiHOME	MAM00052c
+EX_13oODE	13-oxoODE	MAM00053c
+EX_ACRNT	O-acetylcarnitine	MAM02634e
+EX_PCRN	O-propanoylcarnitine	MAM02657e
+EX_c4crn	C4crn	MAM00056c
+EX_ASPe	L-Aspartate	MAM01370e
+EX_lkynre	L-Kynurenine	C00328_e
+EX_dmgly	N,N-Dimethylglycine	MAM01708e
+EX_5oxoe	5-Oxo-eicosatetraenoate	MAM00060c
+EX_akge	2-Oxoglutarate	MAM01306e
+EX_fume	Fumarate	MAM01862e
+EX_male	(S)-Malate	MAM02439e
+EX_crne	Creatine	MAM01619e
+EX_OCCrn	L-octanoylcarnitine	MAM02409e
+EX_pmtcrne	L-Palmitoylcarnitine	MAM02411e
+PSt3_pshs_e	Phosphatidylserine	MAM02808e
+EX_glyc	Glycerol	MAM01983e
+EX_glyc3p	sn-Glycerol 3-phosphate	MAM02914e
+EX_dhcrm	Dihydroceramide	MAM01699e
+EX_sphings	Sphinganine	MAM02927e
+EX_cholp	Choline phosphate	MAM02738e
+EX_pep	Phosphoenolpyruvate	MAM02696e
+EX_12HETE	12(S)-HETE	MAM00307e
+EX_pmtleice	7-palmitoleic acid	MAM01197e
+EX_3h5chola	3-hydroxy-5-cholenoate	MAM00072c
+EX_lhcr	Lathosterol	MAM02343e
+sink_Ser/Thr[g]	Ser/Thr[g]	MAM00074g
+sink_Asn-X-Ser/Thr[r]	Asn-X-Ser/Thr	MAM00075r
+sink_Ser-Gly/Ala-X-Gly[r]	Ser-Gly/Ala-X-Gly	MAM00076r
+EX_odecrn[e]	L-oleoylcarnitine	MAM02410c
+EX_ttdcrn[e]	tetradecanoylcarnitine	MAM02973c
+EX_clpnd[e]	clpnd[e]	MAM00079e
+EX_hdcea[e]	Hexadecenal	MAM02116e
+EX_tmao[e]	trimethylamine-N-oxide	MAM03054c
+EX_ivcrn[e]	Isovaleryl Carnitine	MAM03706e
+EX_dodecanac[e]	Dodecanoic acid	MAM02344e
+EX_c10crn[e]	Decanoyl Carnitine	MAM03488e
+EX_5eipenc[e]	(18R)-hydroxy-(5Z,8Z,11Z,14Z,16E)-eicosapentaenoic acid	MAM00029c

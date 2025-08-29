@@ -1,14 +1,14 @@
 Information about blocked reactions in the model: 
 
 For compartment: cytosol
-Number of reactions with min and max fluxes of 0 in this compartment: 1523
+Number of reactions with min and max fluxes of 0 in this compartment: 1526
 Number of reactions in this compartment: 5898
-Percentage of reactions with min and max fluxes of 0 in this compartment: 25.82231264835537
+Percentage of reactions with min and max fluxes of 0 in this compartment: 25.873177348253645
 
 For compartment: extracellular
-Number of reactions with min and max fluxes of 0 in this compartment: 1486
+Number of reactions with min and max fluxes of 0 in this compartment: 1483
 Number of reactions in this compartment: 3323
-Percentage of reactions with min and max fluxes of 0 in this compartment: 44.71862774601264
+Percentage of reactions with min and max fluxes of 0 in this compartment: 44.628347878423114
 
 For compartment: lysosome
 Number of reactions with min and max fluxes of 0 in this compartment: 157
@@ -31,9 +31,9 @@ Number of reactions in this compartment: 971
 Percentage of reactions with min and max fluxes of 0 in this compartment: 32.44078269824923
 
 For compartment: golgi apparatus
-Number of reactions with min and max fluxes of 0 in this compartment: 521
+Number of reactions with min and max fluxes of 0 in this compartment: 523
 Number of reactions in this compartment: 854
-Percentage of reactions with min and max fluxes of 0 in this compartment: 61.007025761124126
+Percentage of reactions with min and max fluxes of 0 in this compartment: 61.241217798594846
 
 For compartment: nucleus
 Number of reactions with min and max fluxes of 0 in this compartment: 973
@@ -84,235 +84,4 @@ For compartment: cell membrane junktion/adhesion
 Number of reactions with min and max fluxes of 0 in this compartment: 131
 Number of reactions in this compartment: 153
 Percentage of reactions with min and max fluxes of 0 in this compartment: 85.62091503267973
-
-Number of reactions in each group: 
-Group1: 11517
-Group2: 5969
-Group3: 3275
-Group4: 1246
-Group5: 2554
-
-
-Information about the groups in each compartment: 
-
-For compartment: cytosol
-Number of reactions in this compartment: 5898
-Number of reactions in group1: 2297
-Number of reactions in group2: 1627
-Number of reactions in group3: 1133
-Number of reactions in group4: 296
-Number of reactions in group5: 545
-Percentage of reactions in group1: 38.945405222109194
-Percentage of reactions in group2: 27.585622244828755
-Percentage of reactions in group3: 19.209901661580197
-Percentage of reactions in group4: 5.0186503899626995
-Percentage of reactions in group5: 9.240420481519159
-
-For compartment: extracellular
-Number of reactions in this compartment: 3323
-Number of reactions in group1: 1616
-Number of reactions in group2: 1066
-Number of reactions in group3: 303
-Number of reactions in group4: 89
-Number of reactions in group5: 249
-Percentage of reactions in group1: 48.63075534155883
-Percentage of reactions in group2: 32.07944628347879
-Percentage of reactions in group3: 9.11826662654228
-Percentage of reactions in group4: 2.678302738489317
-Percentage of reactions in group5: 7.4932290099307854
-
-For compartment: lysosome
-Number of reactions in this compartment: 475
-Number of reactions in group1: 202
-Number of reactions in group2: 211
-Number of reactions in group3: 47
-Number of reactions in group4: 12
-Number of reactions in group5: 3
-Percentage of reactions in group1: 42.526315789473685
-Percentage of reactions in group2: 44.42105263157895
-Percentage of reactions in group3: 9.894736842105264
-Percentage of reactions in group4: 2.526315789473684
-Percentage of reactions in group5: 0.631578947368421
-
-For compartment: endoplasmic reticulum
-Number of reactions in this compartment: 1675
-Number of reactions in group1: 958
-Number of reactions in group2: 244
-Number of reactions in group3: 280
-Number of reactions in group4: 122
-Number of reactions in group5: 71
-Percentage of reactions in group1: 57.19402985074626
-Percentage of reactions in group2: 14.567164179104477
-Percentage of reactions in group3: 16.716417910447763
-Percentage of reactions in group4: 7.2835820895522385
-Percentage of reactions in group5: 4.2388059701492535
-
-For compartment: mitochondria
-Number of reactions in this compartment: 1907
-Number of reactions in group1: 805
-Number of reactions in group2: 535
-Number of reactions in group3: 321
-Number of reactions in group4: 88
-Number of reactions in group5: 158
-Percentage of reactions in group1: 42.21289984268485
-Percentage of reactions in group2: 28.054535920293656
-Percentage of reactions in group3: 16.832721552176196
-Percentage of reactions in group4: 4.614577871001573
-Percentage of reactions in group5: 8.285264813843733
-
-For compartment: peroxisome
-Number of reactions in this compartment: 971
-Number of reactions in group1: 482
-Number of reactions in group2: 274
-Number of reactions in group3: 100
-Number of reactions in group4: 16
-Number of reactions in group5: 99
-Percentage of reactions in group1: 49.63954685890834
-Percentage of reactions in group2: 28.218331616889802
-Percentage of reactions in group3: 10.298661174047375
-Percentage of reactions in group4: 1.6477857878475797
-Percentage of reactions in group5: 10.1956745623069
-
-For compartment: golgi apparatus
-Number of reactions in this compartment: 854
-Number of reactions in group1: 591
-Number of reactions in group2: 188
-Number of reactions in group3: 37
-Number of reactions in group4: 13
-Number of reactions in group5: 25
-Percentage of reactions in group1: 69.20374707259953
-Percentage of reactions in group2: 22.01405152224824
-Percentage of reactions in group3: 4.332552693208431
-Percentage of reactions in group4: 1.5222482435597189
-Percentage of reactions in group5: 2.927400468384075
-
-For compartment: nucleus
-Number of reactions in this compartment: 1403
-Number of reactions in group1: 1131
-Number of reactions in group2: 89
-Number of reactions in group3: 68
-Number of reactions in group4: 35
-Number of reactions in group5: 80
-Percentage of reactions in group1: 80.61297220242338
-Percentage of reactions in group2: 6.343549536707056
-Percentage of reactions in group3: 4.846756949394155
-Percentage of reactions in group4: 2.4946543121881684
-Percentage of reactions in group5: 5.702066999287242
-
-For compartment: inner mitochondria
-Number of reactions in this compartment: 0
-Number of reactions in group1: 0
-Number of reactions in group2: 0
-Number of reactions in group3: 0
-Number of reactions in group4: 0
-Number of reactions in group5: 0
-Percentage of reactions in group1: 0
-Percentage of reactions in group2: 0
-Percentage of reactions in group3: 0
-Percentage of reactions in group4: 0
-Percentage of reactions in group5: 0
-
-For compartment: cell membrane
-Number of reactions in this compartment: 1086
-Number of reactions in group1: 982
-Number of reactions in group2: 17
-Number of reactions in group3: 23
-Number of reactions in group4: 9
-Number of reactions in group5: 55
-Percentage of reactions in group1: 90.42357274401473
-Percentage of reactions in group2: 1.5653775322283612
-Percentage of reactions in group3: 2.117863720073665
-Percentage of reactions in group4: 0.8287292817679558
-Percentage of reactions in group5: 5.064456721915286
-
-For compartment: cilium
-Number of reactions in this compartment: 263
-Number of reactions in group1: 258
-Number of reactions in group2: 1
-Number of reactions in group3: 0
-Number of reactions in group4: 0
-Number of reactions in group5: 4
-Percentage of reactions in group1: 98.09885931558935
-Percentage of reactions in group2: 0.38022813688212925
-Percentage of reactions in group3: 0.0
-Percentage of reactions in group4: 0.0
-Percentage of reactions in group5: 1.520912547528517
-
-For compartment: cytoskeleton
-Number of reactions in this compartment: 167
-Number of reactions in group1: 82
-Number of reactions in group2: 2
-Number of reactions in group3: 2
-Number of reactions in group4: 0
-Number of reactions in group5: 81
-Percentage of reactions in group1: 49.101796407185624
-Percentage of reactions in group2: 1.1976047904191618
-Percentage of reactions in group3: 1.1976047904191618
-Percentage of reactions in group4: 0.0
-Percentage of reactions in group5: 48.50299401197605
-
-For compartment: vesicle
-Number of reactions in this compartment: 248
-Number of reactions in group1: 231
-Number of reactions in group2: 0
-Number of reactions in group3: 2
-Number of reactions in group4: 2
-Number of reactions in group5: 13
-Percentage of reactions in group1: 93.14516129032258
-Percentage of reactions in group2: 0.0
-Percentage of reactions in group3: 0.8064516129032258
-Percentage of reactions in group4: 0.8064516129032258
-Percentage of reactions in group5: 5.241935483870968
-
-For compartment: glycocalix
-Number of reactions in this compartment: 30
-Number of reactions in group1: 0
-Number of reactions in group2: 0
-Number of reactions in group3: 0
-Number of reactions in group4: 0
-Number of reactions in group5: 30
-Percentage of reactions in group1: 0.0
-Percentage of reactions in group2: 0.0
-Percentage of reactions in group3: 0.0
-Percentage of reactions in group4: 0.0
-Percentage of reactions in group5: 100.0
-
-For compartment: cell membrane apical
-Number of reactions in this compartment: 28
-Number of reactions in group1: 25
-Number of reactions in group2: 2
-Number of reactions in group3: 0
-Number of reactions in group4: 0
-Number of reactions in group5: 1
-Percentage of reactions in group1: 89.28571428571429
-Percentage of reactions in group2: 7.142857142857142
-Percentage of reactions in group3: 0.0
-Percentage of reactions in group4: 0.0
-Percentage of reactions in group5: 3.571428571428571
-
-For compartment: cell membrane basal
-Number of reactions in this compartment: 10
-Number of reactions in group1: 8
-Number of reactions in group2: 0
-Number of reactions in group3: 0
-Number of reactions in group4: 0
-Number of reactions in group5: 2
-Percentage of reactions in group1: 80.0
-Percentage of reactions in group2: 0.0
-Percentage of reactions in group3: 0.0
-Percentage of reactions in group4: 0.0
-Percentage of reactions in group5: 20.0
-
-For compartment: cell membrane junktion/adhesion
-Number of reactions in this compartment: 153
-Number of reactions in group1: 135
-Number of reactions in group2: 2
-Number of reactions in group3: 6
-Number of reactions in group4: 5
-Number of reactions in group5: 5
-Percentage of reactions in group1: 88.23529411764706
-Percentage of reactions in group2: 1.3071895424836601
-Percentage of reactions in group3: 3.9215686274509802
-Percentage of reactions in group4: 3.2679738562091507
-Percentage of reactions in group5: 3.2679738562091507
 
