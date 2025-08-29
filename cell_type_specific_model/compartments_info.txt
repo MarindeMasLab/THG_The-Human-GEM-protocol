@@ -1,0 +1,87 @@
+Information about blocked reactions in the model: 
+
+For compartment: cytosol
+Number of reactions with min and max fluxes of 0 in this compartment: 1526
+Number of reactions in this compartment: 5898
+Percentage of reactions with min and max fluxes of 0 in this compartment: 25.873177348253645
+
+For compartment: extracellular
+Number of reactions with min and max fluxes of 0 in this compartment: 1483
+Number of reactions in this compartment: 3323
+Percentage of reactions with min and max fluxes of 0 in this compartment: 44.628347878423114
+
+For compartment: lysosome
+Number of reactions with min and max fluxes of 0 in this compartment: 157
+Number of reactions in this compartment: 475
+Percentage of reactions with min and max fluxes of 0 in this compartment: 33.05263157894737
+
+For compartment: endoplasmic reticulum
+Number of reactions with min and max fluxes of 0 in this compartment: 776
+Number of reactions in this compartment: 1675
+Percentage of reactions with min and max fluxes of 0 in this compartment: 46.32835820895522
+
+For compartment: mitochondria
+Number of reactions with min and max fluxes of 0 in this compartment: 640
+Number of reactions in this compartment: 1907
+Percentage of reactions with min and max fluxes of 0 in this compartment: 33.560566334556896
+
+For compartment: peroxisome
+Number of reactions with min and max fluxes of 0 in this compartment: 315
+Number of reactions in this compartment: 971
+Percentage of reactions with min and max fluxes of 0 in this compartment: 32.44078269824923
+
+For compartment: golgi apparatus
+Number of reactions with min and max fluxes of 0 in this compartment: 523
+Number of reactions in this compartment: 854
+Percentage of reactions with min and max fluxes of 0 in this compartment: 61.241217798594846
+
+For compartment: nucleus
+Number of reactions with min and max fluxes of 0 in this compartment: 973
+Number of reactions in this compartment: 1403
+Percentage of reactions with min and max fluxes of 0 in this compartment: 69.35138987883107
+
+For compartment: inner mitochondria
+Number of reactions with min and max fluxes of 0 in this compartment: 0
+Number of reactions in this compartment: 0
+Percentage of reactions with min and max fluxes of 0 in this compartment: 0
+
+For compartment: cell membrane
+Number of reactions with min and max fluxes of 0 in this compartment: 962
+Number of reactions in this compartment: 1086
+Percentage of reactions with min and max fluxes of 0 in this compartment: 88.58195211786372
+
+For compartment: cilium
+Number of reactions with min and max fluxes of 0 in this compartment: 245
+Number of reactions in this compartment: 263
+Percentage of reactions with min and max fluxes of 0 in this compartment: 93.15589353612167
+
+For compartment: cytoskeleton
+Number of reactions with min and max fluxes of 0 in this compartment: 82
+Number of reactions in this compartment: 167
+Percentage of reactions with min and max fluxes of 0 in this compartment: 49.101796407185624
+
+For compartment: vesicle
+Number of reactions with min and max fluxes of 0 in this compartment: 222
+Number of reactions in this compartment: 248
+Percentage of reactions with min and max fluxes of 0 in this compartment: 89.51612903225806
+
+For compartment: glycocalix
+Number of reactions with min and max fluxes of 0 in this compartment: 0
+Number of reactions in this compartment: 30
+Percentage of reactions with min and max fluxes of 0 in this compartment: 0.0
+
+For compartment: cell membrane apical
+Number of reactions with min and max fluxes of 0 in this compartment: 24
+Number of reactions in this compartment: 28
+Percentage of reactions with min and max fluxes of 0 in this compartment: 85.71428571428571
+
+For compartment: cell membrane basal
+Number of reactions with min and max fluxes of 0 in this compartment: 8
+Number of reactions in this compartment: 10
+Percentage of reactions with min and max fluxes of 0 in this compartment: 80.0
+
+For compartment: cell membrane junktion/adhesion
+Number of reactions with min and max fluxes of 0 in this compartment: 131
+Number of reactions in this compartment: 153
+Percentage of reactions with min and max fluxes of 0 in this compartment: 85.62091503267973
+

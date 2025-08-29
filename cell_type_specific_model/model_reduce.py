@@ -8,6 +8,7 @@ import os
 import pickle
 import matplotlib.pyplot as plt
 import sys
+import pandas as pd
 
 '''
 Analyzes metabolic reaction activity across samples, tailors the model by removing low-activity reactions, and restores functionality through gap-filling.
@@ -27,7 +28,7 @@ Outputs
 
 Description
 ----------
-    1. Loads flux data from iMAT, discretizes fluxes, and computes mean presence of each reaction across samples.
+    1. Loads flux data from GIMME, discretizes fluxes, and computes mean presence of each reaction across samples.
     2. Groups reactions by presence levels and identifies consistently absent or present reactions.
     3. Identifies blocked reactions in the model by compartment and organizes reactions by presence group within compartments.
     4. Creates a tailored model without absent reactions and saves it.
@@ -42,18 +43,49 @@ project_root = os.path.join(current_dir, "..")
 if project_root not in sys.path:
     sys.path.append(project_root)
 
+OUTPUT_EXCEL_PATH = os.path.join(project_root, 'supplementary_material', 'reaction_activity_report.xlsx')
 
-def model_reduce(model, solutions_imat, output_model_path):
+def get_reaction_annotation_details(model, rxn_ids):
+    """
+    Retrieves detailed information for a list of reaction IDs from a COBRA model.
+    Includes ID, Name, Reaction String, and various annotation IDs.
+    """
+    details = []
+    for rxn_id in rxn_ids:
+        try:
+            rxn = model.reactions.get_by_id(rxn_id)
+            details.append({
+                'Reaction ID': rxn.id,
+                'Name': rxn.name,
+                'Reaction String': rxn.reaction,
+                'Kegg ID': rxn.annotation.get('kegg.reaction', 'N/A'),
+                'BiGG ID': rxn.annotation.get('bigg.reaction', 'N/A'),
+                'MetaNetX ID': rxn.annotation.get('metanetx.reaction', 'N/A'),
+                'VMH ID': rxn.annotation.get('vmhreaction', 'N/A')
+            })
+        except KeyError:
+            details.append({
+                'Reaction ID': rxn_id,
+                'Name': 'Not Found in Model',
+                'Reaction String': 'N/A',
+                'Kegg ID': 'N/A',
+                'BiGG ID': 'N/A',
+                'MetaNetX ID': 'N/A',
+                'VMH ID': 'N/A'
+            })
+    return pd.DataFrame(details)
+
+def model_reduce(model, solutions_gimme, output_model_path):
 
    
     # #After running GIMME  on our model, we have a file with all the reactions as rows, and samples as columns. The values are the fluxes of the reactions in the samples.
     
     #Check if data is in csv or mat format
-    if solutions_imat.endswith('.mat'):
-        sol_matrix = scipy.io.loadmat(solutions_imat)
+    if solutions_gimme.endswith('.mat'):
+        sol_matrix = scipy.io.loadmat(solutions_gimme)
         sol_matrix = sol_matrix['all_Solutions_matrix5']
-    elif solutions_imat.endswith('.csv'):
-        sol_matrix = np.loadtxt(solutions_imat, delimiter=',')
+    elif solutions_gimme.endswith('.csv'):
+        sol_matrix = np.loadtxt(solutions_gimme, delimiter=',')
     else:
         print("Data format not recognized, please provide a .mat or .csv file")
         return
@@ -74,7 +106,7 @@ def model_reduce(model, solutions_imat, output_model_path):
     plt.ylabel('Frequency')
     plt.title('Mean presence of reactions in samples')
 
-    mean_presence_plot_path = os.path.join(current_dir, 'mean_presence_reactions.png')
+    mean_presence_plot_path = os.path.join(project_root,'files', 'mean_presence_reactions.png')
     plt.savefig(mean_presence_plot_path)
 
     plt.close()
@@ -167,6 +199,39 @@ def model_reduce(model, solutions_imat, output_model_path):
         elif v == 1:
             group5.append(k)
 
+    print(f"Generating Excel report at: {os.path.abspath(OUTPUT_EXCEL_PATH)}...")
+    num_samples = bool_matrix.shape[1] 
+    with pd.ExcelWriter(OUTPUT_EXCEL_PATH, engine='xlsxwriter') as writer:
+        # Sheet 1: Discrete [0,1] Matrix (GIMME output)
+        df_bool_matrix = pd.DataFrame(bool_matrix, 
+                                      index=[rxn.id for rxn in model.reactions],
+                                      columns=[f'Sample_{i+1}' for i in range(num_samples)])
+        df_bool_matrix.to_excel(writer, sheet_name='Discrete_Activity_Matrix', index=True)
+
+        # Sheet 2: Fraction of Activity of Each Reaction
+        df_mean_presence = pd.DataFrame({
+            'Reaction ID': [rxn.id for rxn in model.reactions],
+            'Fraction of Activity': mean_presence
+        })
+        df_mean_presence.to_excel(writer, sheet_name='Fraction_of_Activity', index=False)
+
+        # Sheets 3-7: Reaction IDs in Each Group with details
+        group_data = {
+            'Group 1 (Inactive)': group1,
+            'Group 2 (Very Low Activity)': group2,
+            'Group 3 (Moderate Activity)': group3,
+            'Group 4 (High Activity)': group4,
+            'Group 5 (Fully Active)': group5
+        }
+
+        for group_name, rxn_ids in group_data.items():
+            get_reaction_annotation_details(model, rxn_ids).to_excel(
+                writer, sheet_name=group_name, index=False
+            )
+            print(f"Sheet '{group_name}' created ({len(rxn_ids)} reactions).")
+
+    import pdb
+    pdb.set_trace()
     #Print the number of reactions in each group
 
     print("Number of reactions in each group: \nGroup1: ", len(group1), "\nGroup2: ", len(group2), "\nGroup3: ", len(group3), "\nGroup4: ", len(group4), "\nGroup5: ", len(group5))
@@ -300,7 +365,7 @@ def model_reduce(model, solutions_imat, output_model_path):
 
 def main():
 
-    model_path = os.path.join(project_root, 'models', 'model_full_THG_endoA.xml')
+    model_path = os.path.join(project_root, 'models', 'model_full_THG_optimized_sinks_demands.xml')
 
     output_model_path = os.path.join(project_root, 'models', 'model_tailored_endoA_gimme.xml')
     solutions = os.path.join(project_root, 'files', 'allsolutions_gimme_parallel.csv')

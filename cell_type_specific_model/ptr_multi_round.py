@@ -1377,7 +1377,7 @@ Now, invoke the function in the main code
 if __name__ == '__main__':
     freeze_support()
     gem = os.path.join(project_root, "models", "THG_endoA_boundary.xml")  
-    sheetname = "EndoA"
+    sheetname = "EndoA" # connectivity matrix sheet
 
     compartments = os.path.join(project_root, 'files', 'ListOfCompartments_sept2024.xlsx')
 
