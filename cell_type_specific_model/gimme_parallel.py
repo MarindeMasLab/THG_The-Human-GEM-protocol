@@ -17,24 +17,6 @@ project_root = os.path.join(current_dir, "..")
 if project_root not in sys.path:
     sys.path.append(project_root)
 
-# Prefer Gurobi solver globally when available. This is a best-effort setting:
-# - try to set cobra's global Configuration solver to 'gurobi'
-# - if that fails, the code will continue and fall back to the installed solver
-try:
-    cobra.Configuration().solver = "gurobi"
-except Exception:
-    # silently continue if gurobi isn't available or Configuration doesn't support it
-    pass
-
-# Resolve a concrete solver name to pass to third-party components that require a string.
-# Prefer Gurobi if importable, else fall back to the configured solver or 'glpk'.
-try:
-    import gurobipy  # type: ignore
-
-    SOLVER_NAME = "gurobi"
-except Exception:
-    SOLVER_NAME = getattr(cobra.Configuration(), "solver", None) or "glpk"
-
 
 def build_expression_dict_from_original(original_rxn_ids, expression_rxns_sample):
     """
@@ -329,15 +311,18 @@ def gimme_worker(
         exp_vector=scores,
         obj_frac=obj_frac,
         objectives=objectives,
-        solver=SOLVER_NAME,
+        solver="GUROBI",
         reaction_ids=reaction_ids,
         metabolite_ids=metabolite_ids,
         preprocess=False,
         flux_threshold=flux_threshold,
     )
 
-    # Create and run the GIMME algorithm.
-    gimme_instance = GIMME(S=S, lb=lb, ub=ub, properties=properties)
+    # Convert sparse matrix S to a dense NumPy array
+    S_dense = S.toarray()
+
+    # Pass the dense matrix to GIMME
+    gimme_instance = GIMME(S=S_dense, lb=lb, ub=ub, properties=properties)
     gimme_instance.run()
 
     # Extract the raw solution and recombine it to the original reaction order.
@@ -358,30 +343,39 @@ def gimme_worker(
     return sample_idx, net_solution
 
 
-# Updated gimme_parallel function to reduce memory usage and optimize parallelization.
-def gimme_parallel(
-    model, expressionRxns, exchange_reactions, num_workers=2, chunk_size=10
-):
+# Main parallelized GIMME function.
+def gimme_parallel(model, expressionRxns, exchange_reactions, num_workers=2):
     """
     Parallelized implementation of the GIMME algorithm across multiple expression samples.
 
-    This function processes samples in chunks to reduce memory usage.
+    This function performs the following steps:
+      1. Saves the original reaction order.
+      2. Uses the provided list of exchange reaction IDs.
+      3. Counts how many of these exchange reactions are reversible.
+      4. Sets up objective reactions for biomass and ATPase.
+      5. Runs FBA to determine maximum fluxes for these objective reactions and updates their lower bounds (20% of max flux).
+      6. Updates irreversible exchange reactions using FVA and then splits reversible exchange reactions
+         (using FVA results) so that they can be handled as two separate (forward and reverse) reactions.
+      7. Extracts necessary model parameters (e.g., stoichiometric matrix, bounds, reaction and metabolite IDs).
+      8. Runs the GIMME algorithm in parallel on each expression sample using a ProcessPoolExecutor.
+      9. Aggregates the flux solutions from all samples and saves them to a CSV file.
+      10. Resets the model's objective to its original state.
 
     Parameters:
         model (cobra.Model): The metabolic model.
         expressionRxns (np.array): 2D array of expression values (rows: reactions, columns: samples).
-        exchange_reactions (list or np.array): List of exchange reaction IDs to process.
+        exchange_reactions (list or np.array): List of exchange reaction IDs to process (cell type specific exchange rs).
         num_workers (int): Number of parallel workers to use.
-        chunk_size (int): Number of samples to process in each chunk.
 
     Returns:
         str: Path to the output CSV file containing the aggregated GIMME solutions.
     """
-    from scipy.sparse import csr_matrix
 
     # Save original reaction IDs before any modifications.
     original_rxn_ids = [rxn.id for rxn in model.reactions]
     print(f"Original number of reactions: {len(original_rxn_ids)}")
+
+    print(f"Total exchange reactions in Endothelial Cells: {len(exchange_reactions)}")
 
     # Count how many exchange reactions are reversible.
     count_reversible = sum(
@@ -432,54 +426,57 @@ def gimme_parallel(
     # After modifications, extract necessary data.
     reaction_ids_modified = [rxn.id for rxn in model.reactions]
     metabolite_ids = [met.id for met in model.metabolites]
-    S = csr_matrix(create_stoichiometric_matrix(model))  # Use sparse matrix
+    S = create_stoichiometric_matrix(model)
     lb = np.array([rxn.lower_bound for rxn in model.reactions])
     ub = np.array([rxn.upper_bound for rxn in model.reactions])
 
     # Define the weighted objective function (e.g., 10% Biomass and 90% ATPase).
+
     objectives = [{biomass_rxn.id: 0.1}, {atpase_rxn.id: 0.9}]
     obj_frac = np.array([1.0])
+
+    biomass_index = original_rxn_ids.index("MAR13082")
+    atpase_index = original_rxn_ids.index("MAR03964")
+    print("original_rxn_ids: ", original_rxn_ids)
+
+    print(f"biomass_index: {biomass_index}, atpase_index: {atpase_index}")  # debug
+    objectives = [{biomass_index: 0.1}, {atpase_index: 0.9}]
 
     flux_threshold = 1e-7
 
     # Prepare an array to hold all the solutions.
     all_solutions = np.zeros((expressionRxns.shape[0], expressionRxns.shape[1]))
 
-    # Process samples in chunks to reduce memory usage.
-    num_samples = expressionRxns.shape[1]
-    for start_idx in range(0, num_samples, chunk_size):
-        end_idx = min(start_idx + chunk_size, num_samples)
-        print(f"Processing samples {start_idx + 1} to {end_idx}...")
+    # Create a spawn-based multiprocessing context
+    ctx = multiprocessing.get_context("spawn")
 
-        # Create a spawn-based multiprocessing context
-        ctx = multiprocessing.get_context("spawn")
+    # Parallelize over samples using ProcessPoolExecutor.
+    with ProcessPoolExecutor(max_workers=num_workers, mp_context=ctx) as executor:
 
-        # Parallelize over samples in the current chunk.
-        with ProcessPoolExecutor(max_workers=num_workers, mp_context=ctx) as executor:
-            futures = {
-                executor.submit(
-                    gimme_worker,
-                    sample_idx,
-                    expressionRxns[:, sample_idx],
-                    original_rxn_ids,
-                    model,
-                    reaction_ids_modified,
-                    metabolite_ids,
-                    split_mapping,
-                    S,
-                    lb,
-                    ub,
-                    objectives,
-                    obj_frac,
-                    flux_threshold,
-                ): sample_idx
-                for sample_idx in range(start_idx, end_idx)
-            }
-
-            # Collect results as they complete.
-            for future in futures:
-                sample_idx, net_solution = future.result()
-                all_solutions[:, sample_idx] = net_solution
+        # Submit a job for each sample.
+        futures = {
+            executor.submit(
+                gimme_worker,
+                sample_idx,
+                expressionRxns[:, sample_idx],
+                original_rxn_ids,
+                model,
+                reaction_ids_modified,
+                metabolite_ids,
+                split_mapping,
+                S,
+                lb,
+                ub,
+                objectives,
+                obj_frac,
+                flux_threshold,
+            ): sample_idx
+            for sample_idx in range(expressionRxns.shape[1])
+        }
+        # Collect results as they complete.
+        for future in futures:
+            sample_idx, net_solution = future.result()
+            all_solutions[:, sample_idx] = net_solution
 
     # Save the aggregated solutions.
     output_file = os.path.join(project_root, "files", "allsolutions_gimme_parallel.csv")
@@ -496,9 +493,11 @@ def main():
     expressionRxns = pd.read_csv(
         os.path.join(project_root, "files", "expressionRxns.csv"), header=None
     ).values
-
-    # Use only exchange reactions present in the model
-    exchange_rs = [rxn.id for rxn in model.reactions if rxn.boundary]
+    exchange_rs = (
+        pd.read_csv(os.path.join(project_root, "files", "common_rs.txt"), header=None)
+        .values.flatten()
+        .tolist()
+    )
 
     model_path = os.path.join(project_root, "models", "model_full_THG.xml")
     model = cobra.io.read_sbml_model(model_path)
