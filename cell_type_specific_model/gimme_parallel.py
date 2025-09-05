@@ -104,11 +104,11 @@ def split_reversible_exchanges(
     ]
     split_mapping = {}
 
-    print("Starting FVA")
+    # Load precomputed FVA results if available; otherwise, compute and save them.
+
     fva_results = flux_variability_analysis(
         model, reaction_list=reversible_exchanges, processes=1
     )
-    print("FVA complete")
 
     for rxn in reversible_exchanges:
         rxn = model.reactions.get_by_id(rxn)
@@ -206,12 +206,11 @@ def update_irreversible_exchanges(
         else:
             continue  # Skip if FVA results are not available for this reaction.
 
-        # If the FVA maximum flux is > 0, update the bounds appropriately.
+        # If the FVA minimum flux is > 0, update the lower bound to min_bound.
         if max_flux > 0:
-            # Ensure the upper bound allows the min_bound
-            if rxn.upper_bound < min_bound:
-                rxn.upper_bound = max(min_bound, max_flux)
-            rxn.lower_bound = min_bound
+            rxn.lower_bound = min(
+                min_bound, rxn.upper_bound
+            )  # Ensure lower bound does not exceed upper bound.
 
     return model
 
@@ -263,7 +262,9 @@ def gimme_worker(
     sample_idx,
     sample_expr,
     original_rxn_ids,
-    modified_to_base,
+    model,
+    reaction_ids_modified,
+    metabolite_ids,
     split_mapping,
     S,
     lb,
@@ -271,18 +272,27 @@ def gimme_worker(
     objectives,
     obj_frac,
     flux_threshold,
-    metabolite_ids,
 ):
     """
     Worker function to run the GIMME algorithm in parallel.
 
-    This worker avoids holding a full cobra.Model in memory. Instead it uses
-    a small precomputed `modified_to_base` list that maps each modified
-    reaction to its base original reaction id (or None). The worker builds
-    the expression score vector from that mapping and runs GIMME.
+    Parameters:
+        sample_idx (int): Index of the sample.
+        sample_expr (array): Expression vector for the sample.
+        original_rxn_ids (list): Original reaction IDs.
+        model (cobra.Model): Modified metabolic model.
+        reaction_ids_modified (list): Reaction IDs after model modifications.
+        metabolite_ids (list): List of metabolite IDs.
+        split_mapping (dict): Mapping from original reaction IDs to split reaction IDs.
+        S (scipy.sparse matrix): Stoichiometric matrix of the model.
+        lb (np.array): Array of lower bounds for reactions.
+        ub (np.array): Array of upper bounds for reactions.
+        objectives (list): Weighted objective function as a list of dictionaries.
+        obj_frac (float): Objective fraction parameter.
+        flux_threshold (float): Threshold to determine active reactions.
 
     Returns:
-        sample_idx (int), net_solution (np.array)
+        sample_idx (int), net_solution (np.array) where net_solution is the recombined flux solution for the sample.
     """
 
     print(f"Running GIMME for sample {sample_idx + 1}...")
@@ -290,39 +300,25 @@ def gimme_worker(
     # Build the sample-specific expression dictionary.
     expr_dict = build_expression_dict_from_original(original_rxn_ids, sample_expr)
 
-    # Build scores for the modified reaction list using the small precomputed mapping.
-    # This avoids requiring the full model object in each worker process.
-    scores = np.array(
-        [
-            expr_dict.get(base_id, 0.0) if base_id is not None else 0.0
-            for base_id in modified_to_base
-        ]
-    )
+    # Compute the extended scores for the modified model.
+    scores = get_extended_scores(model, expr_dict)
     print(f"Number of reactions (including splits): {len(scores)}")
     print(
         f"For threshold {flux_threshold}: active reactions = {sum((scores > flux_threshold) & (scores > -1))}. Number of uncertain reactions = {sum(scores == -1)}"
     )
 
-    # Generate valid reaction IDs for GIMMEProperties
-    reaction_ids = [f"R{i}" for i in range(S.shape[1])]
-
-    # Pass reaction_ids and metabolite_ids to GIMMEProperties
+    # Set up the GIMME properties.
     properties = GIMMEProperties(
         exp_vector=scores,
         obj_frac=obj_frac,
         objectives=objectives,
-        solver="GUROBI",
-        reaction_ids=reaction_ids,
-        metabolite_ids=metabolite_ids,
         preprocess=False,
         flux_threshold=flux_threshold,
+        solver="GUROBI"
     )
 
-    # Convert sparse matrix S to a dense NumPy array
-    S_dense = S.toarray()
-
-    # Pass the dense matrix to GIMME
-    gimme_instance = GIMME(S=S_dense, lb=lb, ub=ub, properties=properties)
+    # Create and run the GIMME algorithm.
+    gimme_instance = GIMME(S=S, lb=lb, ub=ub, properties=properties)
     gimme_instance.run()
 
     # Extract the raw solution and recombine it to the original reaction order.
@@ -437,7 +433,7 @@ def gimme_parallel(model, expressionRxns, exchange_reactions, num_workers=2):
 
     biomass_index = original_rxn_ids.index("MAR13082")
     atpase_index = original_rxn_ids.index("MAR03964")
-    print("original_rxn_ids: ", original_rxn_ids)
+    #print("original_rxn_ids: ", original_rxn_ids)
 
     print(f"biomass_index: {biomass_index}, atpase_index: {atpase_index}")  # debug
     objectives = [{biomass_index: 0.1}, {atpase_index: 0.9}]

@@ -12,6 +12,8 @@ import multiprocessing
 import copy
 from tqdm import tqdm
 import sys
+from concurrent.futures import ThreadPoolExecutor
+import cobra
 
 # Determine the current file's directory and the project root.
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -23,18 +25,19 @@ if project_root not in sys.path:
     sys.path.append(project_root)
 
 
-def biomass_fix(model):
+def biomass_fix(model, ratio=0.2):
     """
-    Adjusts the biomass reaction lower bound to 80% of the optimal biomass flux.
+    Adjusts the biomass reaction lower bound to a specified ratio of the optimal biomass flux.
 
     This function:
       - Prints the original bounds of the biomass reaction.
       - Optimizes the model (FBA) to determine the optimal biomass flux.
-      - Sets the lower bound of the biomass reaction (MAR13082) to 80% of that optimal flux.
+      - Sets the lower bound of the biomass reaction (MAR13082) to the specified ratio of that optimal flux.
       - Re-optimizes the model and prints updated bounds and solution status.
 
     Parameters:
         model (cobra.Model): The metabolic model.
+        ratio (float): The fraction of the optimal biomass flux to set as the new lower bound (default is 0.2).
 
     Returns:
         cobra.Model: The updated model with the modified biomass reaction lower bound.
@@ -53,7 +56,7 @@ def biomass_fix(model):
     print("Solution status: ", solution.status)
 
     # Set a lower bound for the biomass reaction to 80% of the optimal biomass flux
-    model.reactions.get_by_id("MAR13082").lower_bound = 0.8 * optimal_biomass_flux
+    model.reactions.get_by_id("MAR13082").lower_bound = ratio * optimal_biomass_flux
 
     # Re-optimize the model after changing the biomass bounds.
     solution = model.optimize()
@@ -375,111 +378,176 @@ def preprocess_rule(rule, ensembl_map):
 def process_expression_data(new_rules3, lung_data):
     """
     Processes gene expression data for multiple samples and evaluates the gene reaction rules.
-
-    Steps:
-      - Loads expression data from a CSV file.
-      - For each sample, builds an Ensembl map from the expression data.
-      - Preprocesses the gene reaction rules using the expression map.
-      - Evaluates the preprocessed rules in a restricted environment (only CustomExpression available).
-      - Stores the evaluated expression values in a 2D numpy array.
-
-    Parameters:
-        new_rules3 (list): List of preprocessed gene reaction rules.
-        lung_data (str): Path to the CSV file containing expression data. The first column is gene IDs.
-
-    Returns:
-        - rules_samples (list): A list where each entry corresponds to a reaction's list of rules per sample.
-        - expressionRxns (np.array): 2D array (reactions x samples) of evaluated expression values.
+    Optimized version with pre-compiled patterns and vectorized operations.
     """
     # Load the expression data in GCT format: skip first two lines, use tab separator
-    lung_data = pd.read_csv(lung_data, sep="\t", skiprows=2)
-    num_samples = lung_data.shape[1] - 2  # Exclude Name and Description columns
+    lung_data_df = pd.read_csv(lung_data, sep="\t", skiprows=2)
+    num_samples = lung_data_df.shape[1] - 2  # Exclude Name and Description columns
+
+    # Pre-extract all gene IDs and convert to numpy array for faster access
+    gene_ids = lung_data_df.iloc[:, 0].astype(str).str.split(".").str[0].values
+    expression_data = lung_data_df.iloc[:, 2:].values  # All sample expression data
+
+    # Pre-compile regex patterns and extract all genes from rules once
+    ensembl_pattern = re.compile(r"ENSG\d{11}")
+
+    # Extract all unique genes from rules and their positions
+    rule_genes_map = {}  # Maps rule index to list of gene IDs in that rule
+    all_rule_genes = set()
+
+    for i, rule in enumerate(new_rules3):
+        if isinstance(rule, str):
+            genes_in_rule = ensembl_pattern.findall(rule)
+            rule_genes_map[i] = genes_in_rule
+            all_rule_genes.update(genes_in_rule)
+        else:
+            rule_genes_map[i] = []
+
+    # Create mapping from gene_id to index in expression data
+    gene_to_idx = {gene_id: idx for idx, gene_id in enumerate(gene_ids)}
+
+    # Pre-filter to only genes that exist in expression data
+    existing_genes = all_rule_genes.intersection(set(gene_ids))
+    missing_genes = all_rule_genes - existing_genes
+
+    print(f"Performance stats:")
+    print(f"Total unique genes in model rules: {len(all_rule_genes)}")
+    print(f"Total genes in GCT file: {len(gene_ids)}")
+    print(f"Found (overlap) genes: {len(existing_genes)}")
+    print(f"Missing genes from GCT: {len(missing_genes)}")
+    print(f"Coverage: {len(existing_genes)/len(all_rule_genes)*100:.1f}%")
+
+    # Pre-compile rule templates for faster processing
+    compiled_rules = []
+    for i, rule in enumerate(new_rules3):
+        if isinstance(rule, str) and rule_genes_map[i]:
+            # Pre-process rule structure
+            processed_rule = rule
+            # Clean up logical operators
+            processed_rule = re.sub(r"\[", "(", processed_rule)
+            processed_rule = re.sub(r"\]", ")", processed_rule)
+            processed_rule = re.sub(r"\bor\b", "|", processed_rule)
+            processed_rule = re.sub(r"\band\b", "&", processed_rule)
+            compiled_rules.append((i, processed_rule, rule_genes_map[i]))
+        else:
+            compiled_rules.append((i, None, []))
+
+    def process_sample_batch(sample_indices):
+        """Process a batch of samples"""
+        batch_results = {}
+
+        for sample_idx in sample_indices:
+            sample_col = sample_idx - 2  # Convert to 0-based sample index
+
+            # Vectorized lookup of expression values for this sample
+            sample_expressions = expression_data[:, sample_col]
+
+            # Create expression map for existing genes only
+            ensembl_map = {}
+            for gene_id, expr_idx in gene_to_idx.items():
+                if gene_id in existing_genes:
+                    ensembl_map[gene_id] = sample_expressions[expr_idx]
+
+            # Process rules for this sample
+            sample_rules = [None] * len(new_rules3)
+
+            for rule_idx, processed_rule, genes_in_rule in compiled_rules:
+                if processed_rule is None:
+                    sample_rules[rule_idx] = None
+                    continue
+
+                # Replace genes with expression values
+                final_rule = processed_rule
+                for gene in genes_in_rule:
+                    expr_val = ensembl_map.get(gene, -1)
+                    final_rule = final_rule.replace(
+                        gene, f"CustomExpression({expr_val})"
+                    )
+
+                sample_rules[rule_idx] = final_rule
+
+            batch_results[sample_col] = sample_rules
+
+        return batch_results
+
+    # Process samples in parallel batches
+    batch_size = max(1, num_samples // (multiprocessing.cpu_count() * 2))
+    sample_indices = list(range(2, lung_data_df.shape[1]))
+
     rules_samples = [[None] * num_samples for _ in range(len(new_rules3))]
 
-    for sample in tqdm(
-        range(2, lung_data.shape[1]), desc="Processing samples"
-    ):  # Start from column 2 (first sample)
-        # Build an expression mapping: gene ID -> expression value for the current sample.
-        ensembl_map = {}
-        for i in range(lung_data.shape[0]):
-            full_id = str(lung_data.iloc[i, 0])
-            base_id = full_id.split(".")[0] if "." in full_id else full_id
-            ensembl_map[base_id] = lung_data.iloc[i, sample]
+    # Use ThreadPoolExecutor for I/O bound operations
+    with ThreadPoolExecutor(
+        max_workers=min(8, multiprocessing.cpu_count())
+    ) as executor:
+        # Split samples into batches
+        batches = [
+            sample_indices[i : i + batch_size]
+            for i in range(0, len(sample_indices), batch_size)
+        ]
 
-        # Debug: print some example IDs from GCT and rules
-        if sample == 2:
-            print("Example GCT Ensembl IDs (base):", list(ensembl_map.keys())[:10])
-            print("Example reaction rules:")
-            for rule in new_rules3[:5]:
-                print(rule)
+        # Process batches in parallel
+        futures = [executor.submit(process_sample_batch, batch) for batch in batches]
 
-        updated_rules = new_rules3.copy()
-        missing_genes = set()
-        for i, rule in enumerate(updated_rules):
-            if isinstance(rule, str):
-                # Find all Ensembl IDs in the rule
-                rule_ids = re.findall(r"ENSG\d{11}", rule)
-                for rid in rule_ids:
-                    if rid not in ensembl_map:
-                        missing_genes.add(rid)
-                # Preprocess the rule
-                rule = preprocess_rule(rule, ensembl_map)
-                updated_rules[i] = rule
+        # Collect results with progress bar
+        for future in tqdm(futures, desc="Processing sample batches"):
+            batch_results = future.result()
 
-        if sample == 2:
-            # Get all unique genes from rules (before preprocessing)
-            all_rule_genes = set()
-            for rule in new_rules3:
-                if isinstance(rule, str):
-                    all_rule_genes.update(re.findall(r"ENSG\d{11}", rule))
+            # Merge batch results
+            for sample_col, sample_rules in batch_results.items():
+                for rule_idx in range(len(new_rules3)):
+                    rules_samples[rule_idx][sample_col] = sample_rules[rule_idx]
 
-            found_genes = all_rule_genes.intersection(set(ensembl_map.keys()))
-
-            print(f"Total unique genes in model rules: {len(all_rule_genes)}")
-            print(f"Total genes in GCT file: {len(ensembl_map)}")
-            print(f"Found (overlap) genes: {len(found_genes)}")
-            print(f"Missing genes from GCT: {len(missing_genes)}")
-            print(f"Coverage: {len(found_genes)/len(all_rule_genes)*100:.1f}%")
-            print(f"Sample model genes: {list(all_rule_genes)[:5]}")
-            print(f"Sample GCT genes: {list(ensembl_map.keys())[:5]}")
-
-            # Save missing genes to file for further analysis
-            missing_file = os.path.join(project_root, "files", "missing_genes.txt")
-            with open(missing_file, "w") as f:
-                for gene in sorted(missing_genes):
-                    f.write(f"{gene}\n")
-            print(f"Missing genes saved to: {missing_file}")
-
-        # Store the processed rules for this sample
-        for i in range(len(updated_rules)):
-            rules_samples[i][sample - 2] = updated_rules[i]
-
-    # Evaluate the preprocessed rules and calculate reaction expression scores.
+    # Evaluate the preprocessed rules using vectorized operations
     print("Evaluating gene expression levels using gene rules...")
-    expressionRxns = np.zeros((len(rules_samples), num_samples))
+    expressionRxns = np.full((len(rules_samples), num_samples), -1.0, dtype=np.float32)
 
-    # Create a restricted evaluation environment with only CustomExpression available.
+    # Create a restricted evaluation environment
     local_env = {"CustomExpression": CustomExpression}
-    for sample in tqdm(range(num_samples), desc="Evaluating samples"):
-        # print(f"Evaluating sample {sample + 1} out of {num_samples}")
-        rules3 = [rules_samples[i][sample] for i in range(len(rules_samples))]
-        frxnscores = np.zeros(len(rules3))
 
-        for k, rule in enumerate(rules3):
-            if not rule or rule.strip() == "":
-                frxnscores[k] = (
-                    -1
-                )  # Default to -1 for empty rules, will be recognized by reconstruction algorithm
-            else:
-                try:
-                    frxnscores[k] = eval(rule, {"__builtins__": {}}, local_env).value
-                except Exception as e:
-                    print(
-                        f"Error evaluating rule: {rule} ///, rule number {k}, setting score to -1. Error: {e}"
-                    )
-                    frxnscores[k] = -1
+    # Vectorized evaluation
+    def evaluate_sample_batch(sample_indices):
+        """Evaluate rules for a batch of samples"""
+        batch_scores = {}
 
-        expressionRxns[:, sample] = frxnscores
+        for sample_idx in sample_indices:
+            rules3 = [rules_samples[i][sample_idx] for i in range(len(rules_samples))]
+            frxnscores = np.full(len(rules3), -1.0, dtype=np.float32)
+
+            for k, rule in enumerate(rules3):
+                if rule and rule.strip():
+                    try:
+                        frxnscores[k] = eval(
+                            rule, {"__builtins__": {}}, local_env
+                        ).value
+                    except:
+                        frxnscores[k] = -1.0
+
+            batch_scores[sample_idx] = frxnscores
+
+        return batch_scores
+
+    # Evaluate in parallel batches
+    sample_indices = list(range(num_samples))
+    eval_batch_size = max(1, num_samples // multiprocessing.cpu_count())
+
+    with ThreadPoolExecutor(
+        max_workers=min(8, multiprocessing.cpu_count())
+    ) as executor:
+        eval_batches = [
+            sample_indices[i : i + eval_batch_size]
+            for i in range(0, len(sample_indices), eval_batch_size)
+        ]
+
+        eval_futures = [
+            executor.submit(evaluate_sample_batch, batch) for batch in eval_batches
+        ]
+
+        for future in tqdm(eval_futures, desc="Evaluating expression rules"):
+            batch_scores = future.result()
+
+            for sample_idx, scores in batch_scores.items():
+                expressionRxns[:, sample_idx] = scores
 
     print("Finished processing expression data.")
     return rules_samples, expressionRxns
@@ -505,8 +573,9 @@ def main():
       - Prints the output location of the tailored model.
     """
     # Define paths using os.path.join for cross-platform compatibility
+    cobra.Configuration().solver = "gurobi"
     model_path = os.path.join(
-        project_root, "models", "model_full_THG_round2.xml"
+        project_root, "models", "endoA_250904_clean.xml"
     )  # Output model after adding transport reactions
     lung_data = os.path.join(
         project_root, "files", "gene_reads_v10_lung.gct"
@@ -534,20 +603,21 @@ def main():
     expressionRxns_df.to_csv(expression_rxns_path, index=False, header=False)
 
     # Exchange reactions common between the general model and the cell type specific model (obtained from match_exch_rxns script)
-    exchange_rs = (
-        pd.read_csv(os.path.join(project_root, "files", "common_rs.txt"), header=None)
-        .values.flatten()
-        .tolist()
-    )
+    # exchange_rs = (
+    #     pd.read_csv(os.path.join(project_root, "files", "common_rs.txt"), header=None)
+    #     .values.flatten()
+    #     .tolist()
+    # )
+    exchange_rs = [rxn.id for rxn in model.reactions if rxn.boundary]
 
     # Create a copy for flux computations so that the original model remains unmodified
     # model_flux = model.copy()
     model_flux = copy.deepcopy(model)
-    all_solutions = gimme(model_flux, expressionRxns, exchange_rs, num_workers=1)
+    all_solutions = gimme(model_flux, expressionRxns, exchange_rs, num_workers=4)
 
     # Tailor the model based on the flux solutions from the reconstruction algorithm
     output_path = os.path.join(
-        project_root, "models", "model_THG_endoA_tailored.xml"
+        project_root, "models", "endoA_290905.xml"
     )  # Output path for the tailored model
 
     model_reduce(model, all_solutions, output_path)
