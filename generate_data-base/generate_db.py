@@ -350,7 +350,7 @@ while i < len(Path) - 1:
     #### Build network
     PathID = Path[i].split("\t")[0]
     PathName = Path[i].split("\t")[1]
-    PathURL = "http://www.kegg.jp/kegg-bin/download?entry=" + PathID + "&format=kgml"
+    PathURL = "https://rest.kegg.jp/get/" + PathID + "/kgml"
     PathReferer = "https://www.kegg.jp/kegg-bin/show_pathway?" + PathID
     PathList[PathID] = pathway(PathURL, time, PathID, PathReferer, PathName)
     if PathList[PathID].Compounds() or not PathList[PathID].Compounds():
@@ -657,6 +657,7 @@ model = cobra_reconstruction(
     ModName, ModID, MetList_CL, RxnList_CL, GeneList, PathNameRxn, LocVar, MetEquiv, MetList
 )
 cobra.io.write_sbml_model(model, Output)
+
 
 
 
