@@ -385,7 +385,7 @@ RxnList_Subcel = []
 ######### Pathways ###########
 i = 0
 while i < len(Path) - 1:
-    print(Path)
+    # print(Path[i])
     #### Build network
     PathID = Path[i].split("\t")[0]
     PathName = Path[i].split("\t")[1]
@@ -410,7 +410,9 @@ while i < len(Path) - 1:
                 if not RxnID in RxnIdent and not RxnID in RxnEquiv:
 
                     ######### Define New Reaction ###########
-                    RxnIdent = RxnIdent + [RxnID]
+                    RxnIdent.append(
+                        RxnID
+                    )  # Optimized: use append instead of concatenation
                     RxnURL = PathList[PathID].Reactions()[j][1]
                     RxnTermDyn = PathList[PathID].Reactions()[j][0][1]
                     RxnList[RxnID] = reaction(RxnURL, time, RxnID, PathName, RxnTermDyn)
@@ -419,31 +421,55 @@ while i < len(Path) - 1:
                     RxnCmp = [x[2] for x in RxnList[RxnID].Substrate()] + [
                         x[2] for x in RxnList[RxnID].Product()
                     ]
+
+                    # Collect new compound IDs for concurrent fetching
+                    new_compounds_to_fetch = []
                     c = 0
                     while c < len(RxnCmp):
                         CompID = RxnCmp[c]
                         if not CompID in MetIdent and not CompID in MetEquiv:
-                            MetIdent = MetIdent + [CompID]
-                            if CompID[0] == "C":
-                                CompURL = (
-                                    "http://www.kegg.jp/dbget-bin/www_bget?cpd:"
-                                    + CompID
+                            MetIdent.append(
+                                CompID
+                            )  # Optimized: use append instead of concatenation
+                            new_compounds_to_fetch.append(CompID)
+                        c = c + 1
+
+                    # Fetch compounds using optimized batch + concurrent requests
+                    if new_compounds_to_fetch:
+                        from functions.function_bm_gdb import batch_fetch_kegg_entries
+
+                        # Fetch in batches of 10 with concurrent execution
+                        batch_data = batch_fetch_kegg_entries(
+                            new_compounds_to_fetch,
+                            database="compound",
+                            batch_size=10,  # KEGG API limit per request
+                            max_workers=5,  # Number of concurrent batch requests
+                        )
+
+                        for CompID in new_compounds_to_fetch:
+                            if CompID in batch_data and batch_data[CompID]:
+                                # Use pre-fetched data
+                                MetList[CompID] = compound.from_batch_data(
+                                    CompID,
+                                    batch_data[CompID],
+                                    time,
+                                    EF,
+                                    specialCompounds,
                                 )
-                            if CompID[0] == "G":
-                                CompURL = (
-                                    "http://www.kegg.jp/dbget-bin/www_bget?gl:" + CompID
+                            else:
+                                # Fallback to individual fetch if concurrent fetch failed
+                                CompURL = "https://rest.kegg.jp/get/" + CompID
+                                MetList[CompID] = compound(
+                                    CompURL, CompID, time, EF, specialCompounds
                                 )
-                            MetList[CompID] = compound(
-                                CompURL, CompID, time, EF, specialCompounds
-                            )
+
+                            # Handle ID equivalences
                             if MetList[CompID].ID1() != MetList[CompID].ID2():
                                 MetIdent[len(MetIdent) - 1] = MetList[CompID].ID1()
                                 MetEquiv[CompID] = MetList[CompID].ID1()
-                                MetList[MetList[CompID].ID1()] = copy.deepcopy(
-                                    MetList[CompID]
-                                )  # Change the reference in the dictionary to account for the 1th ID
+                                # Direct assignment instead of deepcopy when possible
+                                MetList[MetList[CompID].ID1()] = MetList[CompID]
                                 del MetList[CompID]
-                        c = c + 1
 
                     ######### Define Substrates, Products and New Compounds ###########
                     # Evaluate the relation between substrates and products #
@@ -456,7 +482,7 @@ while i < len(Path) - 1:
                         EF,
                         specialCompounds,
                     )
-                    RxnList[RxnID] = copy.deepcopy(Rxn)
+                    RxnList[RxnID] = Rxn  # Removed unnecessary deepcopy
 
                     # Check reaction ID
                     if RxnID != RxnList[RxnID].ID:
@@ -464,9 +490,9 @@ while i < len(Path) - 1:
                             RxnID
                         ].ID  # Glycan Reaction : Compound Reaction
                         RxnIdent[len(RxnIdent) - 1] = RxnList[RxnID].ID
-                        RxnList[RxnList[RxnID].ID] = copy.deepcopy(
-                            RxnList[RxnID]
-                        )  # Change the reference in the dictionary to account for the new ID
+                        RxnList[RxnList[RxnID].ID] = RxnList[
+                            RxnID
+                        ]  # Removed unnecessary deepcopy
                         tmpID = RxnList[RxnList[RxnID].ID].ID
                         del RxnList[RxnID]  # remove the old reaction ID
                         RxnID = tmpID
@@ -485,7 +511,9 @@ while i < len(Path) - 1:
                                     not extra_compound[x[0]] in MetIdent
                                     and not extra_compound[x[0]] in MetEquiv
                                 ):
-                                    MetIdent = MetIdent + [extra_compound[x[0]]]
+                                    MetIdent.append(
+                                        extra_compound[x[0]]
+                                    )  # Optimized: use append
                                     if not x[0] in "R" and not x[0] in "X":
                                         extra_url = (
                                             "https://www.genome.jp/entry/"
@@ -572,7 +600,7 @@ while i < len(Path) - 1:
                     tmpSC = ()
                     for x in RxnList[RxnID].EC():
                         if x not in GPRIdent:
-                            GPRIdent = GPRIdent + [x]
+                            GPRIdent.append(x)  # Optimized: use append
                             GPRList[x] = gpr(x, session)
                         try:
                             tmpGPR = tmpGPR + GPRList[x].GprSubcell()[0:2]
@@ -636,8 +664,12 @@ while i < len(Path) - 1:
                         MetEquiv,
                     )
 
-                    RxnIdent_CL = RxnIdent_CL + rxn_cl
-                    MetIdent_CL = MetIdent_CL + comp_cl
+                    RxnIdent_CL.extend(
+                        rxn_cl
+                    )  # Optimized: use extend instead of concatenation
+                    MetIdent_CL.extend(
+                        comp_cl
+                    )  # Optimized: use extend instead of concatenation
 
                     print(
                         "Reaction("
@@ -681,7 +713,7 @@ while g < len(GPRList):
         z = 0
         while z < len(gene_matches):
             if not gene_matches[z] in GeneIdent:
-                GeneIdent = GeneIdent + [gene_matches[z]]
+                GeneIdent.append(gene_matches[z])  # Optimized: use append
                 GeneList[gene_matches[z]] = gene(gene_matches[z], EnsblDB)
             z = z + 1
     g = g + 1
