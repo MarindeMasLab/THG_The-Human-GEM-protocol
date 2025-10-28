@@ -28,8 +28,9 @@ from functions.class_generate_database import compound as CompoundType
 from functions.class_generate_database import gene as GeneType
 from functions.class_generate_database import reaction as ReactionType
 from functions.pattern_generate_database import *
-from functions.function_bm_gdb import * 
+from functions.function_bm_gdb import *
 from functions.equations_bm_gdb import *
+
 
 def cobra_reconstruction(
     model_name: str,
@@ -72,7 +73,7 @@ def cobra_reconstruction(
             location_dict.get(compound.Subcel.lower()),
         )
         for iden, compound in metabolite_list.items()
-    ]    
+    ]
     model.add_metabolites(compounds)
     # store mapping (met identifier -> met.id in model) for reaction section
     met_mapping = {}
@@ -102,19 +103,29 @@ def cobra_reconstruction(
         # only add non-empty annotation
         model_met.annotation = {k: v for k, v in annotation.items() if v}
 
-    for x in model.metabolites: # replace glycan formula by a sbml suitable format
-        if x.id[0] == 'G':
+    for x in model.metabolites:  # replace glycan formula by a sbml suitable format
+        if x.id[0] == "G":
             try:
                 print(x.id)
-                compartment = [y[0] for y in location_dict.items() if y[1] in x.id.split('_')[1]][0]
-                xth_metabolite_id = x.id.split('_')[0] + '_' + compartment
+                compartment = [
+                    y[0] for y in location_dict.items() if y[1] in x.id.split("_")[1]
+                ][0]
+                xth_metabolite_id = x.id.split("_")[0] + "_" + compartment
                 x.formula = metabolite_list[xth_metabolite_id].Formula4()
             except Exception:
                 continue
 
-    for x in model.metabolites: # eliminate potential discrepancies between metabolite id and reaction compounds ids
+    for (
+        x
+    ) in (
+        model.metabolites
+    ):  # eliminate potential discrepancies between metabolite id and reaction compounds ids
         if x.id.split("_")[0] in metabolite_equivalent.keys():
-            x.id = metabolite_list_general[metabolite_equivalent[x.id.split("_")[0]]].ID1() + "_" + x.compartment.lower()
+            x.id = (
+                metabolite_list_general[metabolite_equivalent[x.id.split("_")[0]]].ID1()
+                + "_"
+                + x.compartment.lower()
+            )
 
     def normalize_id(reac_id: str):
         iden, comp_desc = reac_id.split("_")
@@ -122,6 +133,7 @@ def cobra_reconstruction(
         return f"{iden}_{comp}"
 
     from functions.gpr.ast_gpr import sanitize_gpr
+
     # reactions
     reactions = [
         cobra.Reaction(
@@ -145,22 +157,28 @@ def cobra_reconstruction(
             # at runtime via a capturing lambda
             # substrates might come with positive coefficients
             substrates = [
-                (-abs(convert_to_float(subs[0])), subs[1], subs[2]) for subs in rxn.Substrate()
+                (-abs(convert_to_float(subs[0])), subs[1], subs[2])
+                for subs in rxn.Substrate()
             ]
             products = [
-                (abs(convert_to_float(prod[0])), prod[1], prod[2]) for prod in rxn.Product()
+                (abs(convert_to_float(prod[0])), prod[1], prod[2])
+                for prod in rxn.Product()
             ]
             reac_compounds = products + substrates
         except Exception:
             # these metabolites do not have an specified comparment!
             # substrates might come with positive coefficients
-            substrates = [(-abs(convert_to_float(subs[0])), subs[1], subs[2]) for subs in rxn.subs]
-            products = [(abs(convert_to_float(prod[0])), prod[1], prod[2]) for prod in rxn.prods] 
+            substrates = [
+                (-abs(convert_to_float(subs[0])), subs[1], subs[2]) for subs in rxn.subs
+            ]
+            products = [
+                (abs(convert_to_float(prod[0])), prod[1], prod[2]) for prod in rxn.prods
+            ]
             reac_compounds = products + substrates
         metabolites = {
-            met_mapping[met[2]]
-            if met[2] in met_mapping
-            else f"{met[2]}{comp_id}": float(met[0])
+            (
+                met_mapping[met[2]] if met[2] in met_mapping else f"{met[2]}{comp_id}"
+            ): float(met[0])
             for met in reac_compounds
         }
         # there may be some metabolites that were not passed in metabolite list
@@ -229,13 +247,15 @@ def cobra_reconstruction(
         if not iden in model.genes:
             LOGGER.warning(f"Gene '{iden}' was not found. Creating new one!")
             model_gene = cobra.Gene(
-                    iden,
-                    gene.Name().replace("[", "").replace("]", "").replace("-", ""),
-                )
-            
+                iden,
+                gene.Name().replace("[", "").replace("]", "").replace("-", ""),
+            )
+
         else:
             model_gene = model.genes.get_by_id(iden)
-            model_gene.name = gene.Name().replace("[", "").replace("]", "").replace("-", "")
+            model_gene.name = (
+                gene.Name().replace("[", "").replace("]", "").replace("-", "")
+            )
 
         # there may be other ensembl genes, we have to query them
         ensembl = gene.Ensg()
@@ -252,7 +272,7 @@ def cobra_reconstruction(
                 ] + [ensembl]
             except Exception:
                 ensembl_genes = []
-    
+
         model_gene.annotation = {
             k: v
             for k, v in {
@@ -278,30 +298,42 @@ project_root = os.path.join(current_dir, "..")
 if project_root not in sys.path:
     sys.path.append(project_root)
 
-ListOfPaths = os.path.join(project_root, "files", "human_kegg_pathways.txt" )
+ListOfPaths = os.path.join(project_root, "files", "human_kegg_pathways.txt")
 ModelCompounds = os.path.join(project_root, "files", "extra_compounds.txt")
 ExtraFormula = os.path.join(project_root, "files", "extra_formula.txt")
 ModelReactions = ""
 ModelGenes = ""
-EnsblDB = os.path.join(project_root, "files", "ensembl")  # From Ensembl database: ensembl gene ID vs Entrez vs Name.
+EnsblDB = os.path.join(
+    project_root, "files", "ensembl"
+)  # From Ensembl database: ensembl gene ID vs Entrez vs Name.
 time = 20  # Time to download url: Parameter defined in function getHtml
-Path = (
-    open(ListOfPaths, "r").read().split("\n")
-)  # From analysis using metaboanalyst.
-Compound = (
-    open(ModelCompounds, "r").read().split("\n")
-)  
+Path = open(ListOfPaths, "r").read().split("\n")  # From analysis using metaboanalyst.
+Compound = open(ModelCompounds, "r").read().split("\n")
 EF = [_f for _f in open(ExtraFormula, "r").read().split("\n") if _f]
 Output = os.path.join(project_root, "models", "Human_Database.xml")  # Output model
 ModID = Output
 ModName = Output
-variablesFile = os.path.join(project_root, "files", "model_variables.pkl")  # File where the working environment is saved
-specialCompounds = os.path.join(project_root, "files", "special_compounds.txt")  # File where we save the IDs of the compounds with a (group)n in their formula
+variablesFile = os.path.join(
+    project_root, "files", "model_variables.pkl"
+)  # File where the working environment is saved
+specialCompounds = os.path.join(
+    project_root, "files", "special_compounds.txt"
+)  # File where we save the IDs of the compounds with a (group)n in their formula
 open(specialCompounds, "w").close()  # Erase or create the file
 
 
 # Dictionary with extra compounds that can be added to mass balance the metabolic reactions
-extra_compound = {'H':'C00080','H2O':'C00001','Fe':'C00023','Na':'C01330','Ca':'C00076','K':'C00238','F':'C00023','R':'C00000','X':'C0000X'}
+extra_compound = {
+    "H": "C00080",
+    "H2O": "C00001",
+    "Fe": "C00023",
+    "Na": "C01330",
+    "Ca": "C00076",
+    "K": "C00238",
+    "F": "C00023",
+    "R": "C00000",
+    "X": "C0000X",
+}
 
 
 #### Initial List and dictionaries
@@ -322,15 +354,15 @@ MetIDList = []
 
 #### List and dictionaries for the subcelular location annotation
 CSL_ID = {
-"extracellular": "e",
-"peroxisome": "x",
-"mitochondria": "m",
-"cytosol": "c",
-"lysosome": "l",
-"endoplasmic reticulum": "r",
-"golgi apparatus": "g",
-"nucleus": "n",
-"inner mitochondria": "i",
+    "extracellular": "e",
+    "peroxisome": "x",
+    "mitochondria": "m",
+    "cytosol": "c",
+    "lysosome": "l",
+    "endoplasmic reticulum": "r",
+    "golgi apparatus": "g",
+    "nucleus": "n",
+    "inner mitochondria": "i",
 }  # to keep the consistency between the DB and the initial compartments in Human1
 CSL_ID = compartment_file_to_dict()
 CSL_ID = dict((k.lower(), v.lower()) for k, v in CSL_ID.items())
@@ -353,7 +385,7 @@ while i < len(Path) - 1:
     PathURL = "https://rest.kegg.jp/get/" + PathID + "/kgml"
     PathReferer = "https://www.kegg.jp/kegg-bin/show_pathway?" + PathID
     PathList[PathID] = pathway(PathURL, time, PathID, PathReferer, PathName)
-    if PathList[PathID].Compounds() or not PathList[PathID].Compounds():
+    if PathList[PathID].Compounds():
         print(
             PathName
             + ": defined in human"
@@ -368,9 +400,7 @@ while i < len(Path) - 1:
         while j < len(PathList[PathID].Reactions()):
             try:
                 RxnID = PathList[PathID].Reactions()[j][0][0]
-                if (
-                    not RxnID in RxnIdent and not RxnID in RxnEquiv
-                ):
+                if not RxnID in RxnIdent and not RxnID in RxnEquiv:
 
                     ######### Define New Reaction ###########
                     RxnIdent = RxnIdent + [RxnID]
@@ -389,7 +419,8 @@ while i < len(Path) - 1:
                             MetIdent = MetIdent + [CompID]
                             if CompID[0] == "C":
                                 CompURL = (
-                                    "http://www.kegg.jp/dbget-bin/www_bget?cpd:" + CompID
+                                    "http://www.kegg.jp/dbget-bin/www_bget?cpd:"
+                                    + CompID
                                 )
                             if CompID[0] == "G":
                                 CompURL = (
@@ -419,7 +450,7 @@ while i < len(Path) - 1:
                         specialCompounds,
                     )
                     RxnList[RxnID] = copy.deepcopy(Rxn)
-                    
+
                     # Check reaction ID
                     if RxnID != RxnList[RxnID].ID:
                         RxnEquiv[RxnID] = RxnList[
@@ -435,21 +466,61 @@ while i < len(Path) - 1:
 
                     ######### Mass Balance the reaction #########
                     ithRxn = RxnList[RxnID]
-                    eq , mb_test = RxnParam2Eq(ithRxn, MetList, MetEquiv)
+                    eq, mb_test = RxnParam2Eq(ithRxn, MetList, MetEquiv)
                     LibIni = WrapRxnSubsProdParam(ithRxn, MetList, MetEquiv)
                     if mb_test != 0:
                         IthRxnMB = mass_balance(eq, RxnID)
-                        if IthRxnMB[4]: # If new compounds have to be added to mass balance the reactions, then check if they need to be added to the network as compounds
+                        if IthRxnMB[
+                            4
+                        ]:  # If new compounds have to be added to mass balance the reactions, then check if they need to be added to the network as compounds
                             for x in IthRxnMB[4]:
-                                if not extra_compound[x[0]] in MetIdent and not extra_compound[x[0]] in MetEquiv:
+                                if (
+                                    not extra_compound[x[0]] in MetIdent
+                                    and not extra_compound[x[0]] in MetEquiv
+                                ):
                                     MetIdent = MetIdent + [extra_compound[x[0]]]
-                                    if not x[0] in 'R' and not x[0] in 'X':
-                                        extra_url = 'https://www.genome.jp/entry/'+extra_compound[x[0]]
-                                        MetList[extra_compound[x[0]]] = compound(extra_url,extra_compound[x[0]],time,EF,specialCompounds)
+                                    if not x[0] in "R" and not x[0] in "X":
+                                        extra_url = (
+                                            "https://www.genome.jp/entry/"
+                                            + extra_compound[x[0]]
+                                        )
+                                        MetList[extra_compound[x[0]]] = compound(
+                                            extra_url,
+                                            extra_compound[x[0]],
+                                            time,
+                                            EF,
+                                            specialCompounds,
+                                        )
                                     else:
-                                        MetList[extra_compound[x[0]]] = add_extra_compound (x[0],extra_compound, time, EF, specialCompounds)
-                    else: # if the reaction cannot be mass balanced all the stoichimetric coef are assumed to be like in the original reaction 
-                        IthRxnMB = ([float(x[0]) for x in ithRxn.Substrate()],[float(x[0]) for x in ithRxn.Product()],0,0,0,0,[MetEquiv[x[2]] if x[2] in MetEquiv else x[2] for x in ithRxn.Substrate()], [MetEquiv[x[2]] if x[2] in MetEquiv else x[2] for x in ithRxn.Product()],'','',0)
+                                        MetList[extra_compound[x[0]]] = (
+                                            add_extra_compound(
+                                                x[0],
+                                                extra_compound,
+                                                time,
+                                                EF,
+                                                specialCompounds,
+                                            )
+                                        )
+                    else:  # if the reaction cannot be mass balanced all the stoichimetric coef are assumed to be like in the original reaction
+                        IthRxnMB = (
+                            [float(x[0]) for x in ithRxn.Substrate()],
+                            [float(x[0]) for x in ithRxn.Product()],
+                            0,
+                            0,
+                            0,
+                            0,
+                            [
+                                MetEquiv[x[2]] if x[2] in MetEquiv else x[2]
+                                for x in ithRxn.Substrate()
+                            ],
+                            [
+                                MetEquiv[x[2]] if x[2] in MetEquiv else x[2]
+                                for x in ithRxn.Product()
+                            ],
+                            "",
+                            "",
+                            0,
+                        )
                     LibEnd = UnwrapRxnSubsProdParam(IthRxnMB, LibIni, IthRxnMB)
 
                     # Add metabolites and stc coeff to reaction
@@ -483,7 +554,7 @@ while i < len(Path) - 1:
                     RxnList[RxnID].Product = lambda: P2
                     RxnList[RxnID].SetSubstrate = lambda: S2
                     RxnList[RxnID].SetProduct = lambda: P2
-                    
+
                     RxnList[RxnID].subs = S2
                     RxnList[RxnID].prods = P2
                     if not RxnID in PathNameRxn.get(PathName):
@@ -501,21 +572,44 @@ while i < len(Path) - 1:
                             tmpSC = tmpSC + GPRList[x].GprSubcell()[2:4]
                         except:
                             tmpGPR = tmpGPR + GPRList[x].GprSubcell[0:2]
-                            tmpSC = tmpSC + GPRList[x].GprSubcell[2:4]                                
+                            tmpSC = tmpSC + GPRList[x].GprSubcell[2:4]
                     # Reorganize S-GPRs and GPRs based on their specific location
-                    tmpSC2 = [dict(),dict()]
-                    reactio_compartment_list = list(set([x.strip() for x in str([list(x.keys()) for x in tmpSC]).replace('[','').replace(']','').replace('\'','').split(',')]))
+                    tmpSC2 = [dict(), dict()]
+                    reactio_compartment_list = list(
+                        set(
+                            [
+                                x.strip()
+                                for x in str([list(x.keys()) for x in tmpSC])
+                                .replace("[", "")
+                                .replace("]", "")
+                                .replace("'", "")
+                                .split(",")
+                            ]
+                        )
+                    )
                     for x in reactio_compartment_list:
                         xth_tmp_gpr = [y for y in tmpSC if x in y.keys()]
                         tmp_xth_sgpr = ""
                         tmp_xth_gpr = ""
-                        for y in range(int(len(xth_tmp_gpr)/2)):
-                            if not re.findall('^\[\]$', xth_tmp_gpr[y+y][x]):
-                                tmp_xth_sgpr += xth_tmp_gpr[y+y][x]
-                            if not re.findall('^\[\]$', xth_tmp_gpr[y+y+1][x]):    
-                                tmp_xth_gpr += xth_tmp_gpr[y+y+1][x]
-                        tmp_xth_sgpr = str(set(tmp_xth_sgpr.replace('][', '] or [').split(" or "))).replace('\'', '').replace('{', '').replace('}', '').replace(',', ' or')
-                        tmp_xth_gpr = str(set(tmp_xth_gpr.replace('][', '] or [').split(" or "))).replace('\'', '').replace('{', '').replace('}', '').replace(',', ' or')
+                        for y in range(int(len(xth_tmp_gpr) / 2)):
+                            if not re.findall("^\[\]$", xth_tmp_gpr[y + y][x]):
+                                tmp_xth_sgpr += xth_tmp_gpr[y + y][x]
+                            if not re.findall("^\[\]$", xth_tmp_gpr[y + y + 1][x]):
+                                tmp_xth_gpr += xth_tmp_gpr[y + y + 1][x]
+                        tmp_xth_sgpr = (
+                            str(set(tmp_xth_sgpr.replace("][", "] or [").split(" or ")))
+                            .replace("'", "")
+                            .replace("{", "")
+                            .replace("}", "")
+                            .replace(",", " or")
+                        )
+                        tmp_xth_gpr = (
+                            str(set(tmp_xth_gpr.replace("][", "] or [").split(" or ")))
+                            .replace("'", "")
+                            .replace("{", "")
+                            .replace("}", "")
+                            .replace(",", " or")
+                        )
                         tmpSC2[0][x] = tmp_xth_sgpr
                         tmpSC2[1][x] = tmp_xth_gpr
 
@@ -534,22 +628,21 @@ while i < len(Path) - 1:
                         MetList,
                         MetEquiv,
                     )
-                
+
                     RxnIdent_CL = RxnIdent_CL + rxn_cl
                     MetIdent_CL = MetIdent_CL + comp_cl
 
-                    
                     print(
-                    "Reaction("
-                    + str(j + 1)
-                    + "/"
-                    + str(len(PathList[PathID].Reactions()))
-                    + ")_Pathway"
-                    + "("
-                    + str(i + 1)
-                    + "/"
-                    + str(len(Path) - 1)
-                    + ")"
+                        "Reaction("
+                        + str(j + 1)
+                        + "/"
+                        + str(len(PathList[PathID].Reactions()))
+                        + ")_Pathway"
+                        + "("
+                        + str(i + 1)
+                        + "/"
+                        + str(len(Path) - 1)
+                        + ")"
                     )
             except:
                 continue
@@ -566,7 +659,6 @@ while i < len(Path) - 1:
         )
 
     i = i + 1
-
 
 
 ######### Genes ###########
@@ -611,7 +703,7 @@ listOfID = list(CSL_ID.values())  # abbr. id
 LipidMasterlistOfID = []
 
 for CSL in Compartment_CL:
-    CSL2 = re.sub(r'[^A-Za-z0-9 ]+', '', CSL)
+    CSL2 = re.sub(r"[^A-Za-z0-9 ]+", "", CSL)
     ModMaster = list(set(LipidMasterlistOfID + listOfID))
     if CSL_ID.get(CSL):
         ID = CSL_ID.get(CSL)
@@ -648,16 +740,20 @@ with open(os.path.join(project_root, "files", "pre_sbml_pos_comp.pk"), "wb") as 
         f,
     )
 
-with open(os.path.join(project_root, "files", "pre_sbml_pos_comp.pk"), 'rb') as f:
+with open(os.path.join(project_root, "files", "pre_sbml_pos_comp.pk"), "rb") as f:
     data = pickle.load(f)
-#with open('files/pre_sbml_pos_comp.pk', 'rb') as f:
+# with open('files/pre_sbml_pos_comp.pk', 'rb') as f:
 #  data = f.read()
 
 model = cobra_reconstruction(
-    ModName, ModID, MetList_CL, RxnList_CL, GeneList, PathNameRxn, LocVar, MetEquiv, MetList
+    ModName,
+    ModID,
+    MetList_CL,
+    RxnList_CL,
+    GeneList,
+    PathNameRxn,
+    LocVar,
+    MetEquiv,
+    MetList,
 )
 cobra.io.write_sbml_model(model, Output)
-
-
-
-
