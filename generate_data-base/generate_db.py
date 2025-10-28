@@ -13,10 +13,17 @@ from cobra.io import read_sbml_model
 import dill
 import sys
 import pdb
+from dotenv import load_dotenv
 
 # Determine the current file's directory and the project root.
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.join(current_dir, "..")
+
+# Load environment variables from .env file
+env_file = os.path.join(project_root, ".env")
+if os.path.exists(env_file):
+    load_dotenv(env_file)
+    print(f"Loaded environment variables from {env_file}")
 
 # Add the project root to sys.path to access top-level folders like 'functions' and 'models'
 if project_root not in sys.path:
@@ -378,7 +385,7 @@ RxnList_Subcel = []
 ######### Pathways ###########
 i = 0
 while i < len(Path) - 1:
-
+    print(Path)
     #### Build network
     PathID = Path[i].split("\t")[0]
     PathName = Path[i].split("\t")[1]
