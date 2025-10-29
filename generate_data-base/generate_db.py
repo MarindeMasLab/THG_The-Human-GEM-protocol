@@ -1,4 +1,18 @@
 #!/usr/bin/python
+"""
+Generate metabolic model database from KEGG pathways.
+
+Logging Levels:
+- DEBUG: Show all detailed information about reactions, compounds, mass balance, etc.
+- INFO: Show progress information only
+- WARNING: Show warnings and errors
+- ERROR: Show only errors
+
+To change logging level, modify the level parameter in logging.basicConfig():
+    logging.basicConfig(level=logging.DEBUG)  # Current setting - verbose
+    logging.basicConfig(level=logging.INFO)   # Less verbose
+    logging.basicConfig(level=logging.WARNING) # Minimal output
+"""
 import copy
 import logging
 import os
@@ -15,7 +29,13 @@ import sys
 import pdb
 from dotenv import load_dotenv
 
+# Determine the current file's directory and the project root.
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.join(current_dir, "..")
 
+# Add the project root to sys.path to access top-level folders like 'functions' and 'models'
+if project_root not in sys.path:
+    sys.path.append(project_root)
 
 # reimports for type hints
 from functions.class_generate_database import *
@@ -25,6 +45,7 @@ from functions.class_generate_database import reaction as ReactionType
 from functions.pattern_generate_database import *
 from functions.function_bm_gdb import *
 from functions.equations_bm_gdb import *
+from functions.function_bm_gdb import batch_fetch_kegg_entries
 
 
 def cobra_reconstruction(
@@ -107,7 +128,11 @@ def cobra_reconstruction(
                 ][0]
                 xth_metabolite_id = x.id.split("_")[0] + "_" + compartment
                 x.formula = metabolite_list[xth_metabolite_id].Formula4()
-            except Exception:
+            except Exception as e:
+                import traceback
+
+                LOGGER.error(f"Error updating glycan formula for {x.id}: {e}")
+                LOGGER.error(traceback.format_exc())
                 continue
 
     for (
@@ -160,9 +185,15 @@ def cobra_reconstruction(
                 for prod in rxn.Product()
             ]
             reac_compounds = products + substrates
-        except Exception:
+        except Exception as e:
             # these metabolites do not have an specified comparment!
             # substrates might come with positive coefficients
+            import traceback
+
+            LOGGER.warning(
+                f"Error getting reaction compounds from Product/Substrate methods, using subs/prods: {e}"
+            )
+            LOGGER.warning(traceback.format_exc())
             substrates = [
                 (-abs(convert_to_float(subs[0])), subs[1], subs[2]) for subs in rxn.subs
             ]
@@ -265,7 +296,11 @@ def cobra_reconstruction(
                 ensembl_genes = [
                     str(x) for x in list(set(pat_enstp.findall(retrieved_ids)))
                 ] + [ensembl]
-            except Exception:
+            except Exception as e:
+                import traceback
+
+                LOGGER.warning(f"Error fetching ensembl genes for {ensembl}: {e}")
+                LOGGER.warning(traceback.format_exc())
                 ensembl_genes = []
 
         model_gene.annotation = {
@@ -280,22 +315,41 @@ def cobra_reconstruction(
         }
     return model
 
-if __name__ == "__main__":
 
-    # Determine the current file's directory and the project root.
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root = os.path.join(current_dir, "..")
+if __name__ == "__main__":
 
     # Load environment variables from .env file
     env_file = os.path.join(project_root, ".env")
     if os.path.exists(env_file):
-        load_dotenv(env_file)
+        load_dotenv(env_file, override=True)
         print(f"Loaded environment variables from {env_file}")
 
-    # Add the project root to sys.path to access top-level folders like 'functions' and 'models'
-    if project_root not in sys.path:
-        sys.path.append(project_root)
+    # Setup logging
     LOGGER = logging.getLogger(__name__)
+
+    # Create formatters and handlers
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+
+    # Console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.DEBUG)
+    console_handler.setFormatter(formatter)
+
+    # File handler - write to the same log file
+    log_file = os.path.join(project_root, "logs", "generate_db.log")
+    os.makedirs(os.path.dirname(log_file), exist_ok=True)
+    file_handler = logging.FileHandler(log_file, mode="a")  # Append mode
+    file_handler.setLevel(logging.DEBUG)
+    file_handler.setFormatter(formatter)
+
+    # Configure root logger
+    logging.basicConfig(
+        level=logging.DEBUG,  # Change to INFO, WARNING, or ERROR to reduce output
+        handlers=[console_handler, file_handler],
+    )
+
     session = setup_biocyc_session()
 
     #### Initial Parameters
@@ -316,7 +370,9 @@ if __name__ == "__main__":
         project_root, "files", "ensembl"
     )  # From Ensembl database: ensembl gene ID vs Entrez vs Name.
     time = 20  # Time to download url: Parameter defined in function getHtml
-    Path = open(ListOfPaths, "r").read().split("\n")  # From analysis using metaboanalyst.
+    Path = (
+        open(ListOfPaths, "r").read().split("\n")
+    )  # From analysis using metaboanalyst.
     Compound = open(ModelCompounds, "r").read().split("\n")
     EF = [_f for _f in open(ExtraFormula, "r").read().split("\n") if _f]
     Output = os.path.join(project_root, "models", "Human_Database.xml")  # Output model
@@ -330,7 +386,6 @@ if __name__ == "__main__":
     )  # File where we save the IDs of the compounds with a (group)n in their formula
     open(specialCompounds, "w").close()  # Erase or create the file
 
-
     # Dictionary with extra compounds that can be added to mass balance the metabolic reactions
     extra_compound = {
         "H": "C00080",
@@ -343,7 +398,6 @@ if __name__ == "__main__":
         "R": "C00000",
         "X": "C0000X",
     }
-
 
     #### Initial List and dictionaries
     PathList = {}
@@ -359,7 +413,6 @@ if __name__ == "__main__":
     GPRIdent = []
     RxnIDList = []
     MetIDList = []
-
 
     #### List and dictionaries for the subcelular location annotation
     CSL_ID = {
@@ -412,17 +465,42 @@ if __name__ == "__main__":
                     if not RxnID in RxnIdent and not RxnID in RxnEquiv:
 
                         ######### Define New Reaction ###########
+                        LOGGER.debug("=" * 80)
+                        LOGGER.debug(
+                            f"Processing Reaction {RxnID} from pathway {PathName}"
+                        )
+                        LOGGER.debug("=" * 80)
                         RxnIdent.append(
                             RxnID
                         )  # Optimized: use append instead of concatenation
                         RxnURL = PathList[PathID].Reactions()[j][1]
                         RxnTermDyn = PathList[PathID].Reactions()[j][0][1]
-                        RxnList[RxnID] = reaction(RxnURL, time, RxnID, PathName, RxnTermDyn)
+                        RxnList[RxnID] = reaction(
+                            RxnURL, time, RxnID, PathName, RxnTermDyn
+                        )
+
+                        # Debug: Show initial reaction data from KEGG
+                        LOGGER.debug(f"Reaction Name: {RxnList[RxnID].Name()}")
+                        LOGGER.debug(f"Reaction EC: {RxnList[RxnID].EC()}")
+                        LOGGER.debug(f"Thermodynamic: {RxnTermDyn}")
+                        LOGGER.debug(f"Initial Substrates (raw from KEGG):")
+                        for sub in RxnList[RxnID].Substrate():
+                            LOGGER.debug(
+                                f"  - Coeff: {sub[0]}, Link: {sub[1][:50]}..., ID: {sub[2]}"
+                            )
+                        LOGGER.debug(f"Initial Products (raw from KEGG):")
+                        for prod in RxnList[RxnID].Product():
+                            LOGGER.debug(
+                                f"  - Coeff: {prod[0]}, Link: {prod[1][:50]}..., ID: {prod[2]}"
+                            )
 
                         ######### Check if all the compounds in the jth reaction are in the compound list ###########
                         RxnCmp = [x[2] for x in RxnList[RxnID].Substrate()] + [
                             x[2] for x in RxnList[RxnID].Product()
                         ]
+
+                        LOGGER.debug(f"Compounds in reaction {RxnID}: {RxnCmp}")
+                        LOGGER.debug(f"Total unique compounds: {len(set(RxnCmp))}")
 
                         # Collect new compound IDs for concurrent fetching
                         new_compounds_to_fetch = []
@@ -436,45 +514,129 @@ if __name__ == "__main__":
                                 new_compounds_to_fetch.append(CompID)
                             c = c + 1
 
+                        LOGGER.debug(
+                            f"New compounds to fetch: {new_compounds_to_fetch}"
+                        )
+
                         # Fetch compounds using optimized batch + concurrent requests
                         if new_compounds_to_fetch:
-                            from functions.function_bm_gdb import batch_fetch_kegg_entries
 
-                            # Fetch in batches of 10 with concurrent execution
-                            batch_data = batch_fetch_kegg_entries(
-                                new_compounds_to_fetch,
-                                database="compound",
-                                batch_size=10,  # KEGG API limit per request
-                                max_workers=5,  # Number of concurrent batch requests
+                            # Separate glycans (G-prefix) from regular compounds (C-prefix)
+                            glycans_to_fetch = [
+                                cid
+                                for cid in new_compounds_to_fetch
+                                if cid.startswith("G")
+                            ]
+                            compounds_to_fetch = [
+                                cid
+                                for cid in new_compounds_to_fetch
+                                if cid.startswith("C")
+                            ]
+
+                            if glycans_to_fetch:
+                                LOGGER.debug(
+                                    f"Fetching {len(glycans_to_fetch)} glycans: {glycans_to_fetch}"
+                                )
+                            if compounds_to_fetch:
+                                LOGGER.debug(
+                                    f"Fetching {len(compounds_to_fetch)} compounds: {compounds_to_fetch}"
+                                )
+
+                            batch_data = {}
+
+                            # Fetch regular compounds using REST API
+                            if compounds_to_fetch:
+                                compound_batch_data = batch_fetch_kegg_entries(
+                                    compounds_to_fetch,
+                                    database="compound",
+                                    batch_size=10,  # KEGG API limit per request
+                                    max_workers=5,  # Number of concurrent batch requests
+                                )
+                                batch_data.update(compound_batch_data)
+
+                            # Fetch glycans using REST API
+                            if glycans_to_fetch:
+                                glycan_batch_data = batch_fetch_kegg_entries(
+                                    glycans_to_fetch,
+                                    database="glycan",
+                                    batch_size=10,  # KEGG API limit per request
+                                    max_workers=5,  # Number of concurrent batch requests
+                                )
+                                batch_data.update(glycan_batch_data)
+
+                            LOGGER.debug(
+                                f"Batch data retrieved: {len(batch_data)} entries"
                             )
 
                             for CompID in new_compounds_to_fetch:
-                                if CompID in batch_data and batch_data[CompID]:
-                                    # Use pre-fetched data
-                                    MetList[CompID] = compound.from_batch_data(
-                                        CompID,
-                                        batch_data[CompID],
-                                        time,
-                                        EF,
-                                        specialCompounds,
+                                try:
+                                    LOGGER.debug(f"Processing compound {CompID}...")
+                                    if CompID in batch_data and batch_data[CompID]:
+                                        # Use pre-fetched data
+                                        LOGGER.debug(f"Using batch data for {CompID}")
+                                        MetList[CompID] = compound.from_batch_data(
+                                            CompID,
+                                            batch_data[CompID],
+                                            time,
+                                            EF,
+                                            specialCompounds,
+                                        )
+                                    else:
+                                        # Fallback to individual fetch if concurrent fetch failed
+                                        LOGGER.warning(
+                                            f"Batch fetch failed for {CompID}, using individual fetch"
+                                        )
+                                        CompURL = "https://rest.kegg.jp/get/" + CompID
+                                        MetList[CompID] = compound(
+                                            CompURL, CompID, time, EF, specialCompounds
+                                        )
+
+                                    # Debug: Show compound details
+                                    LOGGER.debug(f"Compound {CompID} details:")
+                                    LOGGER.debug(f"  - ID1: {MetList[CompID].ID1()}")
+                                    LOGGER.debug(f"  - ID2: {MetList[CompID].ID2()}")
+                                    LOGGER.debug(f"  - Name: {MetList[CompID].Name()}")
+                                    LOGGER.debug(
+                                        f"  - Formula1: {MetList[CompID].Formula1()}"
                                     )
-                                else:
-                                    # Fallback to individual fetch if concurrent fetch failed
-                                    CompURL = "https://rest.kegg.jp/get/" + CompID
-                                    MetList[CompID] = compound(
-                                        CompURL, CompID, time, EF, specialCompounds
+                                    LOGGER.debug(
+                                        f"  - Formula2: {MetList[CompID].Formula2()}"
+                                    )
+                                    if (
+                                        MetList[CompID].ID1()
+                                        and MetList[CompID].ID1()[0] == "G"
+                                    ):
+                                        LOGGER.debug(
+                                            f"  - [GLYCAN] Formula4 (reformulated): {MetList[CompID].Formula4()}"
+                                        )
+                                    LOGGER.debug(
+                                        f"  - Atom composition: {MetList[CompID].Atom1()}"
                                     )
 
-                                # Handle ID equivalences
-                                if MetList[CompID].ID1() != MetList[CompID].ID2():
-                                    MetIdent[len(MetIdent) - 1] = MetList[CompID].ID1()
-                                    MetEquiv[CompID] = MetList[CompID].ID1()
-                                    # Direct assignment instead of deepcopy when possible
-                                    MetList[MetList[CompID].ID1()] = MetList[CompID]
-                                    del MetList[CompID]
+                                    # Handle ID equivalences
+                                    if MetList[CompID].ID1() != MetList[CompID].ID2():
+                                        LOGGER.debug(
+                                            f"ID equivalence found: {CompID} -> {MetList[CompID].ID1()}"
+                                        )
+                                        MetIdent[len(MetIdent) - 1] = MetList[
+                                            CompID
+                                        ].ID1()
+                                        MetEquiv[CompID] = MetList[CompID].ID1()
+                                        # Direct assignment instead of deepcopy when possible
+                                        MetList[MetList[CompID].ID1()] = MetList[CompID]
+                                        del MetList[CompID]
+                                except Exception as e:
+                                    LOGGER.error(
+                                        f"Error processing compound {CompID}: {e}"
+                                    )
+                                    import traceback
+
+                                    LOGGER.error(traceback.format_exc())
+                                    raise  # Re-raise to trigger outer exception handler
 
                         ######### Define Substrates, Products and New Compounds ###########
                         # Evaluate the relation between substrates and products #
+                        LOGGER.debug(f"Calling getRxncons to evaluate reaction {RxnID}")
                         Rxn = getRxncons(
                             RxnList[RxnID],
                             time,
@@ -488,6 +650,9 @@ if __name__ == "__main__":
 
                         # Check reaction ID
                         if RxnID != RxnList[RxnID].ID:
+                            LOGGER.debug(
+                                f"Reaction ID changed: {RxnID} -> {RxnList[RxnID].ID} (Glycan -> Compound equivalent)"
+                            )
                             RxnEquiv[RxnID] = RxnList[
                                 RxnID
                             ].ID  # Glycan Reaction : Compound Reaction
@@ -502,12 +667,18 @@ if __name__ == "__main__":
                         ######### Mass Balance the reaction #########
                         ithRxn = RxnList[RxnID]
                         eq, mb_test = RxnParam2Eq(ithRxn, MetList, MetEquiv)
+                        LOGGER.debug(f"Mass balance test result for {RxnID}: {mb_test}")
+                        LOGGER.debug(f"Reaction equation: {eq}")
                         LibIni = WrapRxnSubsProdParam(ithRxn, MetList, MetEquiv)
                         if mb_test != 0:
                             IthRxnMB = mass_balance(eq, RxnID)
+                            LOGGER.debug(f"Mass balance result: {IthRxnMB}")
                             if IthRxnMB[
                                 4
                             ]:  # If new compounds have to be added to mass balance the reactions, then check if they need to be added to the network as compounds
+                                LOGGER.debug(
+                                    f"Adding extra compounds for mass balance: {IthRxnMB[4]}"
+                                )
                                 for x in IthRxnMB[4]:
                                     if (
                                         not extra_compound[x[0]] in MetIdent
@@ -539,6 +710,9 @@ if __name__ == "__main__":
                                                 )
                                             )
                         else:  # if the reaction cannot be mass balanced all the stoichimetric coef are assumed to be like in the original reaction
+                            LOGGER.warning(
+                                f"Reaction {RxnID} cannot be mass balanced - using original stoichiometry"
+                            )
                             IthRxnMB = (
                                 [float(x[0]) for x in ithRxn.Substrate()],
                                 [float(x[0]) for x in ithRxn.Product()],
@@ -585,6 +759,28 @@ if __name__ == "__main__":
                                     LibEnd[1][x][1],
                                 ]
                             )
+
+                        # Debug: Show final reaction structure
+                        LOGGER.debug(f"Final Reaction Structure for {RxnID}:")
+                        LOGGER.debug(f"  Substrates:")
+                        for sub in S:
+                            met_id = sub[2]
+                            met_name = (
+                                MetList[met_id].Name()
+                                if met_id in MetList
+                                else "Unknown"
+                            )
+                            LOGGER.debug(f"    {sub[0]} {met_id} ({met_name})")
+                        LOGGER.debug(f"  Products:")
+                        for prod in P:
+                            met_id = prod[2]
+                            met_name = (
+                                MetList[met_id].Name()
+                                if met_id in MetList
+                                else "Unknown"
+                            )
+                            LOGGER.debug(f"    {prod[0]} {met_id} ({met_name})")
+
                         S2 = copy.deepcopy(S)
                         P2 = copy.deepcopy(P)
                         RxnList[RxnID].Substrate = lambda: S2
@@ -605,11 +801,21 @@ if __name__ == "__main__":
                                 GPRIdent.append(x)  # Optimized: use append
                                 GPRList[x] = gpr(x, session)
                             try:
-                                tmpGPR = tmpGPR + GPRList[x].GprSubcell()[0:2]
-                                tmpSC = tmpSC + GPRList[x].GprSubcell()[2:4]
-                            except:
-                                tmpGPR = tmpGPR + GPRList[x].GprSubcell[0:2]
-                                tmpSC = tmpSC + GPRList[x].GprSubcell[2:4]
+                                gpr_result = GPRList[x].GprSubcell()
+                                # Check if we got a valid tuple result (not empty string)
+                                if (
+                                    gpr_result
+                                    and isinstance(gpr_result, tuple)
+                                    and len(gpr_result) >= 4
+                                ):
+                                    tmpGPR = tmpGPR + gpr_result[0:2]
+                                    tmpSC = tmpSC + gpr_result[2:4]
+                            except Exception as e:
+                                import traceback
+
+                                LOGGER.warning(f"Could not process GPR for EC {x}: {e}")
+                                LOGGER.warning(traceback.format_exc())
+                                continue
                         # Reorganize S-GPRs and GPRs based on their specific location
                         tmpSC2 = [dict(), dict()]
                         reactio_compartment_list = list(
@@ -634,14 +840,26 @@ if __name__ == "__main__":
                                 if not re.findall("^\[\]$", xth_tmp_gpr[y + y + 1][x]):
                                     tmp_xth_gpr += xth_tmp_gpr[y + y + 1][x]
                             tmp_xth_sgpr = (
-                                str(set(tmp_xth_sgpr.replace("][", "] or [").split(" or ")))
+                                str(
+                                    set(
+                                        tmp_xth_sgpr.replace("][", "] or [").split(
+                                            " or "
+                                        )
+                                    )
+                                )
                                 .replace("'", "")
                                 .replace("{", "")
                                 .replace("}", "")
                                 .replace(",", " or")
                             )
                             tmp_xth_gpr = (
-                                str(set(tmp_xth_gpr.replace("][", "] or [").split(" or ")))
+                                str(
+                                    set(
+                                        tmp_xth_gpr.replace("][", "] or [").split(
+                                            " or "
+                                        )
+                                    )
+                                )
                                 .replace("'", "")
                                 .replace("{", "")
                                 .replace("}", "")
@@ -685,7 +903,13 @@ if __name__ == "__main__":
                             + str(len(Path) - 1)
                             + ")"
                         )
-                except:
+                except Exception as e:
+                    LOGGER.error(
+                        f"Failed to process reaction {RxnID if 'RxnID' in locals() else 'unknown'}: {e}"
+                    )
+                    import traceback
+
+                    LOGGER.error(traceback.format_exc())
                     continue
                 j = j + 1
         else:
@@ -701,7 +925,6 @@ if __name__ == "__main__":
 
         i = i + 1
 
-
     ######### Genes ###########
     GeneList = {}
     GeneIdent = []
@@ -710,7 +933,10 @@ if __name__ == "__main__":
         if GPRIdent[g] in GPRList.keys() and GPRList[GPRIdent[g]].GprSubcell():
             gene_matches = re.findall(
                 "([A-Za-z0-9\-]+)",
-                GPRList[GPRIdent[g]].GprSubcell()[1].replace("and", "").replace("or", ""),
+                GPRList[GPRIdent[g]]
+                .GprSubcell()[1]
+                .replace("and", "")
+                .replace("or", ""),
             )
             z = 0
             while z < len(gene_matches):
@@ -737,7 +963,6 @@ if __name__ == "__main__":
             f,
         )
 
-
     Compartment_CL = sorted(Compartment_CL)
 
     listOfID = list(CSL_ID.values())  # abbr. id
@@ -749,7 +974,9 @@ if __name__ == "__main__":
         if CSL_ID.get(CSL):
             ID = CSL_ID.get(CSL)
         elif len(re.sub(" $", "", re.sub("^ ", "", CSL)).split(" ")) > 1:
-            ID = (CSL2.split(" ")[0][0] + CSL2.split(" ")[1][0]).lower().replace(" ", "")
+            ID = (
+                (CSL2.split(" ")[0][0] + CSL2.split(" ")[1][0]).lower().replace(" ", "")
+            )
         else:
             if len(CSL.split(" ")) > 1:
                 ID = CSL2[0:3].lower().replace(" ", "")
@@ -762,7 +989,6 @@ if __name__ == "__main__":
         LocVar[CSL] += ID
         listOfID.append(ID)
         LipidMasterlistOfID.append(ID)
-
 
     with open(os.path.join(project_root, "files", "pre_sbml_pos_comp.pk"), "wb") as f:
         dill.dump(

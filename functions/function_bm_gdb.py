@@ -214,15 +214,13 @@ def batch_fetch_kegg_entries(
             # KEGG separates entries with "///"
             entries = content.split("///")
 
-            # Map entries back to IDs and convert to HTML format
+            # Map entries back to IDs - return flat file format directly
             batch_results = {}
             for j, entry_id in enumerate(batch):
                 if j < len(entries) and entries[j].strip():
-                    # Convert flat file to HTML format for existing parsers
-                    html_formatted = parse_kegg_flat_file_to_html(
-                        entries[j].strip(), entry_id
-                    )
-                    batch_results[entry_id] = html_formatted
+                    # Return the flat file format directly
+                    # The compound class will detect this and use the appropriate parser
+                    batch_results[entry_id] = entries[j].strip()
                 else:
                     batch_results[entry_id] = None
 
@@ -1484,985 +1482,6 @@ def getGPR_old(page, ec, time):
         print(error)
 
 
-def getGPR_old(page, ec, time):
-    try:
-        NCBI_ID = "9606"
-        if not page:
-            page = "https://biocyc.org/META/NEW-IMAGE?type=EC-NUMBER&object=EC-" + ec
-            page = str(urllib.request.urlopen(page).read())
-        page = str(page)
-        page_cp = page
-        url = page
-        ss = []
-        if re.search("class.+?Homo sapiens", url):
-            if re.search(
-                "<b>Species:<\/b> <i>Homo sapiens<\/i><br>.+?<b>Genes*:<\/b> *([A-Za-z/0-9-]+ *[A-Za-z/0-9-]*)",
-                url,
-            ):
-                urls0 = re.search(
-                    "<b>Species:<\/b> <i>Homo sapiens<\/i><br>.+?<b>Genes*:<\/b> *([A-Za-z/0-9-]+ *[A-Za-z/0-9-]*)",
-                    url,
-                ).group()
-                if not NCBI_ID in urls0:
-                    if re.findall(
-                        "<b>Species:</b> <i>Homo sapiens</i><br> <b>Genes:</b> ([A-Za-z/0-9-]+, [A-Za-z/0-9-]+,* *[A-Za-z/0-9-]*,* *[A-Za-z/0-9-]*)<br>",
-                        url,
-                    ):
-                        h = "h"
-                    elif re.findall(
-                        "<b>Species:<\/b> <i>Homo sapiens<\/i><br>.+?<b>Genes*:<\/b> *([A-Za-z/0-9-]+) *[A-Za-z/0-9-]*<br>",
-                        url,
-                    ):
-                        urls0 = re.findall(
-                            "<b>Species:<\/b> <i>Homo sapiens<\/i><br>.+?<b>Genes*:<\/b> *([A-Za-z/0-9-_]+) *[A-Za-z/0-9-_ ]*[A-Za-z/0-9-_ ]*<br>",
-                            url,
-                        )
-                        for i in urls0:
-                            if re.match("HS[0-9]{5}", i):
-                                ss.extend([(i, i)])
-                            if not re.search("HS[0-9]{5}", i) and not re.search(
-                                "G[0-9]*-[0-9]{5}", i
-                            ):
-                                if re.search((i) + "*    +(HS[0-9]+)", url):
-                                    r = re.search((i) + "*    +(HS[0-9]+)", url).group(
-                                        0
-                                    )
-                                elif re.search((i) + "*    +(G[0-9]*-[0-9]+)", url):
-                                    r = re.search(
-                                        (i) + "*    +(G[0-9]*-[0-9]+)", url
-                                    ).group(0)
-                                elif re.search((i) + "*    +(HP_RS[0-9]*)", url):
-                                    r = re.search(
-                                        (i) + "*    +(HP_RS[0-9]*)", url
-                                    ).group(0)
-                                r = re.findall(
-                                    "([A-Za-z/0-9-_]+) +([A-Za-z/0-9-_]+)", r
-                                )
-                                ss.extend(r)
-        urls0 = ss
-        if urls0:
-            urls1 = [
-                i for i in reversed(sorted([x[0:][0] for x in urls0], key=len))
-            ]  # Sort genes by name lengh
-            Ls = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
-            urls2 = []
-            urls22 = []
-            for x in urls1:
-                for y in urls0:
-                    if re.findall(r"\('" + str(x) + "',", str(y)):
-                        urls2 = urls2 + [y[1]]
-                        urls22 = urls22 + [(y[0], y[1], Ls.pop(0))]
-            a = page.replace(r"\n", r"").replace(
-                r"Enzymes and Genes:", r"\nEnzymes and Genes:"
-            )
-            a2 = re.findall(r"Enzymes and Genes:.*[\S\s]+", a)
-            b = (
-                a2[0]
-                .replace("<br> <a href=", "\n<br> <a href=")
-                .replace("</a>)", "</a>)\n")
-            )
-            c = re.findall(
-                r"<br> <a href=.*[\S\s].*>Homo sapiens</a>", b
-            )  # evaluate the enzymes active in human
-            if not c:
-                c = re.findall(
-                    r"<br> <a href=.*[\S\s].*>Mus musculus</a>", b
-                )  # evaluate the enzymes active in mouse
-            dict = {
-                "<SUB>": "*",
-                "<@SUB>(": " and (",
-                "<@SUB>[": " and [",
-                "][": "] and [",
-                ")(": " and ",
-                "'": "",
-                ",": "",
-                ";": "",
-                "<BR>": "",
-            }
-            gpr2 = []
-            i = 0
-            while i < len(c):
-                d = ""
-                c2 = c[i].replace(" ", "\n")
-                c3 = c2.replace('"\n', '" \n')
-                isourl = re.findall(
-                    r"(http://biocyc.org/META/NEW-IMAGE\?type=ENZYME.*)\" ",
-                    c3.replace("/META", "http://biocyc.org/META"),
-                )  # if it is a complex
-                if not isourl:
-                    isourl = re.findall(
-                        r"<br>\n<a\nhref=\"(http://biocyc.org/gene\?orgid.*)\" ",
-                        c3.replace("/gene?orgid", "http://biocyc.org/gene?orgid"),
-                    )  # if it is not a complex
-                isopage = getHtml(isourl[0], time)
-                isopage = str(isopage)
-                d1 = isopage.replace("\n", " ").replace("</a>", "\n</a>")
-                d2 = ""
-                if d2:
-                    continue
-                else:
-                    isourl2 = re.findall(
-                        b"/gene-tab.*META&tab=SUMMARY", isopage.encode("utf-8")
-                    )
-                    if isourl2:
-                        isourl2 = ["http://biocyc.org" + isourl2[0].decode("utf-8")]
-                        isopage2 = getHtml(isourl2[0], time)
-                        isopage2 = str(isopage2)
-                        d2 = re.findall(
-                            r"Subunit Composition.+?\[(.+?)</",
-                            re.sub(
-                                "]*<SUB>",
-                                "*",
-                                isopage2.replace("<tr><td", "\n").replace(
-                                    "</td></tr>", "\n"
-                                ),
-                            ),
-                        )
-                if not d2:
-                    d1 = page.replace(r"\n", r" ").replace(r"</a>", r"</a>\n")
-                    d2 = re.findall(
-                        '\/META\/NEW-IMAGE\?type=REACTION&object=(.+?)"',
-                        d1.replace(" <br>", ""),
-                    )
-                    d2 = d2[0]
-                synonim = (
-                    str(
-                        re.findall(
-                            "<p class=ecoparagraph>  Synonyms:  (.+?) <\/p>",
-                            str(d1).replace(" #</p>", "\n"),
-                        )
-                    )
-                    .replace("'", "")
-                    .replace("]", "")
-                    .replace("[", "")
-                    .replace("  ", "")
-                )
-                if synonim:
-                    synonim = synonim.split(",")
-                    synonim = [
-                        _f
-                        for _f in [
-                            re.sub(" $", "", re.sub("^ ", "", x)) for x in synonim
-                        ]
-                        if _f
-                    ]
-                if not d:  # defines d
-                    d = [
-                        _f
-                        for _f in re.findall(
-                            "[\S]+",
-                            str(d2)
-                            .replace("</SUB>", "<@SUB>")
-                            .replace("/", " ")
-                            .replace("(", "[")
-                            .replace(")", "]"),
-                        )
-                        if _f
-                    ]
-                j = 0
-                e = [""] * len(d)
-                while j < len(d):
-                    z = 0
-                    while z < len(urls1):
-                        # defines IsVar
-                        IsVar = ""
-                        if not re.findall("/NEW-IMAGE\?TYPE=REACTION", d[j].upper()):
-                            if re.findall(urls1[z].upper(), d[j].upper()):
-                                IsVar = [d[j].upper()]
-                            if not IsVar and synonim:
-                                dict3 = {}
-                                for x in synonim:
-                                    dict3[x.upper()] = urls1[z].upper()
-                                IsVar = [
-                                    _f
-                                    for _f in [
-                                        re.findall(
-                                            x.upper()
-                                            .replace("\\", "\\\\")
-                                            .replace("(", "\(")
-                                            .replace(")", "\)")
-                                            .replace('"', '"')
-                                            .replace("'", "'"),
-                                            d[j].upper(),
-                                        )
-                                        for x in synonim
-                                    ]
-                                    if _f
-                                ]
-                                if IsVar:
-                                    IsVar = [
-                                        multiple_replace(dict3, x) for x in IsVar[0]
-                                    ]
-                                del dict3
-                            if not IsVar:
-                                IsVar = re.findall(urls1[z].upper(), d[j].upper())
-                        if IsVar:
-                            h = (
-                                multiple_replace(dict, IsVar[0])
-                                .replace("<@SUB>", "")
-                                .replace("] and [", "]*1 and [")
-                                .replace("] or [", "]*1 or [")
-                                .replace(")", "")
-                                .replace("(", "")
-                            )
-                            h = re.sub("]$", "]*1", h)
-                            if not re.findall(r"]", h) or not re.findall(r"\[", h):
-                                h = (
-                                    "[" + str(h) + "]*1"
-                                )  # to adapt the case of single gene reaction association
-                                h = "[" + str(h) + "]*1"
-                                isourl2 = re.findall(
-                                    b"/gene-tab.*META&tab=SUMMARY",
-                                    isopage.encode("utf-8"),
-                                )
-                                if isourl2:
-                                    isourl2 = [
-                                        "http://biocyc.org" + isourl2[0].decode("utf-8")
-                                    ]
-                                    isopage2 = getHtml(isourl2[0], time)
-                                    isopage2 = str(isopage2)
-                                    if re.findall(
-                                        r"Subunit Composition.+?\[(.+?)</",
-                                        re.sub(
-                                            "]<SUB>",
-                                            "*",
-                                            isopage2.replace("<tr><td", "\n").replace(
-                                                "</td></tr>", "\n"
-                                            ),
-                                        ),
-                                    ):
-                                        z = len(
-                                            urls1
-                                        )  # if we are analyzing a complex, the gpr is found, stop the iteration
-                                        s = h
-                                    if not re.findall(
-                                        r"Subunit Composition.+?\[(.+?)</",
-                                        re.sub(
-                                            "]<SUB>",
-                                            "*",
-                                            isopage2.replace("<tr><td", "\n").replace(
-                                                "</td></tr>", "\n"
-                                            ),
-                                        ),
-                                    ):
-                                        s = ""
-                                        z += 1
-                                else:
-                                    s = ""
-                                    z += 1
-                            else:
-                                NestLevel = re.findall(r"(?=(\]\*[0-9]+\]\*))", h)
-                                h0 = ParseNestedParen(str(h), len(NestLevel))[0]
-                                Mult = re.findall(r"([\]\*0-9]+$)", h)
-                                if Mult:
-                                    Mult = eval(
-                                        str(Mult[0].split("*")[1:])
-                                        .replace("'", "")
-                                        .replace("]", "")
-                                        .replace("[", "")
-                                        .replace(", ", "*")
-                                    )
-                                else:
-                                    Mult = 1
-                                h = h0
-                                for x in urls1:
-                                    h = h.replace(x, "@")
-                                h = [_f for _f in h.split("@") if _f]
-                                dict4 = {
-                                    "\\": "",
-                                    '"': "",
-                                    "'": "",
-                                    "?": "",
-                                    ")": "",
-                                    "(": "",
-                                    "]": "",
-                                    "[": "",
-                                    "*": "",
-                                    "$": "",
-                                    ".": "",
-                                }
-                                hh = []
-                                for x in h:
-                                    for w in urls1:
-                                        for y in urls1:
-                                            x1 = multiple_replace(dict4, x)
-                                            m1 = str(y) + x1 + str(w)
-                                            m2 = str(y) + x1
-                                            if re.findall(
-                                                m1, multiple_replace(dict4, h0)
-                                            ) or re.findall(
-                                                m2 + "$", multiple_replace(dict4, h0)
-                                            ):
-                                                t = re.findall(r"([0-9]+)", str(x))
-                                                if t:
-                                                    t = str(
-                                                        eval(
-                                                            str(t)
-                                                            .replace("'", "")
-                                                            .replace('"', "")
-                                                            .replace("]", "")
-                                                            .replace("[", "")
-                                                            .replace(", ", "*")
-                                                        )
-                                                    )
-                                                else:
-                                                    t = "1"
-                                                hh = hh + [str(y) + "*" + t]
-                                hh = sorted(set([_f for _f in hh if _f]))
-                                if not hh:
-                                    hh = [str(h0) + "*1"]
-                                if not hh:
-                                    hh = [
-                                        "[" + str(multiple_replace(dict4, h0)) + "]*1"
-                                    ]  # no hh means that the string only contains the gene name
-                                h22 = str(hh).replace("'", "").replace(", ", " and ")
-                                UniqGene = sorted(
-                                    set([x.split("*")[0] for x in hh])
-                                )  # if some of the subunits of the complex encoded by the same gene it is necessary to change"S and S" by 2*A
-                                GeneCount = [
-                                    (x.split("*")[0], x.split("*")[1])
-                                    for x in h22.replace("[", "")
-                                    .replace("]", "")
-                                    .split(" and ")
-                                ]
-                                UniqCount = []
-                                for x in UniqGene:
-                                    count = "0"
-                                    for y in GeneCount:
-                                        x = x.replace("[", "").replace("]", "")  #######
-                                        if re.findall(x, y[0]):
-                                            count = count + "+" + y[1]
-                                    UniqCount = UniqCount + [[x, str(eval(count))]]
-                                s = (
-                                    "["
-                                    + str(
-                                        [str(x).replace("', '", "*") for x in UniqCount]
-                                    )
-                                    .replace("'", "")
-                                    .replace('"', "")
-                                    .replace(", ", " and ")
-                                    + "]*"
-                                    + str(Mult)
-                                )
-                                z = len(urls1)
-                        else:
-                            s = ""
-                            z += 1
-                    e[j] = s
-                    j += 1
-                e = sorted(set([_f for _f in e if _f]))
-                if e:
-                    gpr = (
-                        str(e)
-                        .replace("'[", "")
-                        .replace("]'", "")
-                        .replace("'", "")
-                        .replace(", ", " and ")
-                    )
-                else:
-                    gpr = str(urls0[i][0]) + "*1"
-                gpr2 = gpr2 + [
-                    str(gpr).replace("'[", "").replace("]'", "").replace("'", "")
-                ]
-                i += 1
-            urls3 = [
-                str(sorted(set(gpr2)))
-                .replace("'[", "")
-                .replace("]'", "")
-                .replace("'", "")
-                .replace(", ", " or ")
-            ]
-            testIs = [
-                _f for _f in [x.replace("[", "").replace("]", "") for x in urls3] if _f
-            ]
-            if not urls3 or not testIs:
-                urls3 = [str(x) + "*1" for x in urls1]
-            g = []
-            r = 0
-            while r < len(urls3):
-                GsprGenes = sorted(
-                    set(
-                        re.findall(
-                            r"[A-Za-z0-9/-]+",
-                            re.sub(
-                                r"\*[0-9]+",
-                                "",
-                                str(urls3[r])
-                                .replace(" and ", " ")
-                                .replace(" or ", " "),
-                            ),
-                        )
-                    )
-                )
-                GsprGenes = [
-                    x.upper().replace("[", "").replace("]", "") for x in GsprGenes
-                ]
-                intersection = int(
-                    len(GsprGenes)
-                    - len(set(GsprGenes).intersection([x.upper() for x in urls1]))
-                )
-                if intersection < 1:
-                    g = g + [
-                        str(urls3[r].upper())
-                        .replace(" AND ", " and ")
-                        .replace(" OR ", " or ")
-                    ]
-                r += 1
-            urls3 = (
-                str(g)
-                .replace("'', ", "")
-                .replace("', ''", ")")
-                .replace("', '", ") or (")
-                .replace("'", "(")
-                .replace("](]", "])]")
-                .replace('"', "")
-                .replace(" *", "*")
-                .replace("[ ", "[")
-                .replace(" ]", "]")
-                .replace("(]", ")]")
-                .replace("[)", "[(")
-            )
-            w = []
-            for x in str(urls3).split(" or "):
-                dict4 = {}
-                for y in x.split(" and "):
-                    y2 = re.sub("(\(|\)|\]|\[)", "", y)
-                    a = re.findall(r"([A-Za-z0-9\-/]+)\*([0-9\*]+)", y2)
-                    if not a[0][0] in dict4:
-                        dict4[a[0][0]] = eval(a[0][1])
-                    else:
-                        dict4[a[0][0]] = eval(str(dict4[a[0][0]]) + "+" + a[0][1])
-                z = [(x + "*" + str(dict4[x])) for x in dict4]
-                w = w + [z]
-            urls3 = (
-                str(
-                    sorted(
-                        set([str(x).replace(", ", " and ").replace("'", "") for x in w])
-                    )
-                )
-                .replace("'", "")
-                .replace(", ", " or ")
-                .replace("[", "([")
-                .replace("]", "])")
-            )
-            urls4 = re.sub(r"\*[0-9]+", "", urls3)
-        else:
-            GPRURL22 = "http://www.genome.jp/dbget-bin/www_bget?ec:" + ec
-            GPRPage2 = getHtml(GPRURL22, time)
-            GPRPage2 = str(GPRPage2)
-            # print(GPRURL22)
-            # urls0 = sorted(set(str(re.findall(r'(\([A-Za-z0-9]+\))', str(re.findall(r'hsa:............................................',GPRPage2.decode('utf-8'))))).replace("(","").replace(")","").replace("'","").replace(" ","").replace("[","").replace("]","").split(",")))
-            # if not urls0[0]:
-            # 	urls0 = sorted(set(str(re.findall('(\([A-Za-z0-9]+\))', str(re.findall('mmu:............................................',GPRPage2.decode('utf-8'))))).replace("(","").replace(")","").replace("'","").replace(" ","").replace("[","").replace("]","").split(",")))
-            # urls0 = re.findall('hsa:[0-9]+">[0-9]+<\/a>\((.+?)\)',GPRPage2)
-            urls0 = re.search("HSA.+?<table", GPRPage2)
-            if urls0:
-                urls0 = urls0.group()
-                urls0 = re.findall("\((.+?)\)", urls0)
-            if not urls0:
-                urls0 = re.findall('mmu:[0-9]+">[0-9]+<\/a>\((.+?)\)', GPRPage2)
-            if urls0:
-                urls1 = [x[0:] for x in urls0]
-                urls2 = urls1
-                for i in range(len(urls2)):
-                    oo = re.findall(urls2[i] + " +([HPRS_G]+[0-9]+)", page_cp)
-                    if oo:
-                        urls2[i] = oo[0]
-                        # print('hel',urls2)
-                urls3 = (
-                    "[(["
-                    + str(urls1)
-                    .replace("[", "")
-                    .replace("]", "")
-                    .replace(", ", "*1]) or ([")
-                    .replace("'", "")
-                    + "*1])]"
-                )
-                urls4 = re.sub("\*[0-9]+", "", str(urls3))
-                # print(urls4)
-            else:
-                urls1 = ""
-                urls2 = ""
-                urls3 = ""
-                urls4 = ""
-        return urls0, urls1, urls2, urls3, urls4
-    except Exception as e:
-        raise
-        return ""
-    except Exception as error:
-        print(error)
-
-
-def getGPR_old(page, ec, time):
-    try:
-        NCBI_ID = "9606"
-        if not page:
-            page = "https://biocyc.org/META/NEW-IMAGE?type=EC-NUMBER&object=EC-" + ec
-            page = str(urllib.request.urlopen(page).read())
-        page = str(page)
-        page_cp = page
-        url = page
-        ss = []
-        if re.search("class.+?Homo sapiens", url):
-            if re.search(
-                "<b>Species:<\/b> <i>Homo sapiens<\/i><br>.+?<b>Genes*:<\/b> *([A-Za-z/0-9-]+ *[A-Za-z/0-9-]*)",
-                url,
-            ):
-                urls0 = re.search(
-                    "<b>Species:<\/b> <i>Homo sapiens<\/i><br>.+?<b>Genes*:<\/b> *([A-Za-z/0-9-]+ *[A-Za-z/0-9-]*)",
-                    url,
-                ).group()
-                if not NCBI_ID in urls0:
-                    if re.findall(
-                        "<b>Species:</b> <i>Homo sapiens</i><br> <b>Genes:</b> ([A-Za-z/0-9-]+, [A-Za-z/0-9-]+,* *[A-Za-z/0-9-]*,* *[A-Za-z/0-9-]*)<br>",
-                        url,
-                    ):
-                        h = "h"
-                    elif re.findall(
-                        "<b>Species:<\/b> <i>Homo sapiens<\/i><br>.+?<b>Genes*:<\/b> *([A-Za-z/0-9-]+) *[A-Za-z/0-9-]*<br>",
-                        url,
-                    ):
-                        urls0 = re.findall(
-                            "<b>Species:<\/b> <i>Homo sapiens<\/i><br>.+?<b>Genes*:<\/b> *([A-Za-z/0-9-_]+) *[A-Za-z/0-9-_ ]*[A-Za-z/0-9-_ ]*<br>",
-                            url,
-                        )
-                        for i in urls0:
-                            if re.match("HS[0-9]{5}", i):
-                                ss.extend([(i, i)])
-                            if not re.search("HS[0-9]{5}", i) and not re.search(
-                                "G[0-9]*-[0-9]{5}", i
-                            ):
-                                if re.search((i) + "*    +(HS[0-9]+)", url):
-                                    r = re.search((i) + "*    +(HS[0-9]+)", url).group(
-                                        0
-                                    )
-                                elif re.search((i) + "*    +(G[0-9]*-[0-9]+)", url):
-                                    r = re.search(
-                                        (i) + "*    +(G[0-9]*-[0-9]+)", url
-                                    ).group(0)
-                                elif re.search((i) + "*    +(HP_RS[0-9]*)", url):
-                                    r = re.search(
-                                        (i) + "*    +(HP_RS[0-9]*)", url
-                                    ).group(0)
-                                r = re.findall(
-                                    "([A-Za-z/0-9-_]+) +([A-Za-z/0-9-_]+)", r
-                                )
-                                ss.extend(r)
-        urls0 = ss
-        if urls0:
-            urls1 = [
-                i for i in reversed(sorted([x[0:][0] for x in urls0], key=len))
-            ]  # Sort genes by name lengh
-            Ls = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
-            urls2 = []
-            urls22 = []
-            for x in urls1:
-                for y in urls0:
-                    if re.findall(r"\('" + str(x) + "',", str(y)):
-                        urls2 = urls2 + [y[1]]
-                        urls22 = urls22 + [(y[0], y[1], Ls.pop(0))]
-            a = page.replace(r"\n", r"").replace(
-                r"Enzymes and Genes:", r"\nEnzymes and Genes:"
-            )
-            a2 = re.findall(r"Enzymes and Genes:.*[\S\s]+", a)
-            b = (
-                a2[0]
-                .replace("<br> <a href=", "\n<br> <a href=")
-                .replace("</a>)", "</a>)\n")
-            )
-            c = re.findall(
-                r"<br> <a href=.*[\S\s].*>Homo sapiens</a>", b
-            )  # evaluate the enzymes active in human
-            if not c:
-                c = re.findall(
-                    r"<br> <a href=.*[\S\s].*>Mus musculus</a>", b
-                )  # evaluate the enzymes active in mouse
-            dict = {
-                "<SUB>": "*",
-                "<@SUB>(": " and (",
-                "<@SUB>[": " and [",
-                "][": "] and [",
-                ")(": " and ",
-                "'": "",
-                ",": "",
-                ";": "",
-                "<BR>": "",
-            }
-            gpr2 = []
-            i = 0
-            while i < len(c):
-                d = ""
-                c2 = c[i].replace(" ", "\n")
-                c3 = c2.replace('"\n', '" \n')
-                isourl = re.findall(
-                    r"(http://biocyc.org/META/NEW-IMAGE\?type=ENZYME.*)\" ",
-                    c3.replace("/META", "http://biocyc.org/META"),
-                )  # if it is a complex
-                if not isourl:
-                    isourl = re.findall(
-                        r"<br>\n<a\nhref=\"(http://biocyc.org/gene\?orgid.*)\" ",
-                        c3.replace("/gene?orgid", "http://biocyc.org/gene?orgid"),
-                    )  # if it is not a complex
-                isopage = getHtml(isourl[0], time)
-                isopage = str(isopage)
-                d1 = isopage.replace("\n", " ").replace("</a>", "\n</a>")
-                d2 = ""
-                if d2:
-                    continue
-                else:
-                    isourl2 = re.findall(
-                        b"/gene-tab.*META&tab=SUMMARY", isopage.encode("utf-8")
-                    )
-                    if isourl2:
-                        isourl2 = ["http://biocyc.org" + isourl2[0].decode("utf-8")]
-                        isopage2 = getHtml(isourl2[0], time)
-                        isopage2 = str(isopage2)
-                        d2 = re.findall(
-                            r"Subunit Composition.+?\[(.+?)</",
-                            re.sub(
-                                "]*<SUB>",
-                                "*",
-                                isopage2.replace("<tr><td", "\n").replace(
-                                    "</td></tr>", "\n"
-                                ),
-                            ),
-                        )
-                if not d2:
-                    d1 = page.replace(r"\n", r" ").replace(r"</a>", r"</a>\n")
-                    d2 = re.findall(
-                        '\/META\/NEW-IMAGE\?type=REACTION&object=(.+?)"',
-                        d1.replace(" <br>", ""),
-                    )
-                    d2 = d2[0]
-                synonim = (
-                    str(
-                        re.findall(
-                            "<p class=ecoparagraph>  Synonyms:  (.+?) <\/p>",
-                            str(d1).replace(" #</p>", "\n"),
-                        )
-                    )
-                    .replace("'", "")
-                    .replace("]", "")
-                    .replace("[", "")
-                    .replace("  ", "")
-                )
-                if synonim:
-                    synonim = synonim.split(",")
-                    synonim = [
-                        _f
-                        for _f in [
-                            re.sub(" $", "", re.sub("^ ", "", x)) for x in synonim
-                        ]
-                        if _f
-                    ]
-                if not d:  # defines d
-                    d = [
-                        _f
-                        for _f in re.findall(
-                            "[\S]+",
-                            str(d2)
-                            .replace("</SUB>", "<@SUB>")
-                            .replace("/", " ")
-                            .replace("(", "[")
-                            .replace(")", "]"),
-                        )
-                        if _f
-                    ]
-                j = 0
-                e = [""] * len(d)
-                while j < len(d):
-                    z = 0
-                    while z < len(urls1):
-                        # defines IsVar
-                        IsVar = ""
-                        if not re.findall("/NEW-IMAGE\?TYPE=REACTION", d[j].upper()):
-                            if re.findall(urls1[z].upper(), d[j].upper()):
-                                IsVar = [d[j].upper()]
-                            if not IsVar and synonim:
-                                dict3 = {}
-                                for x in synonim:
-                                    dict3[x.upper()] = urls1[z].upper()
-                                IsVar = [
-                                    _f
-                                    for _f in [
-                                        re.findall(
-                                            x.upper()
-                                            .replace("\\", "\\\\")
-                                            .replace("(", "\(")
-                                            .replace(")", "\)")
-                                            .replace('"', '"')
-                                            .replace("'", "'"),
-                                            d[j].upper(),
-                                        )
-                                        for x in synonim
-                                    ]
-                                    if _f
-                                ]
-                                if IsVar:
-                                    IsVar = [
-                                        multiple_replace(dict3, x) for x in IsVar[0]
-                                    ]
-                                del dict3
-                            if not IsVar:
-                                IsVar = re.findall(urls1[z].upper(), d[j].upper())
-                        if IsVar:
-                            h = (
-                                multiple_replace(dict, IsVar[0])
-                                .replace("<@SUB>", "")
-                                .replace("] and [", "]*1 and [")
-                                .replace("] or [", "]*1 or [")
-                                .replace(")", "")
-                                .replace("(", "")
-                            )
-                            h = re.sub("]$", "]*1", h)
-                            if not re.findall(r"]", h) or not re.findall(r"\[", h):
-                                h = (
-                                    "[" + str(h) + "]*1"
-                                )  # to adapt the case of single gene reaction association
-                                h = "[" + str(h) + "]*1"
-                                isourl2 = re.findall(
-                                    b"/gene-tab.*META&tab=SUMMARY",
-                                    isopage.encode("utf-8"),
-                                )
-                                if isourl2:
-                                    isourl2 = [
-                                        "http://biocyc.org" + isourl2[0].decode("utf-8")
-                                    ]
-                                    isopage2 = getHtml(isourl2[0], time)
-                                    isopage2 = str(isopage2)
-                                    if re.findall(
-                                        r"Subunit Composition.+?\[(.+?)</",
-                                        re.sub(
-                                            "]<SUB>",
-                                            "*",
-                                            isopage2.replace("<tr><td", "\n").replace(
-                                                "</td></tr>", "\n"
-                                            ),
-                                        ),
-                                    ):
-                                        z = len(
-                                            urls1
-                                        )  # if we are analyzing a complex, the gpr is found, stop the iteration
-                                        s = h
-                                    if not re.findall(
-                                        r"Subunit Composition.+?\[(.+?)</",
-                                        re.sub(
-                                            "]<SUB>",
-                                            "*",
-                                            isopage2.replace("<tr><td", "\n").replace(
-                                                "</td></tr>", "\n"
-                                            ),
-                                        ),
-                                    ):
-                                        s = ""
-                                        z += 1
-                                else:
-                                    s = ""
-                                    z += 1
-                            else:
-                                NestLevel = re.findall(r"(?=(\]\*[0-9]+\]\*))", h)
-                                h0 = ParseNestedParen(str(h), len(NestLevel))[0]
-                                Mult = re.findall(r"([\]\*0-9]+$)", h)
-                                if Mult:
-                                    Mult = eval(
-                                        str(Mult[0].split("*")[1:])
-                                        .replace("'", "")
-                                        .replace("]", "")
-                                        .replace("[", "")
-                                        .replace(", ", "*")
-                                    )
-                                else:
-                                    Mult = 1
-                                h = h0
-                                for x in urls1:
-                                    h = h.replace(x, "@")
-                                h = [_f for _f in h.split("@") if _f]
-                                dict4 = {
-                                    "\\": "",
-                                    '"': "",
-                                    "'": "",
-                                    "?": "",
-                                    ")": "",
-                                    "(": "",
-                                    "]": "",
-                                    "[": "",
-                                    "*": "",
-                                    "$": "",
-                                    ".": "",
-                                }
-                                hh = []
-                                for x in h:
-                                    for w in urls1:
-                                        for y in urls1:
-                                            x1 = multiple_replace(dict4, x)
-                                            m1 = str(y) + x1 + str(w)
-                                            m2 = str(y) + x1
-                                            if re.findall(
-                                                m1, multiple_replace(dict4, h0)
-                                            ) or re.findall(
-                                                m2 + "$", multiple_replace(dict4, h0)
-                                            ):
-                                                t = re.findall(r"([0-9]+)", str(x))
-                                                if t:
-                                                    t = str(
-                                                        eval(
-                                                            str(t)
-                                                            .replace("'", "")
-                                                            .replace('"', "")
-                                                            .replace("]", "")
-                                                            .replace("[", "")
-                                                            .replace(", ", "*")
-                                                        )
-                                                    )
-                                                else:
-                                                    t = "1"
-                                                hh = hh + [str(y) + "*" + t]
-                                hh = sorted(set([_f for _f in hh if _f]))
-                                if not hh:
-                                    hh = [str(h0) + "*1"]
-                                if not hh:
-                                    hh = [
-                                        "[" + str(multiple_replace(dict4, h0)) + "]*1"
-                                    ]  # no hh means that the string only contains the gene name
-                                h22 = str(hh).replace("'", "").replace(", ", " and ")
-                                UniqGene = sorted(
-                                    set([x.split("*")[0] for x in hh])
-                                )  # if some of the subunits of the complex encoded by the same gene it is necessary to change"S and S" by 2*A
-                                GeneCount = [
-                                    (x.split("*")[0], x.split("*")[1])
-                                    for x in h22.replace("[", "")
-                                    .replace("]", "")
-                                    .split(" and ")
-                                ]
-                                UniqCount = []
-                                for x in UniqGene:
-                                    count = "0"
-                                    for y in GeneCount:
-                                        x = x.replace("[", "").replace("]", "")  #######
-                                        if re.findall(x, y[0]):
-                                            count = count + "+" + y[1]
-                                    UniqCount = UniqCount + [[x, str(eval(count))]]
-                                s = (
-                                    "["
-                                    + str(
-                                        [str(x).replace("', '", "*") for x in UniqCount]
-                                    )
-                                    .replace("'", "")
-                                    .replace('"', "")
-                                    .replace(", ", " and ")
-                                    + "]*"
-                                    + str(Mult)
-                                )
-                                z = len(urls1)
-                        else:
-                            s = ""
-                            z += 1
-                    e[j] = s
-                    j += 1
-                e = sorted(set([_f for _f in e if _f]))
-                if e:
-                    gpr = (
-                        str(e)
-                        .replace("'[", "")
-                        .replace("]'", "")
-                        .replace("'", "")
-                        .replace(", ", " and ")
-                    )
-                else:
-                    gpr = str(urls0[i][0]) + "*1"
-                gpr2 = gpr2 + [
-                    str(gpr).replace("'[", "").replace("]'", "").replace("'", "")
-                ]
-                i += 1
-            urls3 = [
-                str(sorted(set(gpr2)))
-                .replace("'[", "")
-                .replace("]'", "")
-                .replace("'", "")
-                .replace(", ", " or ")
-            ]
-            testIs = [
-                _f for _f in [x.replace("[", "").replace("]", "") for x in urls3] if _f
-            ]
-            if not urls3 or not testIs:
-                urls3 = [str(x) + "*1" for x in urls1]
-            g = []
-            r = 0
-            while r < len(urls3):
-                GsprGenes = sorted(
-                    set(
-                        re.findall(
-                            r"[A-ZaZ0-9/-]+",
-                            re.sub(
-                                r"\*[0-9]+",
-                                "",
-                                str(urls3[r])
-                                .replace(" and ", " ")
-                                .replace(" or ", " "),
-                            ),
-                        )
-                    )
-                )
-                GsprGenes = [
-                    x.upper().replace("[", "").replace("]", "") for x in GsprGenes
-                ]
-                intersection = int(
-                    len(GsprGenes)
-                    - len(set(GsprGenes).intersection([x.upper() for x in urls1]))
-                )
-                if intersection < 1:
-                    g = g + [
-                        str(urls3[r].upper())
-                        .replace(" AND ", " and ")
-                        .replace(" OR ", " or ")
-                    ]
-                r += 1
-            urls3 = (
-                str(g)
-                .replace("'', ", "")
-                .replace("', ''", ")")
-                .replace("', '", ") or (")
-                .replace("'", "(")
-                .replace("](]", "])]")
-                .replace('"', "")
-                .replace(" *", "*")
-                .replace("[ ", "[")
-                .replace(" ]", "]")
-                .replace("(]", ")]")
-                .replace("[)", "[(")
-            )
-            w = []
-            for x in str(urls3).split(" or "):
-                dict4 = {}
-                for y in x.split(" and "):
-                    y2 = re.sub("(\(|\)|\]|\[)", "", y)
-                    a = re.findall(r"([A-Za-z0-9\-/]+)\*([0-9\*]+)", y2)
-                    if not a[0][0] in dict4:
-                        dict4[a[0][0]] = eval(a[0][1])
-                    else:
-                        dict4[a[0][0]] = eval(str(dict4[a[0][0]]) + "+" + a[0][1])
-                z = [(x + "*" + str(dict4[x])) for x in dict4]
-                w = w + [z]
-            urls3 = (
-                str(
-                    sorted(
-                        set([str(x).replace(", ", " and ").replace("'", "") for x in w])
-                    )
-                )
-                .replace("'", "")
-                .replace(", ", " or ")
-                .replace("[", "([")
-                .replace("]", "])")
-            )
-            urls4 = re.sub(r"\*[0-9]+", "", urls3)
-        return urls0, urls1, urls2, urls3, urls4
-    except Exception as e:
-        raise
-        return ""
-    except Exception as error:
-        print(error)
-
-
 ####################### Warm up #######################
 """"Download a HTML code"""
 
@@ -3644,4 +2663,566 @@ def getFormula(page, time, EF, specialCompounds, RxnID):
     except Exception as e:
         print(traceback.format_exc())
         print(f'Exception "{e}" in getFormula')
+        return ""
+
+
+def parse_kegg_flat_file(flat_file_text):
+    """
+    Parse KEGG flat file format (from REST API) into a dictionary.
+
+    Parameters:
+    -----------
+    flat_file_text : str
+        Raw KEGG flat file format text from REST API
+
+    Returns:
+    --------
+    dict : Dictionary with field names as keys and their content as values
+    """
+    lines = flat_file_text.strip().split("\n")
+    fields = {}
+    current_field = None
+    current_value = []
+
+    for line in lines:
+        # New field starts if line doesn't begin with whitespace
+        if line and not line[0].isspace():
+            # Save previous field
+            if current_field:
+                fields[current_field] = "\n".join(current_value)
+
+            # Parse new field
+            field_name = line[:12].strip()
+            field_value = line[12:].strip()
+
+            if field_name:
+                current_field = field_name
+                current_value = [field_value] if field_value else []
+            else:
+                current_field = None
+                current_value = []
+        else:
+            # Continuation of current field
+            if current_field:
+                current_value.append(line.strip())
+
+    # Don't forget last field
+    if current_field:
+        fields[current_field] = "\n".join(current_value)
+
+    return fields
+
+
+def getCompParamFromRestAPI(flat_file_text, ident, time, EF, specialCompounds, RxnID):
+    """
+    Extract compound parameters from KEGG REST API flat file format.
+    This is a new implementation that works directly with REST API data.
+
+    Parameters:
+    -----------
+    flat_file_text : str
+        Raw KEGG flat file format text from REST API
+    ident : str
+        Compound identifier (e.g., 'C00001')
+    time : int
+        Timeout for external API calls
+    EF : list
+        Extra formulas list
+    specialCompounds : str
+        Path to special compounds file
+    RxnID : str
+        Reaction ID (for context)
+
+    Returns:
+    --------
+    tuple : Same format as getCompParam
+    """
+    try:
+        defaultdict = recondict()
+
+        # Parse flat file
+        fields = parse_kegg_flat_file(flat_file_text)
+
+        # Initialize return values
+        urls01 = ident  # principal identifier
+        urls02 = ident  # secondary identifier
+        urls3 = ""  # Name
+        urls21 = ""  # Formula1
+        urls22 = ""  # Formula2
+        urls4 = []  # PubChem SID
+        urls4aa = ""  # PubChem CID
+        urls5 = []  # ChEBI
+        urls6 = []  # LIPIDMAPS
+        urls7 = []  # LipidBank
+        urls8 = []  # GlycomeDB
+        urls9 = []  # JCGGDB
+        urls11 = "0"  # charge
+        urls21a = ""  # adjusted formula
+        urls21aa = ""  # reformulated formula
+        inchikey = ""
+        inchi = ""
+        urls1 = []  # Associated reactions
+
+        # Extract NAME
+        if "NAME" in fields:
+            # Take first name, remove semicolon if present
+            names = fields["NAME"].split(";")
+            urls3 = names[0].strip()
+        else:
+            urls3 = ident  # Fallback to identifier
+
+        # Extract FORMULA
+        if "FORMULA" in fields:
+            urls21 = fields["FORMULA"].strip()
+            urls22 = urls21
+        else:
+            # Fallback to EF file or empty
+            for line in EF:
+                if line.startswith(ident):
+                    urls21 = line.split("\t")[2] if len(line.split("\t")) > 2 else ""
+                    urls22 = urls21
+                    break
+
+        # Handle COMPOSITION for glycans
+        if "COMPOSITION" in fields:
+            composition = fields["COMPOSITION"]
+            # For glycans, combine name with composition
+            if not urls3 or urls3 == ident:
+                urls3 = f"{ident} ({composition})"
+            else:
+                urls3 = f"{urls3} ({composition})"
+
+        # Check for REMARK "Same as" (glycan -> compound mapping)
+        if "REMARK" in fields:
+            same_as_match = re.search(r"Same as:\s*([CDG][0-9]+)", fields["REMARK"])
+            if same_as_match:
+                urls01 = same_as_match.group(1)
+                urls02 = ident
+                # Fetch the primary compound data
+                try:
+                    primary_url = f"https://rest.kegg.jp/get/{urls01}"
+                    primary_response = urllib.request.urlopen(primary_url).read()
+                    primary_text = (
+                        primary_response.decode("utf-8")
+                        if isinstance(primary_response, bytes)
+                        else primary_response
+                    )
+                    primary_fields = parse_kegg_flat_file(primary_text)
+
+                    if "NAME" in primary_fields:
+                        urls3 = primary_fields["NAME"].split(";")[0].strip()
+                    if "FORMULA" in primary_fields:
+                        urls21 = primary_fields["FORMULA"].strip()
+                except Exception as e:
+                    print(f"Warning: Could not fetch primary compound {urls01}: {e}")
+
+        # Extract DBLINKS
+        if "DBLINKS" in fields:
+            dblinks_text = fields["DBLINKS"]
+
+            # PubChem
+            pubchem_matches = re.findall(r"PubChem:\s*(\d+)", dblinks_text)
+            urls4 = pubchem_matches
+
+            # ChEBI
+            chebi_matches = re.findall(r"ChEBI:\s*(\d+)", dblinks_text)
+            urls5 = chebi_matches
+
+            # LIPID MAPS
+            lipidmaps_matches = re.findall(
+                r"LIPID MAPS:\s*([A-Z]+[0-9]+)", dblinks_text
+            )
+            urls6 = lipidmaps_matches
+
+            # LipidBank
+            lipidbank_matches = re.findall(r"LipidBank:\s*([A-Z0-9]+)", dblinks_text)
+            urls7 = lipidbank_matches
+
+            # GlycomeDB
+            glycomedb_matches = re.findall(r"GlycomeDB:\s*([A-Z0-9]+)", dblinks_text)
+            urls8 = glycomedb_matches
+
+            # JCGGDB
+            jcgg_matches = re.findall(r"(JCGG-[A-Z0-9]+)", dblinks_text)
+            urls9 = jcgg_matches
+
+        # Try to get PubChem CID and InChI info
+        try:
+            if urls3 and urls3 != ident:
+                urls4aa_list = pcp.get_cids(urls3, "name")
+                if urls4aa_list:
+                    urls4aa = str(urls4aa_list[0])
+                    compound = pcp.Compound.from_cid(urls4aa_list[0])
+                    inchikey = compound.inchikey
+                    inchi = compound.inchi
+        except Exception:
+            pass
+
+        # Handle charge from defaultdict
+        urlss = (
+            [urls01, urls02]
+            + urls4
+            + ([urls4aa] if urls4aa else [])
+            + urls5
+            + urls6
+            + urls7
+            + urls8
+            + urls9
+        )
+        urls21a = urls21
+
+        # helper: parse formula into element->count dict
+        def parse_formula_to_dict(f):
+            d = {}
+            try:
+                if not f:
+                    return d
+                # remove brackets and spaces, keep + and - if present
+                fclean = re.sub(r"[()\[\]\s]", "", f)
+                parts = re.findall(r"([A-Z][a-z]?)(\+?\-?\d*)", fclean)
+                for el, num in parts:
+                    if num is None or num == "":
+                        n = 1
+                    else:
+                        try:
+                            n = int(num)
+                        except Exception:
+                            n = 1
+                    d[el] = d.get(el, 0) + n
+            except Exception:
+                return {}
+            return d
+
+        for j in urlss:
+            try:
+                if str(j) in defaultdict and defaultdict[str(j)]:
+                    urls10a = defaultdict[str(j)]
+                    urls11 = urls10a[1]
+                    known_formula = urls10a[0]
+                    # compare parsed formulas (ignore ordering)
+                    fk = parse_formula_to_dict(known_formula)
+                    fc = parse_formula_to_dict(urls21)
+                    if fk and fc and fk == fc:
+                        # matched composition -> prefer KEGG known formula
+                        urls21a = known_formula
+                        if urls21 == urls22:
+                            urls22 = urls21a
+                        else:
+                            urls21 = urls21a
+            except Exception:
+                # be defensive: continue without failing
+                continue
+
+        # Handle 'R' group in formula
+        bb = [x for x in [urls01, urls02] if recondict()[x]]
+        if bb and "R" in urls21:
+            if bb[0] in defaultdict:
+                urls211 = re.findall("[A-Z]", urls21)
+                urls10a = defaultdict[bb[0]]
+                urls10a1 = re.findall("[A-Z]", urls10a[0])
+                if (
+                    all(v in urls211 for v in urls10a1)
+                    and all(v in urls10a1 for v in urls211)
+                    and re.findall("C([0-9]*)", urls10a[0])
+                    > re.findall("C([0-9]*)", urls21)
+                ):
+                    if len(urls211) == len(urls10a1):
+                        urls11 = urls10a[1]
+                        # prefer the known KEGG formula (atom2 not available here)
+                        urls21a = urls10a[0]
+                        if urls21 == urls22:
+                            urls21, urls22 = urls21a, urls21a
+                        else:
+                            urls21 = urls21a
+                    else:
+                        urls21 = urls10a[0]
+
+        # Handle formulas with groups
+        if urls21 and "(" in urls21:
+            Path = "gly2"
+            with open(Path, "a") as Formula_file:
+                try:
+                    urls21aa = ReformulationFormula(
+                        [x for x in [urls21, urls22] if "(" in x][0]
+                    )
+                except Exception:
+                    urls21aa = ""
+                Formula_file.write(
+                    ident + "\t" + urls21 + "\t" + urls22 + "\t" + urls21aa + "\n"
+                )
+
+        if urls21a == "":
+            urls21a = urls21
+
+        # Build urls1 (associated reactions) from REACTION field
+        if "REACTION" in fields:
+            reactions = fields["REACTION"].split()
+            urls1 = [
+                (f"http://www.genome.jp/entry/{rxn}", rxn)
+                for rxn in reactions
+                if rxn.startswith("R")
+            ]
+            urls1 = [list(zip([x[0]], [x[1]])) for x in urls1]
+
+        return (
+            list(zip([urls01], [urls02])),
+            list(zip([urls21a], [urls22])),
+            urls1,
+            [urls3],
+            urls4,
+            urls5,
+            urls6,
+            urls7,
+            urls8,
+            urls9,
+            urls11,
+            urls21aa,
+            inchikey,
+            inchi,
+            urls4aa,
+        )
+
+    except Exception as e:
+        print(traceback.format_exc())
+        print('Exception "' + str(e) + '" in getCompParamFromRestAPI')
+        print(ident)
+        return ""
+
+
+""""Compound: Extract the links from a HTML page or REST API data"""
+
+
+def getCompParam(page, ident, time, EF, specialCompounds, RxnID):
+    try:
+        # page can be either HTML (legacy) or REST API formatted data
+        defaultdict = recondict()
+
+        # Extract reaction links
+        urls1 = [
+            list(zip([x[0].replace('href="', "http://www.genome.jp")], [x[1]]))
+            for x in re.findall(r'(href=\"[^\'" >]+).>(\w+)<', page)
+        ]  # R removed
+
+        # If the compound is a Glycan ...
+        GlyTest = re.findall(r"KEGG GLYCAN: G[0-9]+", page)
+        if GlyTest:
+            urls01 = re.findall(
+                'Remark[\S\s]+Same as:[\S\s]+">(C[0-9]+)<\/a>', page
+            )  # principal identifier
+            if urls01:  # If the compound is a Glycan and it has an alternative compound
+                urls02 = ident  # secondary identifier
+                urls22 = getFormula(page, time, EF, specialCompounds, None)
+                urls8 = re.findall(
+                    'GlycomeDB[\S\s]+?glycomeId=([A-Z0-9]+)"', page
+                )  # GlycomeDB
+                urls9 = re.findall(
+                    "GlycomeDB[\S\s]+?>(JCGG-[A-Z0-9]+)<", page
+                )  # JCGGDB
+                urls01 = urls01[0]
+                page2 = getHtml(
+                    "http://www.genome.jp/dbget-bin/www_bget?cpd:" + urls01, time
+                )  # page of the primary compoun
+                urls3 = re.findall(
+                    'Name<.span><.th>.n<td class="td21 defd"><div class="cel"><div class="cel">(.+?);?<br>',
+                    str(page2),
+                    re.DOTALL,
+                )[0].replace(
+                    "\\", ""
+                )  # # #Name
+                urls21 = getFormula(page2, time, EF, specialCompounds, None)
+                page = page2
+            else:  # If the compound is a Glycan and it has not an alternative compound
+                urls01 = ident  # principal identifier
+                urls02 = ident  # secondary identifier
+                urls21 = getFormula(
+                    page, time, EF, specialCompounds, None
+                )  # principal formula¨
+                urls22 = urls21  # secondary formula
+                dd = re.findall(
+                    "Composition.+?(\(.+?)<", page, re.DOTALL
+                )  # name of glycan
+                ddd = re.findall(
+                    'Name<.span><.th>.n<td class="td21 defd"><div class="cel"><div class="cel">(.+?)[;<]',
+                    page,
+                    re.DOTALL,
+                )  # name of glycan
+                if ddd:
+                    dd = ddd[0] + " (" + dd[0] + ")"
+                else:
+                    dd = dd[0] + " (" + urls01 + ")"
+                urls3 = dd.replace("\\", "")
+                urls8 = re.findall(
+                    'GlycomeDB[\S\s]+?glycomeId=([A-Z0-9]+)"', page
+                )  # GlycomeDB
+                urls9 = re.findall(
+                    "GlycomeDB[\S\s]+?>(JCGG-[A-Z0-9]+)<", page
+                )  # JCGGDB
+        else:  # If the compound is not a Glycan
+            urls01 = ident  # principal identifier
+            urls02 = ident  # secondary identifier
+            urls21 = getFormula(page, time, EF, specialCompounds, None)
+            urls22 = urls21  # secondary formula
+            # Extract compound name with better error handling
+            name_match = re.findall(
+                'Name<.span><.th>.n<td class="td21 defd"><div class="cel"><div class="cel">(.+?);?<br>',
+                page,
+                re.DOTALL,
+            )
+            if name_match:
+                urls3 = name_match[0].replace("\\", "")
+            else:
+                # Fallback: try to extract from title or use identifier
+                title_match = re.search(r"<title>KEGG [A-Z]+: ([^<]+)</title>", page)
+                if title_match:
+                    urls3 = title_match.group(1).strip()
+                else:
+                    urls3 = ident  # Use identifier as last resort
+            urls8 = re.findall(
+                'GlycomeDB[\S\s]+?glycomeId=([A-Z0-9]+)"', page
+            )  # GlycomeDB
+            urls9 = re.findall("GlycomeDB[\S\s]+?>(JCGG-[A-Z0-9]+)<", page)  # JCGGDB
+        urls3 = urls3.replace("&gt;", ">")
+        page = str(page)
+        # PubChem sid
+        compound = ""
+        inchikey = ""
+        inchi = ""
+        urls4 = re.findall(r"PubChem[\S\s]+?sid=([0-9]+)", page)
+        try:
+            urls4aa = pcp.get_cids(urls01, "name")
+        except Exception:
+            urls4aa = list()
+        if urls4aa:
+            compound = pcp.Compound.from_cid(urls4aa)
+            inchikey = compound.inchikey
+            inchi = compound.inchi
+        # CheBI
+        urls5 = re.findall("chebiId=CHEBI:([0-9]+)", page)
+        if len(urls5) > 1:
+            urls5 = [urls5[-1]]
+        # LIPIDMAPS
+        urls6 = re.findall("LMID=([A-Z]+[0-9]+)", page)
+        if len(urls6) > 1:
+            urls6 = [urls6[-1]]
+        # LipidBank
+        urls7 = re.findall('LipidBank[\S\s]+?id=([A-Z0-9]+)"', page)
+        del GlyTest
+        urlss = (
+            [urls01]
+            + [urls02]
+            + urls4
+            + urls4aa
+            + urls5
+            + urls6
+            + urls7
+            + urls8
+            + urls9
+        )
+        if urls4aa:
+            urls4aa = urls4aa[0]
+        else:
+            urls4aa = ""
+        urls11 = "0"
+        urls21a = ""
+        urls21aa = ""
+
+        # helper: parse formula into element->count dict (reused from above)
+        def parse_formula_to_dict(f):
+            d = {}
+            try:
+                if not f:
+                    return d
+                fclean = re.sub(r"[()\[\]\s]", "", f)
+                parts = re.findall(r"([A-Z][a-z]?)(\+?\-?\d*)", fclean)
+                for el, num in parts:
+                    if num is None or num == "":
+                        n = 1
+                    else:
+                        try:
+                            n = int(num)
+                        except Exception:
+                            n = 1
+                    d[el] = d.get(el, 0) + n
+            except Exception:
+                return {}
+            return d
+
+        for j in urlss:
+            try:
+                if str(j) in defaultdict and defaultdict[str(j)]:
+                    urls10a = defaultdict[str(j)]
+                    urls11 = urls10a[1]
+                    known_formula = urls10a[0]
+                    fk = parse_formula_to_dict(known_formula)
+                    fc = parse_formula_to_dict(urls21)
+                    if fk and fc and fk == fc:
+                        urls21a = known_formula
+                        if urls21 == urls22:
+                            urls22 = urls21a
+            except Exception:
+                continue
+        bb = [x for x in [urls01, urls02] if recondict()[x]]
+        if bb and "R" in urls21:
+            if bb[0] in defaultdict:
+                urls211 = re.findall("[A-Z]", urls21)
+                # 		if urls01 ==urls02 and urls01 in defaultdict:
+                urls10a = defaultdict[bb[0]]
+                urls10a1 = re.findall("[A-Z]", urls10a[0])
+                if (
+                    all(v in urls211 for v in urls10a1)
+                    and all(v in urls10a1 for v in urls211)
+                    and re.findall("C([0-9]*)", urls10a[0])
+                    > re.findall("C([0-9]*)", urls21)
+                ):
+                    if len(urls211) == len(urls10a1):
+                        urls11 = urls10a[1]
+                        # prefer KEGG known formula (atom2 unavailable)
+                        urls21a = urls10a[0]
+                        if urls21 == urls22:
+                            urls21, urls22 = urls21a, urls21a
+                        else:
+                            urls21 = urls21a
+                    else:
+                        urls21 = urls10a[0]
+        # 		urls21a,urls22=g,g
+        if urls21:
+            if "(" in urls21:
+                # if "(" in Formula: # in case glycan
+                Path = "gly2"
+                with open(Path, "a") as Formula_file:
+                    try:
+                        urls21aa = ReformulationFormula(
+                            [x for x in [urls21, urls22] if "(" in x][0]
+                        )
+                    except Exception:
+                        urls21aa = ""
+                    Formula_file.write(
+                        ident + "\t" + urls21 + "\t" + urls22 + "\t" + urls21aa + "\n"
+                    )
+        if urls21a == "":
+            urls21a = urls21
+        # urls22 = urls21a
+        urls4aa = str(urls4aa)
+        return (
+            list(zip([urls01], [urls02])),
+            list(zip([urls21a], [urls22])),
+            urls1,
+            [urls3],
+            urls4,
+            urls5,
+            urls6,
+            urls7,
+            urls8,
+            urls9,
+            urls11,
+            urls21aa,
+            inchikey,
+            inchi,
+            urls4aa,
+        )
+        # (ID1,ID2), (Formula1, Formula2), Associated reactions, Name, PubChem, CheBI, LIPIDMAPS, LipidBank, GlycomeDB, JCGGDB,charge,inchikey,inchi
+    except Exception as e:
+        print(traceback.format_exc())
+        print('Exception "' + str(e) + '" in getCompParam')
+        print(ident)
         return ""

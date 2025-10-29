@@ -114,9 +114,31 @@ def reduce_gpr(ast_str: str) -> GPR:
     """Sum OR nodes at the same level of a GPR."""
     # first replace empty gene names to allow parsing them
     ast_str = ast_str.replace("''", "ZEMPTYZ")
-    to_reduce = (
-        ast_parse(ast_str).body[0].value
+
+    # Remove stoichiometric coefficients (*N) as they're not part of standard GPR syntax
+    # GPR expressions should only contain gene IDs with boolean operators (and/or)
+    import re
+
+    ast_str = re.sub(r"\*\d+", "", ast_str)
+
+    # Fix numeric gene IDs by prefixing them with 'G' to make them valid identifiers
+    # This prevents ast.Constant errors when gene IDs are pure numbers
+    # Pattern: Match numbers that are NOT preceded or followed by alphanumeric characters
+    # This ensures we only replace standalone numbers, not numbers within identifiers
+    def prefix_numeric_genes(match):
+        num = match.group(1)
+        return f"G{num}"
+
+    # Look for numbers that appear after non-word characters or at start,
+    # and before non-word characters or at end (but not * which we just removed)
+    # (?<![a-zA-Z0-9_]) - not preceded by alphanumeric or underscore
+    # (\d+) - one or more digits
+    # (?![a-zA-Z0-9_]) - not followed by alphanumeric or underscore
+    ast_str = re.sub(
+        r"(?<![a-zA-Z0-9_])(\d+)(?![a-zA-Z0-9_])", prefix_numeric_genes, ast_str
     )
+
+    to_reduce = ast_parse(ast_str).body[0].value
     remove_empty(to_reduce)
     naive_reduce_or(to_reduce)
     return cobra.core.gene.GPR(Expression(to_reduce))

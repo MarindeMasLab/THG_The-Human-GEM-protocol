@@ -17,8 +17,13 @@ from functions.function_metabolite_identification import *
 from functions.function_reac_identification import *
 from functions.function_annotate_cobra_model import *
 
-model = os.path.join(project_root, "models", "Human-GEM_2022-06-21.xml")
-database = os.path.join(project_root, "models", "Human Database.xml")
+model = os.path.join(project_root, "models", "Human-GEM1_19.xml")
+
+print(f"Number of reactions in model: {len(cobra.io.read_sbml_model(model).reactions)}")
+
+database = os.path.join(project_root, "models", "Human_Database_old.xml")
+
+print(f"Number of reactions in database: {len(cobra.io.read_sbml_model(database).reactions)}")
 
 cobra_model = cobra.io.read_sbml_model(model)
 

@@ -3,6 +3,7 @@
 
 import re
 from functions.function_bm_gdb import *
+from functions.function_bm_gdb import getCompParam
 import pdb
 
 
@@ -256,15 +257,30 @@ class compound(object):
     def from_batch_data(
         cls, ident, pagina_content, time, EF, specialCompounds, *newparam
     ):
-        """Create compound object from pre-fetched batch data"""
+
         obj = cls.__new__(cls)  # Create instance without calling __init__
         obj.ident = ident
         obj.pagina = (
             pagina_content if isinstance(pagina_content, str) else str(pagina_content)
         )
-        obj.atributes = getCompParam(
-            obj.pagina, ident, time, EF, specialCompounds, RxnID=None
-        )
+
+        # Detect if this is KEGG flat file format (from REST API) or HTML format
+        # Flat file format starts with "ENTRY" field
+        is_flat_file = obj.pagina.strip().startswith("ENTRY")
+
+        if is_flat_file:
+            # Use new REST API parser
+            from functions.function_bm_gdb import getCompParamFromRestAPI
+
+            obj.atributes = getCompParamFromRestAPI(
+                obj.pagina, ident, time, EF, specialCompounds, RxnID=None
+            )
+        else:
+            # Use legacy HTML parser
+            obj.atributes = getCompParam(
+                obj.pagina, ident, time, EF, specialCompounds, RxnID=None
+            )
+
         obj.newparam = newparam
         return obj
 

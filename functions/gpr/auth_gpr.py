@@ -10,6 +10,7 @@ import requests
 from functions.gpr.ast_gpr import sanitize_gpr
 
 LOGGER = logging.getLogger(__name__)
+logging.getLogger("urllib3.connectionpool").setLevel(logging.WARNING)
 GPRURL2 = "http://www.genome.jp/dbget-bin/www_bget?ec:"
 REMOVE_PAT = re.compile(r"\)|\(|'| |\]|\[")
 TRANSFERRED_PAT = re.compile(
@@ -64,7 +65,25 @@ def get_html(request_url: str, session: Optional[requests.Session] = None) -> st
 
 
 def pattern_match_org(page: str, org: str = "Homo Sapiens") -> List[str]:
-    return sorted(
+    """Extract gene identifiers from BioCyc HTML page.
+
+    Handles both old and new BioCyc HTML formats:
+    - Old: <b>Gene:</b> GENE_NAME ... org
+    - New: class="GENE" data-tippy-content="...&lt;b&gt;Gene:&lt;/b&gt; GENE_NAME..."
+    """
+    # Try new format first (with data-tippy-content)
+    # Pattern: class="GENE" ... data-tippy-content="...&lt;b&gt;Gene:&lt;/b&gt; GENE_NAME GENE_ID..."
+    new_format_pattern = r'class="GENE"[^>]*data-tippy-content="[^"]*&lt;b&gt;Gene:&lt;/b&gt;\s+([A-Z0-9]+)\s+([A-Z0-9]+)'
+    matches_new = re.findall(new_format_pattern, page)
+
+    if matches_new:
+        # Return gene symbols (first capture group) and IDs (second capture group) as tuples
+        LOGGER.info(f"Found {len(matches_new)} genes using new BioCyc format")
+        return sorted(set(matches_new))
+
+    # Fall back to old format if new format doesn't match
+    LOGGER.info("Trying old BioCyc format")
+    old_matches = sorted(
         [
             x[0]
             for x in [
@@ -78,6 +97,11 @@ def pattern_match_org(page: str, org: str = "Homo Sapiens") -> List[str]:
             if x
         ]
     )
+
+    if old_matches:
+        LOGGER.info(f"Found {len(old_matches)} genes using old BioCyc format")
+
+    return old_matches
 
 
 def match_biocyc_page(page: str, humancyc: bool = False) -> List[str]:
@@ -126,76 +150,120 @@ def getGPR(
         parsed = parseGPR(urls0, page, session)
     if parsed[0]:
         a, b, c, d, gpr = parsed
+        LOGGER.debug(f"GPR before sanitization: {gpr}")
         gpr = sanitize_gpr(gpr)
         gpr = "([" + re.sub(r"([A-Z0-9\-\.]+)", r"([\1])", gpr) + "])"
-        parsed = a, b, c, d, gpr 
+        parsed = a, b, c, d, gpr
     return parsed
 
 
 def _fetch_kegg_from_ec_html(ec_number: str):
-    #GPRPage2 = get_html(str(GPRURL2) + str(ec_number))
-    GPRPage2 = get_html(str(GPRURL2) + str(ec_number))
-    LOGGER.info(f"Page length from kegg: {len(GPRPage2)}")
-    urls0 = sorted(
-        set(
-            REMOVE_PAT.sub(
-                "",
-                str(
-                    re.findall(
-                        r"(\([A-Za-z0-9]+\))",
-                        str(
-                            re.findall(
-                                r"hsa:............................................",
-                                GPRPage2,
-                            )
-                        ),
-                    )
-                ),
-            ).split(",")
-        )
-    )
-    LOGGER.info(f"Urls from HUMAN kegg: {urls0}")
-    if not urls0[0]:  # if not for homo sapiens try with mus musculus
-        urls0 = sorted(
-            set(
-                REMOVE_PAT.sub(
-                    "",
-                    str(
-                        re.findall(
-                            r"(\([A-Za-z0-9]+\))",
-                            str(
-                                re.findall(
-                                    r"mmu:............................................",
-                                    GPRPage2,
-                                )
-                            ),
-                        )
-                    ),
-                ).split(",")
+    """Fetch genes for EC number using KEGG REST API instead of HTML scraping."""
+    try:
+        # Use KEGG REST API to get genes directly linked to EC number
+        # First try to get human genes (hsa) directly
+        import urllib.request
+
+        # Try direct link from EC to HSA genes
+        try:
+            ec_to_hsa_url = f"https://rest.kegg.jp/link/hsa/ec:{ec_number}"
+            response = urllib.request.urlopen(ec_to_hsa_url).read()
+            content = (
+                response.decode("utf-8") if isinstance(response, bytes) else response
             )
-        )
-        LOGGER.warn(f"Urls from MOUSE kegg: {urls0}")
-    if urls0[0]:
-        urls1 = [x[0:] for x in urls0]
-        urls2 = urls1
-        urls3 = (
-            "[(["
-            + str(urls1)
-            .replace("[", "")
-            .replace("]", "")
-            .replace(", ", "*1]) or ([")
-            .replace("'", "")
-            + "*1])]"
-        )
-        urls4 = re.sub(r"*[0-9]+", "", str(urls3))
-    else:
-        urls1 = ""
-        urls2 = ""
-        urls3 = ""
-        urls4 = ""
-    if not urls1:
-        return ([], '', '', '', '')
-    return urls0, urls1, urls2, urls3, urls4
+
+            # Parse response: format is "ec:X.X.X.X\thsa:XXXXX"
+            genes = []
+            for line in content.strip().split("\n"):
+                if line and "\t" in line:
+                    parts = line.split("\t")
+                    if len(parts) == 2 and parts[1].startswith("hsa:"):
+                        gene_id = parts[1].replace("hsa:", "").strip()
+                        if gene_id:
+                            genes.append(gene_id)
+
+            if genes:
+                LOGGER.info(
+                    f"Found {len(genes)} human genes from KEGG REST API for EC {ec_number}"
+                )
+                urls0 = sorted(set(genes))
+                LOGGER.info(f"Urls from HUMAN kegg: {urls0}")
+            else:
+                urls0 = [""]
+                LOGGER.info(f"Urls from HUMAN kegg: {urls0}")
+        except Exception as e:
+            LOGGER.warning(f"Failed to fetch human genes for EC {ec_number}: {e}")
+            urls0 = [""]
+            LOGGER.info(f"Urls from HUMAN kegg: {urls0}")
+
+        # If no human genes, try mouse (mmu)
+        if not urls0 or not urls0[0]:
+            try:
+                ec_to_mmu_url = f"https://rest.kegg.jp/link/mmu/ec:{ec_number}"
+                response = urllib.request.urlopen(ec_to_mmu_url).read()
+                content = (
+                    response.decode("utf-8")
+                    if isinstance(response, bytes)
+                    else response
+                )
+
+                genes = []
+                for line in content.strip().split("\n"):
+                    if line and "\t" in line:
+                        parts = line.split("\t")
+                        if len(parts) == 2 and parts[1].startswith("mmu:"):
+                            gene_id = parts[1].replace("mmu:", "").strip()
+                            if gene_id:
+                                genes.append(gene_id)
+
+                if genes:
+                    urls0 = sorted(set(genes))
+                    LOGGER.warn(f"Urls from MOUSE kegg: {urls0}")
+                else:
+                    urls0 = [""]
+                    LOGGER.warn(f"Urls from MOUSE kegg: {urls0}")
+            except Exception as e:
+                LOGGER.warning(f"Failed to fetch mouse genes for EC {ec_number}: {e}")
+                urls0 = [""]
+                LOGGER.warn(f"Urls from MOUSE kegg: {urls0}")
+
+        # Build GPR format
+        if urls0 and urls0[0]:
+            # Prefix numeric gene IDs with 'G' to make them valid Python identifiers
+            # This is necessary because bare numbers are parsed as ast.Constant, not ast.Name
+            urls1_prefixed = []
+            for gene_id in urls0:
+                # Check if gene_id starts with a digit
+                if gene_id and gene_id[0].isdigit():
+                    urls1_prefixed.append(f"G{gene_id}")
+                else:
+                    urls1_prefixed.append(gene_id)
+
+            urls1 = urls1_prefixed
+            urls2 = urls1
+            urls3 = (
+                "[(["
+                + str(urls1)
+                .replace("[", "")
+                .replace("]", "")
+                .replace(", ", "*1]) or ([")
+                .replace("'", "")
+                + "*1])]"
+            )
+            urls4 = re.sub(r"\*[0-9]+", "", str(urls3))
+        else:
+            urls1 = ""
+            urls2 = ""
+            urls3 = ""
+            urls4 = ""
+
+        if not urls1:
+            return ([], "", "", "", "")
+        return urls0, urls1, urls2, urls3, urls4
+
+    except Exception as e:
+        LOGGER.error(f"Error fetching KEGG data for EC {ec_number}: {e}")
+        return ([], "", "", "", "")
 
 
 def fetch_kegg_rest(ec_number: str) -> Optional[Tuple[List[str], str, str, str, str]]:
@@ -673,8 +741,8 @@ def parseGPR(
             .replace("]", "])")
         )
     urls4 = re.sub(r"\*[0-9]+", "", urls3)
-    if not urls4: 
-        return ([], '', '', '', '')
+    if not urls4:
+        return ([], "", "", "", "")
     else:
         return urls0, urls1, urls2, urls3, urls4
 
