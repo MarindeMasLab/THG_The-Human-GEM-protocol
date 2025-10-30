@@ -437,8 +437,49 @@ if __name__ == "__main__":
     Compartment_CL = []
     RxnList_Subcel = []
 
+    ######### Checkpoint file for resuming progress ###########
+    checkpoint_file = os.path.join(project_root, "files", "checkpoint_progress.pkl")
+
+    # Try to load checkpoint if it exists
+    start_pathway_index = 0
+    if os.path.exists(checkpoint_file):
+        try:
+            with open(checkpoint_file, "rb") as f:
+                checkpoint_data = dill.load(f)
+                start_pathway_index = (
+                    checkpoint_data.get("last_completed_pathway", 0) + 1
+                )
+                PathList = checkpoint_data.get("PathList", PathList)
+                RxnList = checkpoint_data.get("RxnList", RxnList)
+                MetList = checkpoint_data.get("MetList", MetList)
+                GPRList = checkpoint_data.get("GPRList", GPRList)
+                MetEquiv = checkpoint_data.get("MetEquiv", MetEquiv)
+                PathNameRxn = checkpoint_data.get("PathNameRxn", PathNameRxn)
+                RxnEquiv = checkpoint_data.get("RxnEquiv", RxnEquiv)
+                PathIdent = checkpoint_data.get("PathIdent", PathIdent)
+                RxnIdent = checkpoint_data.get("RxnIdent", RxnIdent)
+                MetIdent = checkpoint_data.get("MetIdent", MetIdent)
+                GPRIdent = checkpoint_data.get("GPRIdent", GPRIdent)
+                RxnList_CL = checkpoint_data.get("RxnList_CL", RxnList_CL)
+                MetList_CL = checkpoint_data.get("MetList_CL", MetList_CL)
+                RxnIdent_CL = checkpoint_data.get("RxnIdent_CL", RxnIdent_CL)
+                MetIdent_CL = checkpoint_data.get("MetIdent_CL", MetIdent_CL)
+                Compartment_CL = checkpoint_data.get("Compartment_CL", Compartment_CL)
+                LOGGER.info(
+                    f"Resuming from pathway index {start_pathway_index} (pathway {start_pathway_index + 1}/{len(Path) - 1})"
+                )
+                print(
+                    f"Resuming from pathway index {start_pathway_index} (pathway {start_pathway_index + 1}/{len(Path) - 1})"
+                )
+        except Exception as e:
+            LOGGER.warning(
+                f"Could not load checkpoint file: {e}. Starting from beginning."
+            )
+            print(f"Could not load checkpoint file: {e}. Starting from beginning.")
+            start_pathway_index = 0
+
     ######### Pathways ###########
-    i = 0
+    i = start_pathway_index
     while i < len(Path) - 1:
         # print(Path[i])
         #### Build network
@@ -923,6 +964,33 @@ if __name__ == "__main__":
                 + ")"
             )
 
+        # Save checkpoint after each pathway
+        try:
+            checkpoint_data = {
+                "last_completed_pathway": i,
+                "PathList": PathList,
+                "RxnList": RxnList,
+                "MetList": MetList,
+                "GPRList": GPRList,
+                "MetEquiv": MetEquiv,
+                "PathNameRxn": PathNameRxn,
+                "RxnEquiv": RxnEquiv,
+                "PathIdent": PathIdent,
+                "RxnIdent": RxnIdent,
+                "MetIdent": MetIdent,
+                "GPRIdent": GPRIdent,
+                "RxnList_CL": RxnList_CL,
+                "MetList_CL": MetList_CL,
+                "RxnIdent_CL": RxnIdent_CL,
+                "MetIdent_CL": MetIdent_CL,
+                "Compartment_CL": Compartment_CL,
+            }
+            with open(checkpoint_file, "wb") as f:
+                dill.dump(checkpoint_data, f)
+            LOGGER.debug(f"Checkpoint saved after pathway {i + 1}/{len(Path) - 1}")
+        except Exception as e:
+            LOGGER.warning(f"Failed to save checkpoint: {e}")
+
         i = i + 1
 
     ######### Genes ###########
@@ -1024,3 +1092,12 @@ if __name__ == "__main__":
         MetList,
     )
     cobra.io.write_sbml_model(model, Output)
+
+    # Remove checkpoint file after successful completion
+    if os.path.exists(checkpoint_file):
+        try:
+            os.remove(checkpoint_file)
+            LOGGER.info("Checkpoint file removed after successful completion")
+            print("Database generation completed successfully!")
+        except Exception as e:
+            LOGGER.warning(f"Could not remove checkpoint file: {e}")
