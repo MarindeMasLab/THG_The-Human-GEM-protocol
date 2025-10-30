@@ -1,11 +1,5 @@
-Human-GEM_2022-06-21.xml: Reference human metabolism (Human1) model 
-Human Database.xml: Database developed 
+Human-GEM_2022-06-21.xml: Reference human metabolism (Human1) model released 2022-06-21
+Human Database.xml: Human metabolic network Database (developed via build model module 2023-02-25) 
 THG-2023-02-25.xml: Input THG, developed by merge_metabolic_netowrks_and_network_consistency.py
 THG-beta1: Model with all compartments, before filtering (output from build_model)
 THG-beta2: Model with all compartments, after filtering (output from build_model)
-THG-beta2_endoA: Model with endothelial compartments, after filtering (output from build_model)
-EC_model_with_KEGG: Endothelial model with bounds defined by exometabolomics data
-THG_endoA_boundary: THG model with boundary reactions bounds refinement (output from match_exch_rxns)
-model_after_round1, model_full_THG_round2, model_transport_after_round1, model_transport_final_THG_round2: Outputs from the multi-round addition of transport reactions. Those with transport in the name include only the transport reactions.
-model_full_THG_optimized_sinks_demands.xml: Model after having added the sinks and demands to optimize cytoskeleton and glycocalix connectivity, and after having added missing boundary rs. 
-model_THG_endoA_tailored: Streamlined model after the integration of transcriptomics data and removal of inactive reactions 
