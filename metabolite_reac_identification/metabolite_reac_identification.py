@@ -48,5 +48,6 @@ reac_annotation = process_jaccard(reac_y, reac, jaccard)
 
 
 # SBML
+logging.info("Annotating the model and writing SBML files...")
 
 annotate_cobra_model(cobra_model, met_annotation, reac_annotation)
