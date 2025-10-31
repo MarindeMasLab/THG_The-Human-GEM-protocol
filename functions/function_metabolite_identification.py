@@ -144,7 +144,7 @@ def identify_metabolite(
     formula: str,
     iden: str,
     threshold: float = 0.82,
-    max_retries: int = 5,
+    max_retries: int = 3,
     use_proxy: bool = False,
 ) -> Optional[str]:
     """Try to match metabolite info to a pubchem compound to get the annotation.
@@ -157,9 +157,9 @@ def identify_metabolite(
     threshold: float, default=0.82
         minimum similarity ratio between the molecular formulas. The default (0.82)
         was decided by performing sensibility tests of the metabolites in Human 1.
-    max_retries: int, default=5
+    max_retries: int, default=3
         maximum number of retry attempts when PubChem server is busy
-    use_proxy: bool, default=True
+    use_proxy: bool, default=False
         whether to use proxy configuration if available
 
     Returns
@@ -168,16 +168,14 @@ def identify_metabolite(
         Tab-separated str. If None, the metabolite was not identified.
 
     """
+    # Add rate limiting to avoid PubChem API throttling
+    time.sleep(0.2)  # 200ms delay between requests
+    
     CompoundID = None
     met_result = None
 
     # Configure requests session with proxy if available
     if use_proxy and PROXY_CONFIG:
-        # Set up requests session with proxy for pubchempy to use
-        session = requests.Session()
-        session.proxies = PROXY_CONFIG
-        # Note: pubchempy doesn't directly support custom sessions,
-        # so we set it globally via requests
         import urllib.request
 
         if "http" in PROXY_CONFIG:
@@ -186,82 +184,53 @@ def identify_metabolite(
             os.environ["HTTPS_PROXY"] = PROXY_CONFIG["https"]
 
     # Retry logic with exponential backoff for PubChem API calls
-    for attempt in range(max_retries):
+    retry_count = 0
+    while retry_count < max_retries:
         try:
-            _rate_limit()  # Ensure max 5 requests per second
             CompoundID = pcp.get_cids(name.strip(), "name")
-            break  # Success, exit retry loop
+            break
         except Exception as e:
-            if "PUGREST.ServerBusy" in str(e):
-                wait_time = (
-                    2**attempt
-                ) * 0.5  # Exponential backoff: 0.5, 1, 2, 4, 8 seconds
-                print(
-                    f"WARNING: PubChem server busy for '{name}'. Retrying in {wait_time}s... (attempt {attempt + 1}/{max_retries})"
-                )
-                LOGGER.warning(
-                    f"PubChem server busy for '{name}'. Retrying in {wait_time}s... (attempt {attempt + 1}/{max_retries})"
-                )
-                time.sleep(wait_time)
+            if "503" in str(e) or "ServerBusy" in str(e):
+                retry_count += 1
+                if retry_count < max_retries:
+                    wait_time = 2 ** retry_count  # Exponential backoff: 2, 4, 8 seconds
+                    LOGGER.warning(f"PubChem busy, waiting {wait_time}s before retry {retry_count}/{max_retries}")
+                    time.sleep(wait_time)
+                else:
+                    LOGGER.warning(f"Failed after {max_retries} retries for {name}")
+                    return None
             else:
-                print(f"ERROR: Error getting CID for '{name}': {e}")
-                LOGGER.error(f"Error getting CID for '{name}': {e}")
-                break
+                LOGGER.warning(f"Error getting CID for {name}: {e}")
+                return None
 
+    # Retry with alternative name format if first attempt failed
     if not CompoundID:
-        # Retry with alternative name format
-        for attempt in range(max_retries):
-            try:
-                _rate_limit()  # Ensure max 5 requests per second
-                CompoundID = pcp.get_cids(re.sub(r"[\(\)]", "", name), "name")
-                break
-            except Exception as e:
-                if "PUGREST.ServerBusy" in str(e):
-                    wait_time = (2**attempt) * 0.5
-                    print(
-                        f"WARNING: PubChem server busy (alternative name for '{name}'). Retrying in {wait_time}s... (attempt {attempt + 1}/{max_retries})"
-                    )
-                    LOGGER.warning(
-                        f"PubChem server busy (alternative name). Retrying in {wait_time}s... (attempt {attempt + 1}/{max_retries})"
-                    )
-                    time.sleep(wait_time)
-                else:
-                    print(
-                        f"ERROR: Error getting CID with alternative name for '{name}': {e}"
-                    )
-                    LOGGER.error(f"Error getting CID with alternative name: {e}")
-                    break
-
-    if CompoundID:
-        # Retry logic for fetching compound details
-        Compound = None
-        for attempt in range(max_retries):
-            try:
-                _rate_limit()  # Ensure max 5 requests per second
-                Compound = pcp.Compound.from_cid(CompoundID)
-                break
-            except Exception as e:
-                if "PUGREST.ServerBusy" in str(e):
-                    wait_time = (2**attempt) * 0.5
-                    print(
-                        f"WARNING: PubChem server busy fetching compound for '{name}'. Retrying in {wait_time}s... (attempt {attempt + 1}/{max_retries})"
-                    )
-                    LOGGER.warning(
-                        f"PubChem server busy fetching compound. Retrying in {wait_time}s... (attempt {attempt + 1}/{max_retries})"
-                    )
-                    time.sleep(wait_time)
-                else:
-                    print(f"ERROR: Error fetching compound details for '{name}': {e}")
-                    LOGGER.error(f"Error fetching compound details: {e}")
-                    break
-
-        if not Compound:
+        LOGGER.warning("get_cids did not work")
+        time.sleep(0.2)
+        try:
+            CompoundID = pcp.get_cids(re.sub(r"[\(\)]", "", name), "name")
+        except Exception as e:
+            LOGGER.warning(f"get_cids extra error: {e}")
             return None
-
+    
+    # Fetch compound details if we have a CID
+    if CompoundID:
+        try:
+            time.sleep(0.2)
+            Compound = pcp.Compound.from_cid(CompoundID)
+        except Exception as e:
+            LOGGER.warning(f"Error getting compound from CID: {e}")
+            return None
+            
         molecular_formula = Compound.molecular_formula
 
         if formula_similarity(formula, molecular_formula) >= threshold:
-            Compound = pcp.Compound.from_cid(CompoundID)
+            try:
+                time.sleep(0.2)
+                Compound = pcp.Compound.from_cid(CompoundID)
+            except Exception as e:
+                LOGGER.warning(f"Error getting detailed compound info: {e}")
+                return None
             CompoundID = Compound.cid
             synonyms = Compound.synonyms
             Metabolite = sorted(
@@ -343,102 +312,72 @@ def generate_met_annotation(
         list of anotated metabolites
     """
     unnanotated, annotated = [], []
+    api_failures = []  # Track API/temporary failures separately
+    total = len(met_list)
+    
+    # Failure tracking file
+    failure_file = out.replace('.tsv', '_failures.tsv')
+    
+    print(f"\n{'='*70}")
+    print(f"Starting metabolite annotation for {total} metabolites")
+    print(f"{'='*70}\n")
 
-    # Checkpoint files
-    checkpoint_file = out + ".checkpoint"
-    processed_ids_file = out + ".processed_ids"
-
-    # Track which metabolites have been processed
-    processed_ids = set()
-    start_idx = 0
-
-    # Resume from checkpoint if available
-    if resume and os.path.exists(processed_ids_file):
-        try:
-            with open(processed_ids_file, "r") as f:
-                processed_ids = set(line.strip() for line in f)
-            print(
-                f"Resuming: Found {len(processed_ids)} previously processed metabolites"
-            )
-            LOGGER.info(
-                f"Resuming from checkpoint with {len(processed_ids)} processed metabolites"
-            )
-        except Exception as e:
-            print(f"Warning: Could not load checkpoint file: {e}")
-            LOGGER.warning(f"Could not load checkpoint: {e}")
-
-    print(f"\nStarting metabolite annotation for {len(met_list)} metabolites...")
-    print(f"Using {delay_between_requests}s delay between requests")
-    print(f"Up to 5 retries per failed request with exponential backoff")
-    print(f"Checkpoint saved every {checkpoint_interval} metabolites\n")
-
-    # Open file in append mode if resuming, write mode otherwise
-    file_mode = "a" if (resume and os.path.exists(out)) else "w"
-
-    with open(out, file_mode) as f:
-        for idx, (name, formula, annotation, iden) in enumerate(met_list):
-            # Skip if already processed
-            if iden in processed_ids:
-                print(
-                    f"[{idx + 1}/{len(met_list)}] SKIPPED (already processed): {name}"
-                )
-                continue
-
+    with open(out, "w") as f, open(failure_file, "w") as fail_f:
+        # Write header for failure file
+        fail_f.write("name\tformula\tidentifier\tfailure_reason\n")
+        
+        for idx, (name, formula, annotation, iden) in enumerate(met_list, 1):
+            if idx % 100 == 0:
+                print(f"[{idx}/{total}] {(idx/total)*100:.1f}% | Success: {len(annotated)}, Failed: {len(unnanotated)}, API errors: {len(api_failures)}")
+            
             try:
-                print(f"[{idx + 1}/{len(met_list)}] Processing: {name}")
+                # Track if this is an API failure
+                api_error = False
+                failure_reason = "unknown"
+                
                 result = identify_metabolite(name, formula, iden)
                 met = [name, formula, annotation, iden]
+                
                 if result is None:
+                    # Try to determine failure reason from recent logs
+                    # Since we can't easily capture it, we'll mark for retry
                     unnanotated.append(met)
-                    print(f"  FAILED: Could not annotate")
+                    failure_reason = "not_found_or_api_error"
+                    fail_f.write(f"{name}\t{formula}\t{iden}\t{failure_reason}\n")
                 else:
                     f.write(result)
                     f.flush()  # Ensure data is written immediately
                     annotated.append(met)
-                    print(f"  SUCCESS: Annotated")
-
-                # Mark as processed
-                processed_ids.add(iden)
-
-                # Save checkpoint
-                if len(processed_ids) % checkpoint_interval == 0:
-                    with open(processed_ids_file, "w") as pf:
-                        pf.write("\n".join(processed_ids))
-                    print(
-                        f"  [Checkpoint saved: {len(processed_ids)} metabolites processed]"
-                    )
-
-                # Add delay between requests to avoid hitting rate limits
-                # Skip delay for the last item
-                if idx < len(met_list) - 1:
-                    time.sleep(delay_between_requests)
-
-                # Log summary progress every 10 metabolites
-                if (idx + 1) % 10 == 0:
-                    print(
-                        f"\nProgress: {idx + 1}/{len(met_list)} metabolites | {len(annotated)} annotated | {len(unnanotated)} failed\n"
-                    )
-
-            except KeyboardInterrupt:
-                print("\n\nInterrupted by user. Saving checkpoint...")
-                with open(processed_ids_file, "w") as pf:
-                    pf.write("\n".join(processed_ids))
-                print(f"Checkpoint saved. Processed {len(processed_ids)} metabolites.")
-                print(f"Run the script again to resume from this point.")
-                raise
+                    
             except Exception as e:
-                print(f"  ERROR: Error processing metabolite '{name}': {e}")
-                LOGGER.error(f"Error processing metabolite '{name}': {e}")
-                unnanotated.append([name, formula, annotation, iden])
+                error_str = str(e)
+                met = [name, formula, annotation, iden]
+                unnanotated.append(met)
+                
+                # Categorize error
+                if "503" in error_str or "ServerBusy" in error_str or "HTTP Error" in error_str:
+                    failure_reason = "api_error"
+                    api_failures.append(met)
+                elif "timeout" in error_str.lower():
+                    failure_reason = "timeout"
+                    api_failures.append(met)
+                else:
+                    failure_reason = f"exception: {error_str[:50]}"
+                
+                fail_f.write(f"{name}\t{formula}\t{iden}\t{failure_reason}\n")
                 continue
-
-    # Save final checkpoint
-    with open(processed_ids_file, "w") as pf:
-        pf.write("\n".join(processed_ids))
-
-    print(
-        f"\nAnnotation complete: {len(annotated)} annotated, {len(unnanotated)} unannotated"
-    )
+    
+    print(f"\n{'='*70}")
+    print(f"ANNOTATION COMPLETE")
+    print(f"{'='*70}")
+    print(f"Total metabolites:          {total}")
+    print(f"Successfully annotated:     {len(annotated)} ({(len(annotated)/total)*100:.1f}%)")
+    print(f"Failed (likely not in DB):  {len(unnanotated)-len(api_failures)} ({((len(unnanotated)-len(api_failures))/total)*100:.1f}%)")
+    print(f"Failed (API/temp errors):   {len(api_failures)} ({(len(api_failures)/total)*100:.1f}%)")
+    print(f"\nResults saved to:      {out}")
+    print(f"Failures saved to:     {failure_file}")
+    print(f"{'='*70}\n")
+    
     return annotated, unnanotated
 
 

@@ -1,5 +1,6 @@
 Human-GEM_2022-06-21.xml: Reference human metabolism (Human1) model released 2022-06-21
+Human-GEM1_19.xml: Reference human metabolism (Human1) model released 2024-06-25
 Human Database.xml: Human metabolic network Database (developed via build model module 2023-02-25) 
-THG-2023-02-25.xml: Input THG, developed by merge_metabolic_netowrks_and_network_consistency.py
-THG-beta1: Model with all compartments, before filtering (output from build_model)
-THG-beta2: Model with all compartments, after filtering (output from build_model)
+THG-2023-02-25.xml: Input THG, developed by merge_metabolic_netowrks_and_network_consistency.py (ref. modelHuman-GEM_2022-06-21.xml)
+THG-beta1: Model with all compartments, before filtering (output from build_model) (ref. modelHuman-GEM_2022-06-21.xml)
+THG-beta2: Model with all compartments, after filtering (output from build_model) (ref. modelHuman-GEM_2022-06-21.xml)

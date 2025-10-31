@@ -17,14 +17,7 @@ from functions.function_reac_identification import *
 from functions.function_annotate_cobra_model import *
 
 model = os.path.join(project_root, "models", "Human-GEM1_19.xml")
-
-print(f"Number of reactions in model: {len(cobra.io.read_sbml_model(model).reactions)}")
-
-database = os.path.join(project_root, "models", "Human_Database_old.xml")
-
-print(
-    f"Number of reactions in database: {len(cobra.io.read_sbml_model(database).reactions)}"
-)
+database = os.path.join(project_root, "models", "Human Database.xml")
 
 cobra_model = cobra.io.read_sbml_model(model)
 
@@ -32,9 +25,7 @@ cobra_model = cobra.io.read_sbml_model(model)
 # Metabolites
 
 metabolites = gather_metabolites(cobra_model)
-# Use 0.25s delay to ensure no more than 5 requests per second
-# (accounting for up to 3 API calls per metabolite: get_cids, alternative name, from_cid)
-generate_met_annotation(metabolites, delay_between_requests=0.25)
+generate_met_annotation(metabolites)
 met_annotation = process_annotation()
 
 
