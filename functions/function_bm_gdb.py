@@ -2110,10 +2110,17 @@ def meltGene(geneList3):
     geneList4 = dict()
     for i in [x for x in geneList3]:
         for CSL, gene in i.items():
+            # Normalize gene to string so concatenation below cannot fail when gene is list/tuple
+            if isinstance(gene, (list, tuple, set)):
+                # join multiple gene names with ' or ' (choose or because these represent alternatives)
+                gene_str = " or ".join([str(x) for x in gene])
+            else:
+                gene_str = str(gene)
+
             if not CSL in geneList4:
-                geneList4[CSL] = gene
-            elif CSL in geneList4 and not gene == geneList4[CSL]:
-                geneList4[CSL] += " and " + gene
+                geneList4[CSL] = gene_str
+            elif CSL in geneList4 and gene_str != geneList4[CSL]:
+                geneList4[CSL] += " and " + gene_str
     return geneList4
 
 
