@@ -2,17 +2,39 @@
 # -*- coding: utf-8 -*-
 
 import re
-from functions.function_bm_gdb import *
-from functions.function_bm_gdb import getCompParam
+import urllib.request
+from typing import TYPE_CHECKING
+
 import pdb
+
+from functions.gpr.auth_gpr import getGPR, setup_biocyc_session
+
+if TYPE_CHECKING:  # Avoid circular import at runtime, keep type hints available
+    from functions import function_bm_gdb as _bm_mod
+    from functions.gpr import get_location_def as _loc_mod
+
+
+def _bm():
+    """Lazy import to avoid circular dependency with function_bm_gdb."""
+    from functions import function_bm_gdb  # type: ignore
+
+    return function_bm_gdb
+
+
+def _loc():
+    """Lazy import to avoid circular dependency with get_location_def."""
+    from functions.gpr import get_location_def  # type: ignore
+
+    return get_location_def
 
 
 class pathway(object):
     def __init__(self, url, time, ID, urlReferer, PathName):
-        self.pagina = getHtml(url, time, urlReferer)
+        bm = _bm()
+        self.pagina = bm.getHtml(url, time, urlReferer)
         if type(self.pagina) == bytes:
             self.pagina = self.pagina.decode("utf-8")
-        self.link = getLinkPath(self.pagina)
+        self.link = bm.getLinkPath(self.pagina)
         self.ID = ID
         self.PathName = PathName
 
@@ -43,8 +65,9 @@ class pathway(object):
 
 class reaction(object):
     def __init__(self, url, time, ID, path, termdyn, *newparam):
-        self.pagina = getHtml(url, time)
-        self.link = getReacParam(self.pagina, time)
+        bm = _bm()
+        self.pagina = bm.getHtml(url, time)
+        self.link = bm.getReacParam(self.pagina, time)
         self.ID = ID
         self.path = path
         self.termdyn = termdyn
@@ -156,7 +179,8 @@ class gpr(object):
         self.ec = ec
         session = setup_biocyc_session()
         self.GPRPAss = getGPR(self.ec, session)
-        self.Subcell = getLocation(
+        location_module = _loc()
+        self.Subcell = location_module.getLocationnew(
             self.GPRPAss[3],
             self.GPRPAss[1],
             self.GPRPAss[2],
@@ -242,13 +266,14 @@ class gene(object):
 class compound(object):
     def __init__(self, url, ident, time, EF, specialCompounds, *newparam):
         self.ident = ident
-        pagina_content = getHtml(f"https://rest.kegg.jp/get/{self.ident}", time)
+        bm = _bm()
+        pagina_content = bm.getHtml(f"https://rest.kegg.jp/get/{self.ident}", time)
         self.pagina = (
             pagina_content.decode("utf-8")
             if isinstance(pagina_content, bytes)
             else pagina_content
         )
-        self.atributes = getCompParam(
+        self.atributes = bm.getCompParam(
             self.pagina, self.ident, time, EF, specialCompounds, RxnID=None
         )
         self.newparam = newparam
@@ -270,14 +295,15 @@ class compound(object):
 
         if is_flat_file:
             # Use new REST API parser
-            from functions.function_bm_gdb import getCompParamFromRestAPI
+            bm = _bm()
 
-            obj.atributes = getCompParamFromRestAPI(
+            obj.atributes = bm.getCompParamFromRestAPI(
                 obj.pagina, ident, time, EF, specialCompounds, RxnID=None
             )
         else:
             # Use legacy HTML parser
-            obj.atributes = getCompParam(
+            bm = _bm()
+            obj.atributes = bm.getCompParam(
                 obj.pagina, ident, time, EF, specialCompounds, RxnID=None
             )
 
@@ -336,30 +362,33 @@ class compound(object):
 
     def Atom1(self):
         try:
+            bm = _bm()
             if self.atributes[0][0][0][0] == "C":
-                composition = atom(self.atributes[1][0][0])
+                composition = bm.atom(self.atributes[1][0][0])
             elif self.atributes[0][0][0][0] == "G":
-                composition = glycan(self.atributes[1][0][0])
+                composition = bm.glycan(self.atributes[1][0][0])
             return composition
         except Exception:
             return ""
 
     def Atom2(self):
         try:
+            bm = _bm()
             if self.atributes[0][0][1][0] == "C":
-                composition = atom(self.atributes[1][0][1])
+                composition = bm.atom(self.atributes[1][0][1])
             elif self.atributes[0][0][1][0] == "G":
-                composition = glycan(self.atributes[1][0][1])
+                composition = bm.glycan(self.atributes[1][0][1])
             return composition
         except Exception:
             return ""
 
     def Atom3(self):
         try:
+            bm = _bm()
             if self.atributes[0][0][0][0] == "C":
-                composition = atom(self.atributes[1][0][0])
+                composition = bm.atom(self.atributes[1][0][0])
             elif self.atributes[0][0][0][0] == "G":
-                composition = glycan(self.atributes[1][0][0])
+                composition = bm.glycan(self.atributes[1][0][0])
             return composition
         except Exception:
             return ""
