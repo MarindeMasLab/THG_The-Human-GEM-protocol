@@ -35,6 +35,7 @@ import dill
 import sys
 import pdb
 from dotenv import load_dotenv
+from tqdm import tqdm
 
 # Determine the current file's directory and the project root.
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -54,6 +55,7 @@ from functions.function_bm_gdb import *
 from functions.equations_bm_gdb import *
 from functions.function_bm_gdb import batch_fetch_kegg_entries
 from types import MethodType
+from functions.ensembl_client import fetch_ensembl_annotations
 
 
 # Module-level helper methods to avoid fragile lambdas/closures when
@@ -206,6 +208,7 @@ def cobra_reconstruction(
     except Exception:
         LOGGER.debug("Could not list reaction_list keys", exc_info=True)
     # metabolites
+    LOGGER.info(f"Adding {len(metabolite_list)} metabolites to the model")
     compounds = [
         cobra.Metabolite(
             compound.ID2() + "_" + location_dict.get(compound.Subcel.lower()),
@@ -217,10 +220,14 @@ def cobra_reconstruction(
         for iden, compound in metabolite_list.items()
     ]
     model.add_metabolites(compounds)
+    LOGGER.info(f"Successfully added {len(model.metabolites)} metabolites")
     # store mapping (met identifier -> met.id in model) for reaction section
     met_mapping = {}
     # metabolite annotation
-    for iden, compound in metabolite_list.items():
+    LOGGER.info(f"Annotating {len(metabolite_list)} metabolites")
+    for iden, compound in tqdm(
+        metabolite_list.items(), desc="Annotating metabolites", unit="met"
+    ):
         model_met = model.metabolites.get_by_id(
             compound.ID2() + "_" + location_dict.get(compound.Subcel.lower())
         )
@@ -245,10 +252,13 @@ def cobra_reconstruction(
         # only add non-empty annotation
         model_met.annotation = {k: v for k, v in annotation.items() if v}
 
-    for x in model.metabolites:  # replace glycan formula by a sbml suitable format
+    LOGGER.info("Processing glycan formulas")
+    for x in tqdm(
+        model.metabolites, desc="Processing glycans", unit="met"
+    ):  # replace glycan formula by a sbml suitable format
         if x.id[0] == "G":
             try:
-                print(x.id)
+                LOGGER.debug(f"Processing glycan: {x.id}")
                 compartment = [
                     y[0] for y in location_dict.items() if y[1] in x.id.split("_")[1]
                 ][0]
@@ -261,10 +271,9 @@ def cobra_reconstruction(
                 LOGGER.error(traceback.format_exc())
                 continue
 
-    for (
-        x
-    ) in (
-        model.metabolites
+    LOGGER.info("Normalizing metabolite IDs using equivalency mapping")
+    for x in tqdm(
+        model.metabolites, desc="Normalizing metabolite IDs", unit="met"
     ):  # eliminate potential discrepancies between metabolite id and reaction compounds ids
         if x.id.split("_")[0] in metabolite_equivalent.keys():
             x.id = (
@@ -281,6 +290,7 @@ def cobra_reconstruction(
     from functions.gpr.ast_gpr import sanitize_gpr
 
     # reactions
+    LOGGER.info(f"Adding {len(reaction_list)} reactions to the model")
     reactions = [
         cobra.Reaction(
             normalize_id(iden), reac.Name(), "", 0 if reac.Termodyn() else -1000, 1000
@@ -288,8 +298,12 @@ def cobra_reconstruction(
         for iden, reac in reaction_list.items()
     ]
     model.add_reactions(reactions)
-    for iden, rxn in reaction_list.items():
-        print(iden)
+    LOGGER.info(f"Successfully added {len(model.reactions)} reactions")
+
+    LOGGER.info("Processing reaction metabolites and annotations")
+    for iden, rxn in tqdm(
+        reaction_list.items(), desc="Processing reactions", unit="rxn"
+    ):
         reac = model.reactions.get_by_id(normalize_id(iden))
         rxn_id = rxn.ID
         if "_" in rxn_id:
@@ -390,9 +404,14 @@ def cobra_reconstruction(
                 reac.gene_reaction_rule = ""
             reac.annotation["sGPR"] = sgpr
         reac.id = kegg_id + comp_id
+
     # add a group per pathway
+    LOGGER.info(f"Adding {len(pathways)} pathway groups")
     model.add_groups([cobra.core.Group(group, group) for group in pathways])
-    for group, members in pathways.items():
+    LOGGER.info("Assigning reactions to pathway groups")
+    for group, members in tqdm(
+        pathways.items(), desc="Assigning pathways", unit="pathway"
+    ):
         # the members are the reactions in each pathway
         # TODO(carrascomj): reaction ids coming from paths are not in compartments
         model.groups.get_by_id(group).add_members(
@@ -403,9 +422,32 @@ def cobra_reconstruction(
             )
         )
     # gene annotation (genes were added with the GPRs)
+    LOGGER.info(f"Processing {len(gene_list)} genes")
     pat_enstp = re.compile("ENS[TP][0-9]+")
-    for iden, gene in gene_list.items():
-        print(iden)
+    # Batch-fetch Ensembl annotations using gene symbols/names instead of calling Ensg()
+    # The gene names in gene_list are the gene symbols (e.g., "BRCA1", "TP53")
+    LOGGER.info("Batch-fetching Ensembl annotations for gene symbols")
+    gene_symbols = list(gene_list.keys())
+    LOGGER.info(f"Attempting to fetch annotations for {len(gene_symbols)} gene symbols")
+
+    # Try to fetch using gene symbols - the API can look up by symbol
+    try:
+        ensembl_annotations = fetch_ensembl_annotations(gene_symbols, max_workers=10)
+        LOGGER.info(
+            "Fetched Ensembl annotations for %d genes (out of %d requested)",
+            len(ensembl_annotations),
+            len(gene_symbols),
+        )
+    except Exception as e:
+        LOGGER.warning("Batch Ensembl annotation fetch failed: %s", e)
+        ensembl_annotations = {}
+
+    LOGGER.info(f"Annotating {len(gene_list)} genes")
+
+    for iden, gene in tqdm(gene_list.items(), desc="Annotating genes", unit="gene"):
+        # Avoid printing every gene to stdout (very slow for large models).
+        # Use debug logging so the output can be enabled when needed.
+        LOGGER.debug("Processing gene: %s", iden)
 
         if not iden in model.genes:
             LOGGER.warning(f"Gene '{iden}' was not found. Creating new one!")
@@ -420,32 +462,45 @@ def cobra_reconstruction(
                 gene.Name().replace("[", "").replace("]", "").replace("-", "")
             )
 
-        # there may be other ensembl genes, we have to query them
-        ensembl = gene.Ensg()
+        # Try to use batched Ensembl annotations (gene symbol as key)
         ensembl_genes = []
-        if ensembl:
-            try:
-                retrieved_ids = str(
-                    urllib.request.urlopen(
-                        "https://www.ensembl.org/Homo_sapiens/Gene/Summary?g=" + ensembl
-                    ).read()
-                )  # only add non-empty annotation
-                ensembl_genes = [
-                    str(x) for x in list(set(pat_enstp.findall(retrieved_ids)))
-                ] + [ensembl]
-            except Exception as e:
-                import traceback
+        entrez_ids = []
+        uniprots = []
 
-                LOGGER.warning(f"Error fetching ensembl genes for {ensembl}: {e}")
-                LOGGER.warning(traceback.format_exc())
-                ensembl_genes = []
+        # Check if we have this gene symbol in our batched results
+        if iden in ensembl_annotations:
+            ann = ensembl_annotations[iden]
+            if ann.get("ensembl"):
+                ensembl_genes = [ann.get("ensembl")]
+            if ann.get("entrez"):
+                entrez_ids = ann.get("entrez")
+            if ann.get("uniprot"):
+                uniprots = ann.get("uniprot")
+
+        # Fall back to local file lookups (Entrez/Uniprot from db file)
+        # These are fast - just reading from local files
+        if not entrez_ids:
+            try:
+                e = gene.Entrez()  # Fast - reads from local file
+                if e:
+                    entrez_ids = [e]
+            except Exception:
+                pass
+
+        if not uniprots:
+            try:
+                u = gene.Uniprot()  # Fast - reads from local file
+                if u:
+                    uniprots = [u]
+            except Exception:
+                pass
 
         model_gene.annotation = {
             k: v
             for k, v in {
-                "ensembl": ensembl_genes,
-                "ncbigene": gene.Entrez(),
-                "uniprot": gene.Uniprot(),
+                "ensembl": ensembl_genes if ensembl_genes else None,
+                "ncbigene": entrez_ids if entrez_ids else None,
+                "uniprot": uniprots if uniprots else None,
                 "hgcn.symbol": model_gene.name,
             }.items()
             if v
@@ -1283,11 +1338,11 @@ if __name__ == "__main__":
     )
     cobra.io.write_sbml_model(model, Output)
 
-    # Remove checkpoint file after successful completion
-    if os.path.exists(checkpoint_file):
-        try:
-            os.remove(checkpoint_file)
-            LOGGER.info("Checkpoint file removed after successful completion")
-            print("Database generation completed successfully!")
-        except Exception as e:
-            LOGGER.warning(f"Could not remove checkpoint file: {e}")
+    # # Remove checkpoint file after successful completion
+    # if os.path.exists(checkpoint_file):
+    #     try:
+    #         os.remove(checkpoint_file)
+    #         LOGGER.info("Checkpoint file removed after successful completion")
+    #         print("Database generation completed successfully!")
+    #     except Exception as e:
+    #         LOGGER.warning(f"Could not remove checkpoint file: {e}")
