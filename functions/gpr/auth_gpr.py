@@ -2,7 +2,8 @@ import logging
 import os
 import re
 from io import StringIO
-from typing import List, Optional, Tuple
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
 import requests
@@ -17,6 +18,47 @@ TRANSFERRED_PAT = re.compile(
     r'It is now listed as..\n+.+EC\-([0-9\.\-]+)" class\="EC\-NUMBER"', re.MULTILINE
 )
 
+ENV_VARS = ("BIOCYC_EMAIL", "BIOCYC_PASSWORD")
+ENV_PATH = Path(__file__).resolve().parents[2] / ".env"
+
+
+def _parse_env_file(path: Path) -> Dict[str, str]:
+    entries: Dict[str, str] = {}
+    try:
+        with path.open("r") as handle:
+            for raw_line in handle:
+                line = raw_line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if "=" not in line:
+                    continue
+                key, _, value = line.partition("=")
+                key = key.strip()
+                value = value.strip()
+                if not key:
+                    continue
+                if value and value[0] == value[-1] and value[0] in {'"', "'"}:
+                    value = value[1:-1]
+                entries[key] = value
+    except OSError as exc:
+        LOGGER.debug(f"Could not read .env file at {path}: {exc}")
+    return entries
+
+
+def _hydrate_env_from_file() -> None:
+    if not ENV_PATH.exists():
+        return
+    parsed = _parse_env_file(ENV_PATH)
+    populated = False
+    for key in ENV_VARS:
+        if key in os.environ:
+            continue
+        if key in parsed:
+            os.environ[key] = parsed[key]
+            populated = True
+    if populated:
+        LOGGER.info(f"Loaded BioCyc credentials from {ENV_PATH}")
+
 
 def read_env_biocyc():
     """Get the email and password from `BIOCYC_*` env variables.
@@ -28,6 +70,7 @@ def read_env_biocyc():
     connecting from a licensed institution.
     """
 
+    _hydrate_env_from_file()
     email = os.environ["BIOCYC_EMAIL"]
     password = os.environ["BIOCYC_PASSWORD"]
     return email, password
