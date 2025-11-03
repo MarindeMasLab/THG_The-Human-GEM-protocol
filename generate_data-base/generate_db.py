@@ -1,5 +1,11 @@
 #!/usr/bin/python
 """
+TODO:
+Currently lambda functions are pickled for the checkpoint files. It raises an error
+for missing localc objects, therefore, a sanitization step is added after loading.
+This approach just patches the problem, but it should be changed so
+lambdas are not pickled at all.
+
 Generate metabolic model database from KEGG pathways.
 
 Logging Levels:
@@ -12,6 +18,7 @@ To change logging level, modify the level parameter in logging.basicConfig():
     logging.basicConfig(level=logging.DEBUG)  # Current setting - verbose
     logging.basicConfig(level=logging.INFO)   # Less verbose
     logging.basicConfig(level=logging.WARNING) # Minimal output
+
 """
 import copy
 import logging
@@ -46,6 +53,97 @@ from functions.pattern_generate_database import *
 from functions.function_bm_gdb import *
 from functions.equations_bm_gdb import *
 from functions.function_bm_gdb import batch_fetch_kegg_entries
+from types import MethodType
+
+
+# Module-level helper methods to avoid fragile lambdas/closures when
+# attaching callable accessors to reaction objects. These read the
+# raw lists stored on the reaction (subs/prods) so they are safe to
+# rebind after deserialization and avoid referencing local names like S2.
+def _rxn_substrate(self):
+    """Return substrate list stored on reaction instance.
+
+    Returns the attribute `subs` if present, otherwise an empty list.
+    """
+    return getattr(self, "subs", [])
+
+
+def _rxn_product(self):
+    """Return product list stored on reaction instance.
+
+    Returns the attribute `prods` if present, otherwise an empty list.
+    """
+    return getattr(self, "prods", [])
+
+
+def sanitize_loaded_reactions(rxn_dict, name="reactions"):
+    """Sanitize reaction objects loaded from disk.
+
+    Ensures each reaction has `subs`/`prods` attributes and that callable
+    accessors (`Substrate`, `Product`, `SetSubstrate`, `SetProduct`) are
+    bound to stable module-level methods instead of fragile lambdas.
+    """
+    if not isinstance(rxn_dict, dict):
+        return
+    for key, rxn in list(rxn_dict.items()):
+        try:
+            # Try calling existing accessors to get data
+            got = False
+            try:
+                if hasattr(rxn, "Substrate") and callable(rxn.Substrate):
+                    subs = rxn.Substrate()
+                    got = True
+                else:
+                    subs = getattr(rxn, "subs", None)
+            except NameError as e:
+                # Known bad closure (e.g. lambda referencing S2) — fallback
+                LOGGER.warning(
+                    "Reaction %s: Substrate accessor raised NameError: %s",
+                    key,
+                    e,
+                )
+                subs = getattr(rxn, "subs", None)
+
+            try:
+                if hasattr(rxn, "Product") and callable(rxn.Product):
+                    prods = rxn.Product()
+                    got = True
+                else:
+                    prods = getattr(rxn, "prods", None)
+            except NameError as e:
+                LOGGER.warning(
+                    "Reaction %s: Product accessor raised NameError: %s",
+                    key,
+                    e,
+                )
+                prods = getattr(rxn, "prods", None)
+
+            # Ensure lists exist
+            subs = subs if subs is not None else []
+            prods = prods if prods is not None else []
+
+            # Store raw lists and bind stable methods
+            try:
+                rxn.subs = subs
+                rxn.prods = prods
+            except Exception:
+                # Some reaction objects may not allow attribute setting; skip
+                LOGGER.debug(
+                    "Could not set subs/prods on reaction %s", key, exc_info=True
+                )
+
+            try:
+                rxn.Substrate = MethodType(_rxn_substrate, rxn)
+                rxn.Product = MethodType(_rxn_product, rxn)
+                rxn.SetSubstrate = MethodType(_rxn_substrate, rxn)
+                rxn.SetProduct = MethodType(_rxn_product, rxn)
+            except Exception:
+                LOGGER.debug(
+                    "Could not bind methods on reaction %s", key, exc_info=True
+                )
+
+        except Exception:
+            LOGGER.warning(f"Failed to sanitize loaded reaction {key}", exc_info=True)
 
 
 def cobra_reconstruction(
@@ -79,6 +177,34 @@ def cobra_reconstruction(
     """
     model = cobra.Model(model_id or model_name, model_name or model_id)
     location_dict = {k.lower(): v for k, v in location_dict.items()}
+    LOGGER.debug(
+        "Starting cobra_reconstruction: metabolites=%s reactions=%s genes=%s pathways=%s loc=%s",
+        (
+            len(metabolite_list)
+            if hasattr(metabolite_list, "__len__")
+            else type(metabolite_list)
+        ),
+        (
+            len(reaction_list)
+            if hasattr(reaction_list, "__len__")
+            else type(reaction_list)
+        ),
+        len(gene_list) if hasattr(gene_list, "__len__") else type(gene_list),
+        len(pathways) if hasattr(pathways, "__len__") else type(pathways),
+        (
+            len(location_dict)
+            if hasattr(location_dict, "__len__")
+            else type(location_dict)
+        ),
+    )
+    try:
+        LOGGER.debug("Sample metabolite keys: %s", list(metabolite_list.keys())[:10])
+    except Exception:
+        LOGGER.debug("Could not list metabolite_list keys", exc_info=True)
+    try:
+        LOGGER.debug("Sample reaction keys: %s", list(reaction_list.keys())[:10])
+    except Exception:
+        LOGGER.debug("Could not list reaction_list keys", exc_info=True)
     # metabolites
     compounds = [
         cobra.Metabolite(
@@ -250,7 +376,18 @@ def cobra_reconstruction(
                 # may be repeated so they have to be deduplicated
                 # TODO(carrascomj): should come from getGPR / getLocation
                 gpr = " or ".join({gene for gene in gpr.split(" or ") if gene})
-            reac.gene_reaction_rule = sanitize_gpr(gpr)
+            # Sanitize GPR but guard against malformed strings from KEGG
+            try:
+                reac.gene_reaction_rule = sanitize_gpr(gpr)
+            except Exception as e:
+                import traceback
+
+                LOGGER.warning(
+                    f"Failed to sanitize GPR for reaction {rxn_id if 'rxn_id' in locals() else iden}: {gpr!r}: {e}"
+                )
+                LOGGER.warning(traceback.format_exc())
+                # Fallback: leave gene reaction rule empty so processing continues
+                reac.gene_reaction_rule = ""
             reac.annotation["sGPR"] = sgpr
         reac.id = kegg_id + comp_id
     # add a group per pathway
@@ -471,6 +608,15 @@ if __name__ == "__main__":
                 print(
                     f"Resuming from pathway index {start_pathway_index} (pathway {start_pathway_index + 1}/{len(Path) - 1})"
                 )
+                # Sanitize any loaded reaction objects to remove fragile lambdas
+                try:
+                    sanitize_loaded_reactions(RxnList, name="RxnList")
+                    sanitize_loaded_reactions(RxnList_CL, name="RxnList_CL")
+                except Exception:
+                    LOGGER.debug(
+                        "Failed to sanitize reactions loaded from checkpoint",
+                        exc_info=True,
+                    )
         except Exception as e:
             LOGGER.warning(
                 f"Could not load checkpoint file: {e}. Starting from beginning."
@@ -824,10 +970,30 @@ if __name__ == "__main__":
 
                         S2 = copy.deepcopy(S)
                         P2 = copy.deepcopy(P)
-                        RxnList[RxnID].Substrate = lambda: S2
-                        RxnList[RxnID].Product = lambda: P2
-                        RxnList[RxnID].SetSubstrate = lambda: S2
-                        RxnList[RxnID].SetProduct = lambda: P2
+                        # Log the substrate/product lists being assigned for this reaction
+                        LOGGER.debug(
+                            "Assigning substrates/products for reaction %s: substrates=%s products=%s",
+                            RxnID,
+                            S2,
+                            P2,
+                        )
+                        # Bind module-level methods to the reaction instance so
+                        # callable accessors are stable and don't close over
+                        # local names (avoids NameError after pickling).
+                        RxnList[RxnID].subs = S2
+                        RxnList[RxnID].prods = P2
+                        RxnList[RxnID].Substrate = MethodType(
+                            _rxn_substrate, RxnList[RxnID]
+                        )
+                        RxnList[RxnID].Product = MethodType(
+                            _rxn_product, RxnList[RxnID]
+                        )
+                        RxnList[RxnID].SetSubstrate = MethodType(
+                            _rxn_substrate, RxnList[RxnID]
+                        )
+                        RxnList[RxnID].SetProduct = MethodType(
+                            _rxn_product, RxnList[RxnID]
+                        )
 
                         RxnList[RxnID].subs = S2
                         RxnList[RxnID].prods = P2
@@ -1076,7 +1242,31 @@ if __name__ == "__main__":
         )
 
     with open(os.path.join(project_root, "files", "pre_sbml_pos_comp.pk"), "rb") as f:
-        data = pickle.load(f)
+        # This file was serialized with dill.dump earlier in this script.
+        # Use dill.load to correctly deserialize objects (and avoid
+        # Python 2 -> 3 module name issues such as '__builtin__').
+        data = dill.load(f)
+    try:
+        LOGGER.debug("Loaded pre_sbml_pos_comp.pk keys: %s", list(data.keys()))
+        if isinstance(data, dict):
+            for k in ("mets", "reactions", "genes", "pathways", "loc"):
+                if k in data:
+                    v = data[k]
+                    try:
+                        LOGGER.debug("%s: type=%s, len=%s", k, type(v), len(v))
+                    except Exception:
+                        LOGGER.debug("%s: type=%s", k, type(v))
+        # Sanitize reactions that may have been loaded from older pickles
+        try:
+            sanitize_loaded_reactions(RxnList, name="RxnList")
+            sanitize_loaded_reactions(RxnList_CL, name="RxnList_CL")
+        except Exception:
+            LOGGER.debug(
+                "Failed to sanitize reactions after loading pre_sbml_pos_comp.pk",
+                exc_info=True,
+            )
+    except Exception:
+        LOGGER.debug("Could not introspect loaded pre_sbml_pos_comp.pk", exc_info=True)
     # with open('files/pre_sbml_pos_comp.pk', 'rb') as f:
     #  data = f.read()
 
