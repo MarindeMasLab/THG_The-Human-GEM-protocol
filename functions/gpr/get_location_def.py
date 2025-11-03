@@ -1,4 +1,4 @@
-from cobra.io import read_sbml_model,write_sbml_model
+from cobra.io import read_sbml_model, write_sbml_model
 import cobra
 import os
 import urllib.request, urllib.error, urllib.parse
@@ -11,7 +11,7 @@ import traceback
 import itertools
 import pubchempy as pcp
 import string
-import pickle 
+import pickle
 from collections import defaultdict
 from itertools import zip_longest
 from cobra import Model, Reaction, Metabolite
@@ -21,14 +21,15 @@ import pdb
 from typing import List, Optional, Tuple
 import sys
 
-#import the functions
+# import the functions
 from functions.gpr.gpr_def import getGPR, setup_biocyc_session
 
 from functions.function_bm_gdb import *
 from functions.equations_bm_gdb import *
 
 
-#retrieve website with function from getgpr
+# retrieve website with function from getgpr
+
 
 def get_html(request_url: str, session: Optional[requests.Session] = None) -> str:
     """Fetch an html by perfoming a GET HTTPS request, maybe with session."""
@@ -38,31 +39,33 @@ def get_html(request_url: str, session: Optional[requests.Session] = None) -> st
         return requests.get(request_url).text
 
 
-def create_dict(gene,e):
-    n=''
+def create_dict(gene, e):
+    n = ""
     global my_dict
-    if 'my_dict' not in globals():
+    if "my_dict" not in globals():
         my_dict = {}
     elif gene and e:
-        my_dict[gene]=e 
+        my_dict[gene] = e
     elif gene and not e:
-        n= my_dict[gene]
-    return my_dict,n
+        n = my_dict[gene]
+    return my_dict, n
 
-#create a function that takes a string and a dictionary and replaces the keys in the string with the corresponding values in the dictionary
+
+# create a function that takes a string and a dictionary and replaces the keys in the string with the corresponding values in the dictionary
 def multiple_replace_new(dictionary, text):
-    #Remove any leading or trailing whitespace from the text
+    # Remove any leading or trailing whitespace from the text
     text = text.strip()
-    #put everything in lowercase
+    # put everything in lowercase
     text = text.lower()
-    #Search for the text in the dictionary
+    # Search for the text in the dictionary
     for key in dictionary:
-        #If the key is found in the text, replace it with the corresponding value
+        # If the key is found in the text, replace it with the corresponding value
         if key == text:
             text = text.replace(key, dictionary[key])
         if key != text:
             text = text
     return text
+
 
 def getLocationnew(
     gpr,
@@ -130,7 +133,6 @@ def getLocationnew(
             d = ""
             for m in range(len(a)):
 
-
                 uniprot = ""
                 biocyc = ""
 
@@ -144,8 +146,7 @@ def getLocationnew(
                 bb = str(urllib.request.urlopen(b).read())
                 dd = re.findall("GO:[0-9]+.+?C:(.+?);", bb)
 
-                
-                if not dd:  
+                if not dd:
                     ddd = re.search("(SUBCELLULAR LOCATION:.*)", "")
                     if ddd:
                         dd = [ddd.group(1)]
@@ -173,17 +174,17 @@ def getLocationnew(
                         try:
                             bb = str(urllib.request.urlopen(b).read())
                         except urllib.error.HTTPError:
-                            bb = ''
+                            bb = ""
                         if not bb:
                             b = (
                                 "https://biocyc.org/gene?orgid=HUMAN&id="
                                 + genelist2[index].upper()
                             )  # location in BioCyc human #########################
-                            #bb = str(getHtml(b, session))
+                            # bb = str(getHtml(b, session))
                             try:
                                 bb = str(urllib.request.urlopen(b).read())
                             except urllib.error.HTTPError:
-                                bb = ''
+                                bb = ""
                             # bb = str(urllib.request.urlopen(b).read())
 
                         if bb:
@@ -226,38 +227,66 @@ def getLocationnew(
                                     dd.extend(ddd)
                                     uniprot = "1"
 
-                        #try to retrieve website with function from getgpr
+                        # try to retrieve website with function from getgpr
 
-                        #for humancyc
-                        humancyc="https://biocyc.org/gene?orgid=HUMAN&id="+ genelist2[index].upper()
-                        #for metacyc
-                        metacyc="http://biocyc.org/gene?orgid=META&id="+ genelist2[index].upper()
-                        btry=get_html(humancyc, session)  
+                        # for humancyc
+                        humancyc = (
+                            "https://biocyc.org/gene?orgid=HUMAN&id="
+                            + genelist2[index].upper()
+                        )
+                        # for metacyc
+                        metacyc = (
+                            "http://biocyc.org/gene?orgid=META&id="
+                            + genelist2[index].upper()
+                        )
+                        btry = get_html(humancyc, session)
                         bb_human = str(btry)
-                        btry=get_html(metacyc, session)
+                        btry = get_html(metacyc, session)
                         bb_meta = str(btry)
 
                         # Extract the section between "Locations" and "Reactions"
-                        location_section_human = re.search(r"(?<=\nLocations)(.*?)(?=>\nReactions)", bb_human, re.DOTALL)
-                        location_section_meta = re.search(r"(?<=\nLocations)(.*?)(?=>\nReactions)", bb_meta, re.DOTALL)
+                        location_section_human = re.search(
+                            r"(?<=\nLocations)(.*?)(?=>\nReactions)",
+                            bb_human,
+                            re.DOTALL,
+                        )
+                        location_section_meta = re.search(
+                            r"(?<=\nLocations)(.*?)(?=>\nReactions)", bb_meta, re.DOTALL
+                        )
 
                         if location_section_human:
-                            compartments = re.findall(r"[\w\s-]+(?=\s*<a href)", location_section_human.group(0))
-                            #remove any \n in the compartments 
-                            compartments = [compartment.replace("\n", "") for compartment in compartments]
-                            #remove any leading or trailing whitespace
-                            compartments = [compartment.strip() for compartment in compartments]
+                            compartments = re.findall(
+                                r"[\w\s-]+(?=\s*<a href)",
+                                location_section_human.group(0),
+                            )
+                            # remove any \n in the compartments
+                            compartments = [
+                                compartment.replace("\n", "")
+                                for compartment in compartments
+                            ]
+                            # remove any leading or trailing whitespace
+                            compartments = [
+                                compartment.strip() for compartment in compartments
+                            ]
                             dd.extend(compartments)
 
                         elif location_section_meta:
-                            compartments = re.findall(r"[\w\s-]+(?=\s*<a href)", location_section_human.group(0))
-                            #remove any \n in the compartments 
-                            compartments = [compartment.replace("\n", "") for compartment in compartments]
-                            #remove any leading or trailing whitespace
-                            compartments = [compartment.strip() for compartment in compartments]
+                            compartments = re.findall(
+                                r"[\w\s-]+(?=\s*<a href)",
+                                location_section_human.group(0),
+                            )
+                            # remove any \n in the compartments
+                            compartments = [
+                                compartment.replace("\n", "")
+                                for compartment in compartments
+                            ]
+                            # remove any leading or trailing whitespace
+                            compartments = [
+                                compartment.strip() for compartment in compartments
+                            ]
                             dd.extend(compartments)
-                                                
-                        dd = list(set(dd)) #remove duplicates
+
+                        dd = list(set(dd))  # remove duplicates
 
                         if not dd:
                             UniProtKB = ""
@@ -367,17 +396,20 @@ def getLocationnew(
                                 a = ff.split(":")
                                 ff = a[1]
                             if hh == 0:
-                                
-                                ff = ff.lower()
-                                ff = multiple_replace_new(dictt, ff.split("{")[0]) #replace the keys in the string with the corresponding values in the dictionary
 
+                                ff = ff.lower()
+                                ff = multiple_replace_new(
+                                    dictt, ff.split("{")[0]
+                                )  # replace the keys in the string with the corresponding values in the dictionary
 
                             if re.findall("Dendriti", ff, re.IGNORECASE):
                                 ff = "Dendrite"
                             if (
                                 re.match("membrane", ff, re.IGNORECASE)
                                 or re.findall("plasma membrane", ff, re.IGNORECASE)
-                                or re.findall("integral component of membrane", ff, re.IGNORECASE)
+                                or re.findall(
+                                    "integral component of membrane", ff, re.IGNORECASE
+                                )
                             ):
                                 ff = "cell membrane"
                             if re.findall("eroxisom", ff):
@@ -428,10 +460,8 @@ def getLocationnew(
                                 ff = ff.lower()
                                 SubUnLoc = SubUnLoc + [ff]
                                 Locations = Locations + [ff]
-                            
 
-                            #transform everything in lowercase
-                            
+                            # transform everything in lowercase
 
                     d = sorted(set(SubUnLoc))
 
@@ -523,10 +553,11 @@ def getLocationnew(
                 RuleLoc4,
             )  # , p # p indicates that the location couldn't be determined and citosol has been put instead
 
-        
     except Exception as e:
         # return ""
         print("exception occurred")
         print(e)
-
-
+        # On error return empty structures with the same shape as the happy-path return
+        # so callers can safely iterate/extend the result instead of receiving None.
+        # Returning empty dicts preserves the expected (RuleLoc, RuleLoc2, RuleLoc3, RuleLoc4)
+        return ({}, {}, {}, {})
