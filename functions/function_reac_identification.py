@@ -27,7 +27,7 @@ def gather_kegg_metabolites(Output):
     Metabolite = {}
     with open(Output) as m:
         m = m.read()
-        for species in re.findall("<species metaid.+?<\/species>", m, re.DOTALL):
+        for species in re.findall(r"<species metaid.+?</species>", m, re.DOTALL):
             CompoundID = ""
             MetID = re.findall('about="#(.+?)">', species)[0]
             if re.findall("compound.([A-Z][0-9]+)", species):
