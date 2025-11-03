@@ -5,6 +5,10 @@ from typing import List, Union
 # we are only using cobra for the GPR parse
 import cobra
 from cobra.core.gene import GPR, ast_parse
+import logging
+import re
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def divide_gpr_in_ors(ast) -> List:
@@ -146,5 +150,56 @@ def reduce_gpr(ast_str: str) -> GPR:
 
 def sanitize_gpr(gpr: str) -> str:
     """Remove empty names, reduce SUM-types and deduplicate nodes."""
-    gpr = reduce_gpr(gpr.replace("]", "").replace("[", "")).to_string()
-    return deduplicate_gpr(gpr).to_string()
+    original_gpr = gpr
+
+    # If the expression contains only ORs and no ANDs, parentheses are not
+    # meaningful for logical grouping (OR is associative). Strip all
+    # parentheses/brackets to avoid parse errors from unmatched brackets.
+    try:
+        lower_gpr = gpr.lower()
+        if "and" not in lower_gpr and "or" in lower_gpr:
+            _LOGGER.info(
+                "GPR appears to contain only ORs (no ANDs). Stripping all brackets for: %r",
+                original_gpr,
+            )
+            gpr = (
+                gpr.replace("(", "").replace(")", "").replace("[", "").replace("]", "")
+            )
+    except Exception:
+        _LOGGER.debug("Error while checking for OR-only GPR", exc_info=True)
+
+    # Remove parentheses that wrap a single gene (e.g. `(GENE1)` -> `GENE1`)
+    # Do this iteratively to handle nested harmless parentheses.
+    try:
+        prev = None
+        while prev != gpr:
+            prev = gpr
+            gpr = re.sub(r"\(\s*([A-Za-z0-9_\-]+)\s*\)", r"\1", gpr)
+    except Exception:
+        _LOGGER.debug("Failed to strip single-gene parentheses", exc_info=True)
+
+    # If parentheses are unmatched, warn and remove them to allow parsing to continue
+    if gpr.count("(") != gpr.count(")"):
+        _LOGGER.warning(
+            "Unmatched parentheses in GPR: %r -- original: %r",
+            gpr,
+            original_gpr,
+        )
+        # remove all parentheses (best-effort salvage)
+        gpr = gpr.replace("(", "").replace(")", "")
+
+    # Proceed with existing reduction/parsing, but guard against parse failures
+    try:
+        reduced = reduce_gpr(gpr.replace("]", "").replace("[", "")).to_string()
+    except Exception as e:
+        _LOGGER.warning(
+            "reduce_gpr failed for GPR %r (after pre-clean): %s -- falling back by stripping brackets",
+            original_gpr,
+            e,
+        )
+        _LOGGER.debug("traceback:", exc_info=True)
+        # fallback: strip all bracket characters and try again
+        safe = gpr.replace("(", "").replace(")", "").replace("[", "").replace("]", "")
+        reduced = reduce_gpr(safe).to_string()
+
+    return deduplicate_gpr(reduced).to_string()
