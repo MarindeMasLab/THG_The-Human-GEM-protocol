@@ -2020,10 +2020,10 @@ def getRxncons(rxn, time, MetEquiv, MetList, MetIdent, EF, specialCompounds):
                     if CompID[0] == "G":
                         CURL = "http://www.kegg.jp/dbget-bin/www_bget?gl:" + CompID
                     MetList[CompID] = compound(CURL, CompID, time, EF, specialCompounds)
-                    if MetList[CompID].ID1() != MetList[CompID].ID2():
-                        MetIdent[len(MetIdent) - 1] = MetList[CompID].ID1()
-                        MetEquiv[CompID] = MetList[CompID].ID1()
-                        MetList[MetList[CompID].ID1()] = copy.deepcopy(
+                    if MetList[CompID].ID1 != MetList[CompID].ID2:
+                        MetIdent[len(MetIdent) - 1] = MetList[CompID].ID1
+                        MetEquiv[CompID] = MetList[CompID].ID1
+                        MetList[MetList[CompID].ID1] = copy.deepcopy(
                             MetList[CompID]
                         )  # Change the reference in the dictionary to account for the 1th ID
                         del MetList[CompID]
@@ -2075,10 +2075,10 @@ def getRxncons(rxn, time, MetEquiv, MetList, MetIdent, EF, specialCompounds):
                         MetList[CompID] = compound(
                             CURL, CompID, time, EF, specialCompounds
                         )
-                        if MetList[CompID].ID1() != MetList[CompID].ID2():
-                            MetIdent[len(MetIdent) - 1] = MetList[CompID].ID1()
-                            MetEquiv[CompID] = MetList[CompID].ID1()
-                            MetList[MetList[CompID].ID1()] = copy.deepcopy(
+                        if MetList[CompID].ID1 != MetList[CompID].ID2:
+                            MetIdent[len(MetIdent) - 1] = MetList[CompID].ID1
+                            MetEquiv[CompID] = MetList[CompID].ID1
+                            MetList[MetList[CompID].ID1] = copy.deepcopy(
                                 MetList[CompID]
                             )  # Change the reference in the dictionary to account for the 1th ID
                             del MetList[CompID]

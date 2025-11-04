@@ -16,6 +16,7 @@ import re
 import urllib.request, urllib.parse, urllib.error
 import requests
 import pickle
+import logging
 
 # from Class import gpr
 
@@ -153,7 +154,7 @@ def DefComp(Comp):
     CompID = Comp.ID1
     # print(136, CompID)
     # CompIDRef = '<rdf:li rdf:resource="urn:miriam:kegg.compound:'+CompID.split('_')[0]+'" />'
-    CompName = Comp.Name()
+    CompName = Comp.Name
     if CompName:
         CompName = CompName.replace("&", "").replace(";", "")
     # if not CompName:
@@ -181,14 +182,14 @@ def DefComp(Comp):
     # if Comp.Subcel == "Inner mitochondria"Comparment = 'i'
     LocVar = create_dict()
     Comparment = LocVar.get(Comp.Subcel[0].upper() + Comp.Subcel[1:])
-    Formula = Comp.Formula1().replace("-", "")  # in case formula from pubchem
+    Formula = Comp.Formula1.replace("-", "")  # in case formula from pubchem
     if "(" in Formula:  # in case glycan
         # 	Path="Formula"
         # 	with open(Path,'a') as Formula_file:
         # 		Formula_file.write(CompID.split("_")[0]+"\t"+Formula+"\n")
-        Formula = Comp.Formula4()
-    charge = Comp.charge()
-    PubChem = Comp.PubChem()  # NO
+        Formula = Comp.Formula4
+    charge = Comp.charge
+    PubChem = Comp.PubChem  # NO
     if PubChem:
         PubChemID = (
             '                  <rdf:li rdf:resource="https://identifiers.org/pubchem.substance/'
@@ -197,7 +198,7 @@ def DefComp(Comp):
         )
     else:
         PubChemID = ""
-    CheBI = Comp.CheBI()
+    CheBI = Comp.CheBI
     if CheBI:
         CheBIID = (
             '                  <rdf:li rdf:resource="https://identifiers.org/chebi/CHEBI:'
@@ -206,7 +207,7 @@ def DefComp(Comp):
         )
     else:
         CheBIID = ""
-    LIPIDMAPS = Comp.LIPIDMAPS()
+    LIPIDMAPS = Comp.LIPIDMAPS
     if LIPIDMAPS:
         LIPIDMAPSID = (
             '                  <rdf:li rdf:resource="https://identifiers.org/lipidmaps/'
@@ -215,7 +216,7 @@ def DefComp(Comp):
         )
     else:
         LIPIDMAPSID = ""
-    LipidBank = Comp.LipidBank()  # NO
+    LipidBank = Comp.LipidBank  # NO
     if LipidBank:
         LipidBankID = (
             '                  <rdf:li rdf:resource="https://identifiers.org/LipidBank:LipidBank:'
@@ -238,26 +239,26 @@ def DefComp(Comp):
         )
     else:
         Kegg = ""
-    if Comp.CID():
+    if Comp.CID:
         PubChem_CID = (
             '                  <rdf:li rdf:resource="https://identifiers.org/pubchem.compound/'
-            + Comp.CID()
+            + Comp.CID
             + '"/>\n'
         )
     else:
         PubChem_CID = ""
-    if Comp.inchi():
+    if Comp.inchi:
         inchi = (
             '                  <rdf:li rdf:resource="https://identifiers.org/inchi/'
-            + Comp.inchi()
+            + Comp.inchi
             + '"/>\n'
         )
     else:
         inchi = ""
-    if Comp.inchikey():
+    if Comp.inchikey:
         inchikey = (
             '                  <rdf:li rdf:resource="https://identifiers.org/inchikey/'
-            + Comp.inchikey()
+            + Comp.inchikey
             + '"/>\n'
         )
     else:
@@ -734,8 +735,9 @@ def rxnSubcel(
                     RxnList_CL[RxnID_CL].ID = RxnID_CL
                     RxnList_CL[RxnID_CL].GPR2 = lambda cl=cl: Rxn.Subcel[0][cl]
                     RxnList_CL[RxnID_CL].Subcel = cl
-                    RxnCmp_CL = [x[2] for x in RxnList_CL[RxnID_CL].Substrate] + [
-                        x[2] for x in RxnList_CL[RxnID_CL].Product
+                    # Call the accessor methods to obtain substrate/product lists
+                    RxnCmp_CL = [x[2] for x in RxnList_CL[RxnID_CL].Substrate()] + [
+                        x[2] for x in RxnList_CL[RxnID_CL].Product()
                     ]
                     c = 0
                     while c < len(RxnCmp_CL):
@@ -751,6 +753,7 @@ def rxnSubcel(
                                 MetList_CL[CompID_CL] = copy.deepcopy(
                                     MetList[RxnCmp_CL[c]]
                                 )
+                            # Updates the ID1 associated attribute
                             MetList_CL[CompID_CL].ID1 = (
                                 MetList_CL[CompID_CL].ID1 + "_" + cl
                             )
@@ -758,7 +761,8 @@ def rxnSubcel(
                         c = c + 1
         return Compartment_CL, rxn_cl, comp_cl
     except Exception as e:
-        print(e)
+        # Log full traceback for easier debugging
+        logging.exception("Error in rxnSubcel: %s", e)
         return Compartment_CL, [], []
 
 

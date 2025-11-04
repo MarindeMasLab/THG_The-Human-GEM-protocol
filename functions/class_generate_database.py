@@ -276,7 +276,13 @@ class compound(object):
         self.atributes = bm.getCompParam(
             self.pagina, self.ident, time, EF, specialCompounds, RxnID=None
         )
+        # store raw newparam then populate plain attributes
         self.newparam = newparam
+        try:
+            self._populate_attributes()
+        except Exception:
+            # be robust during parsing failures; attributes will default to empty
+            pass
 
     @classmethod
     def from_batch_data(
@@ -308,165 +314,86 @@ class compound(object):
             )
 
         obj.newparam = newparam
+        # populate plain attributes for objects created via from_batch_data
+        try:
+            obj._populate_attributes()
+        except Exception:
+            pass
+
         return obj
 
-    def ID1(self):
-        try:
-            return self.atributes[0][0][0]
-        # 			return getID(url)
-        except Exception:
-            return ""
+    def _populate_attributes(self):
+        """Populate plain attributes from self.atributes and self.newparam."""
+        bm = _bm()
 
-    def ID2(self):
-        try:
-            return self.atributes[0][0][1]
-        # 			return getID(url)
-        except Exception:
-            return ""
+        # Helper function to safely get nested attributes
+        def safe_get(data, *indices, default=""):
+            try:
+                result = data
+                for idx in indices:
+                    result = result[idx]
+                return result
+            except (IndexError, KeyError, TypeError):
+                return default
 
-    def AssRxn1(self):
-        try:
-            return self.atributes[2][0]
-        except Exception:
-            return ""
+        # Set all attributes with defaults
+        self.ID1 = safe_get(self.atributes, 0, 0, 0)
+        self.ID2 = safe_get(self.atributes, 0, 0, 1)
 
-    def AssRxn2(self):
-        try:
-            return [x[0] for x in self.atributes[2][0]]
-        except Exception:
-            return ""
+        self.Formula1 = safe_get(self.atributes, 1, 0, 0)
+        self.Formula2 = safe_get(self.atributes, 1, 0, 1)
+        self.Formula3 = self.Formula1  # Legacy mirror
+        self.Formula4 = safe_get(self.atributes, 11)
 
-    def AssRxn3(self):
+        self.AssRxn1 = safe_get(self.atributes, 2, 0)
         try:
-            return [x[1] for x in self.atributes[2][0]]
-        except Exception:
-            return ""
+            self.AssRxn2 = (
+                [x[0] for x in self.atributes[2][0]] if self.atributes[2][0] else ""
+            )
+            self.AssRxn3 = (
+                [x[1] for x in self.atributes[2][0]] if self.atributes[2][0] else ""
+            )
+        except (IndexError, KeyError, TypeError):
+            self.AssRxn2 = ""
+            self.AssRxn3 = ""
 
-    def Formula1(self):
-        try:
-            return self.atributes[1][0][0]
-        except Exception:
-            return ""
+        self.Name = safe_get(self.atributes, 3, 0)
+        self.Subcel = self.newparam
 
-    def Formula2(self):
-        try:
-            return self.atributes[1][0][1]
-        except Exception:
-            return ""
+        # External database identifiers
+        self.PubChem = safe_get(self.atributes, 4, 0)
+        self.CheBI = safe_get(self.atributes, 5, 0)
+        self.LIPIDMAPS = safe_get(self.atributes, 6, 0)
+        self.LipidBank = safe_get(self.atributes, 7, 0)
+        self.GlyDB = safe_get(self.atributes, 8, 0)
+        self.JCGGDB = safe_get(self.atributes, 9, 0)
 
-    def Formula3(self):
-        try:
-            return self.atributes[1][0][0]
-        except Exception:
-            return ""
+        # Chemical properties
+        self.charge = safe_get(self.atributes, 10)
+        self.inchikey = safe_get(self.atributes, 12)
+        self.inchi = safe_get(self.atributes, 13)
+        self.CID = safe_get(self.atributes, 14)
 
-    def Atom1(self):
-        try:
-            bm = _bm()
-            if self.atributes[0][0][0][0] == "C":
-                composition = bm.atom(self.atributes[1][0][0])
-            elif self.atributes[0][0][0][0] == "G":
-                composition = bm.glycan(self.atributes[1][0][0])
-            return composition
-        except Exception:
-            return ""
+        # Atom compositions
+        self.Atom1 = ""
+        self.Atom2 = ""
+        self.Atom3 = ""
 
-    def Atom2(self):
         try:
-            bm = _bm()
-            if self.atributes[0][0][1][0] == "C":
-                composition = bm.atom(self.atributes[1][0][1])
-            elif self.atributes[0][0][1][0] == "G":
-                composition = bm.glycan(self.atributes[1][0][1])
-            return composition
-        except Exception:
-            return ""
+            id1 = safe_get(self.atributes, 0, 0, 0)
+            if id1 and len(id1) > 0:
+                if id1[0] == "C":
+                    self.Atom1 = bm.atom(self.Formula1) if self.Formula1 else ""
+                elif id1[0] == "G":
+                    self.Atom1 = bm.glycan(self.Formula1) if self.Formula1 else ""
 
-    def Atom3(self):
-        try:
-            bm = _bm()
-            if self.atributes[0][0][0][0] == "C":
-                composition = bm.atom(self.atributes[1][0][0])
-            elif self.atributes[0][0][0][0] == "G":
-                composition = bm.glycan(self.atributes[1][0][0])
-            return composition
-        except Exception:
-            return ""
+            id2 = safe_get(self.atributes, 0, 0, 1)
+            if id2 and len(id2) > 0:
+                if id2[0] == "C":
+                    self.Atom2 = bm.atom(self.Formula2) if self.Formula2 else ""
+                elif id2[0] == "G":
+                    self.Atom2 = bm.glycan(self.Formula2) if self.Formula2 else ""
 
-    def Name(self):
-        try:
-            return self.atributes[3][0]
+            self.Atom3 = self.Atom1  # Legacy mirror
         except Exception:
-            return ""
-
-    def Subcel(self):
-        try:
-            return self.newparam
-        except Exception:
-            return ""
-
-    def PubChem(self):
-        try:
-            return self.atributes[4][0]
-        except Exception:
-            return ""
-
-    def CheBI(self):
-        try:
-            return self.atributes[5][0]
-        except Exception:
-            return ""
-
-    def LIPIDMAPS(self):
-        try:
-            return self.atributes[6][0]
-        except Exception:
-            return ""
-
-    def LipidBank(self):
-        try:
-            return self.atributes[7][0]
-        except Exception:
-            return ""
-
-    def GlyDB(self):
-        try:
-            return self.atributes[8][0]
-        except Exception:
-            return ""
-
-    def JCGGDB(self):
-        try:
-            return self.atributes[9][0]
-        except Exception:
-            return ""
-
-    def charge(self):
-        try:
-            return self.atributes[10][:]
-        except Exception:
-            return ""
-
-    def Formula4(self):
-        try:
-            return self.atributes[11][:]
-        except Exception:
-            return ""
-
-    def inchikey(self):
-        try:
-            return self.atributes[12][:]
-        except Exception:
-            return ""
-
-    def inchi(self):
-        try:
-            return self.atributes[13][:]
-        except Exception:
-            return ""
-
-    def CID(self):
-        try:
-            return self.atributes[14][:]
-        except Exception as e:
-            return ""
+            pass

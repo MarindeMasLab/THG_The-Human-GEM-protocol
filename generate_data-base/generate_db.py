@@ -209,13 +209,20 @@ def cobra_reconstruction(
         LOGGER.debug("Could not list reaction_list keys", exc_info=True)
     # metabolites
     LOGGER.info(f"Adding {len(metabolite_list)} metabolites to the model")
+    # Create metabolites using explicit keyword arguments to avoid positional
+    # argument ordering mistakes (name/formula/charge were previously swapped).
     compounds = [
         cobra.Metabolite(
-            compound.ID2() + "_" + location_dict.get(compound.Subcel.lower()),
-            compound.Formula1(),
-            compound.Name(),
-            float(compound.charge()),
-            location_dict.get(compound.Subcel.lower()),
+            id=compound.ID2 + "_" + location_dict.get(compound.Subcel.lower()),
+            name=compound.Name,
+            formula=compound.Formula1,
+            charge=(
+                float(compound.charge)
+                if compound.charge is not None
+                and str(compound.charge) not in ["", "None"]
+                else None
+            ),
+            compartment=location_dict.get(compound.Subcel.lower()),
         )
         for iden, compound in metabolite_list.items()
     ]
@@ -229,20 +236,20 @@ def cobra_reconstruction(
         metabolite_list.items(), desc="Annotating metabolites", unit="met"
     ):
         model_met = model.metabolites.get_by_id(
-            compound.ID2() + "_" + location_dict.get(compound.Subcel.lower())
+            compound.ID2 + "_" + location_dict.get(compound.Subcel.lower())
         )
         met_mapping[iden] = model_met.id
         annotation = {
-            "pubchem.compound": compound.PubChem(),
-            "chebi.compound": compound.CheBI(),
-            "glycomedb": compound.GlyDB(),
-            "jcggdb": compound.JCGGDB(),
-            "inchi": compound.inchi(),
-            "inchikey": compound.inchikey(),
-            "lipidbank": compound.LipidBank(),
-            "lipidmaps": compound.LIPIDMAPS(),
+            "pubchem.compound": compound.PubChem,
+            "chebi.compound": compound.CheBI,
+            "glycomedb": compound.GlyDB,
+            "jcggdb": compound.JCGGDB,
+            "inchi": compound.inchi,
+            "inchikey": compound.inchikey,
+            "lipidbank": compound.LipidBank,
+            "lipidmaps": compound.LIPIDMAPS,
         }
-        alt_formulas = [compound.Formula2(), compound.Formula3(), compound.Formula4()]
+        alt_formulas = [compound.Formula2, compound.Formula3, compound.Formula4]
         alt_formula = [
             form for form in alt_formulas if form != model_met.formula and form
         ]
@@ -263,7 +270,7 @@ def cobra_reconstruction(
                     y[0] for y in location_dict.items() if y[1] in x.id.split("_")[1]
                 ][0]
                 xth_metabolite_id = x.id.split("_")[0] + "_" + compartment
-                x.formula = metabolite_list[xth_metabolite_id].Formula4()
+                x.formula = metabolite_list[xth_metabolite_id].Formula4
             except Exception as e:
                 import traceback
 
@@ -277,7 +284,7 @@ def cobra_reconstruction(
     ):  # eliminate potential discrepancies between metabolite id and reaction compounds ids
         if x.id.split("_")[0] in metabolite_equivalent.keys():
             x.id = (
-                metabolite_list_general[metabolite_equivalent[x.id.split("_")[0]]].ID1()
+                metabolite_list_general[metabolite_equivalent[x.id.split("_")[0]]].ID1
                 + "_"
                 + x.compartment.lower()
             )
@@ -356,24 +363,26 @@ def cobra_reconstruction(
                 maybe_mets = [m for m in model.metabolites if m.id.startswith(met_root)]
                 if maybe_mets:
                     model_met = maybe_mets[0]
-                    LOGGER.warning(
-                        f"Reactant '{met_root}' was added in a different comparment '{met_comp}'."
-                    )
+                    # LOGGER.warning(
+                    #     f"Reactant '{met_root}' was added in a different comparment '{met_comp}'."
+                    # )
+                    # Use keyword args to ensure fields are assigned correctly
                     new_met = cobra.Metabolite(
-                        met_id,
-                        model_met.formula,
-                        model_met.name,
-                        model_met.charge,
+                        id=met_id,
+                        name=model_met.name,
+                        formula=model_met.formula,
+                        charge=model_met.charge,
                         # might be a new compartment!
-                        met_comp,
+                        compartment=met_comp,
                     )
                     new_met.annotation = model_met.annotation
                 else:
-                    LOGGER.warning(
-                        f"Reactant {met_id} was not found in any compartment. Creating new one!"
-                    )
+                    # LOGGER.warning(
+                    #     f"Reactant {met_id} was not found in any compartment. Creating new one!"
+                    # )
+                    # Create a minimal metabolite with explicit compartment
                     new_met = cobra.Metabolite(
-                        met_id,
+                        id=met_id,
                         compartment=met_comp,
                     )
                 new_mets.append(new_met)
@@ -447,7 +456,7 @@ def cobra_reconstruction(
     for iden, gene in tqdm(gene_list.items(), desc="Annotating genes", unit="gene"):
         # Avoid printing every gene to stdout (very slow for large models).
         # Use debug logging so the output can be enabled when needed.
-        LOGGER.debug("Processing gene: %s", iden)
+        # LOGGER.debug("Processing gene: %s", iden)
 
         if not iden in model.genes:
             LOGGER.warning(f"Gene '{iden}' was not found. Creating new one!")
@@ -679,6 +688,15 @@ if __name__ == "__main__":
             print(f"Could not load checkpoint file: {e}. Starting from beginning.")
             start_pathway_index = 0
 
+    # Debugging flag: limit number of reactions to process (None = no limit)
+    # Set this to an integer to process at most that many reactions and then
+    # stop early. Useful when debugging to avoid long runs.
+    MAX_REACTIONS = 10  # e.g. set to 100 for debugging
+
+    # Internal counters/flags used when MAX_REACTIONS is set
+    processed_reactions = 0
+    stop_processing = False
+
     ######### Pathways ###########
     i = start_pathway_index
     while i < len(Path) - 1:
@@ -835,37 +853,37 @@ if __name__ == "__main__":
 
                                     # Debug: Show compound details
                                     LOGGER.debug(f"Compound {CompID} details:")
-                                    LOGGER.debug(f"  - ID1: {MetList[CompID].ID1()}")
-                                    LOGGER.debug(f"  - ID2: {MetList[CompID].ID2()}")
-                                    LOGGER.debug(f"  - Name: {MetList[CompID].Name()}")
+                                    LOGGER.debug(f"  - ID1: {MetList[CompID].ID1}")
+                                    LOGGER.debug(f"  - ID2: {MetList[CompID].ID2}")
+                                    LOGGER.debug(f"  - Name: {MetList[CompID].Name}")
                                     LOGGER.debug(
-                                        f"  - Formula1: {MetList[CompID].Formula1()}"
+                                        f"  - Formula1: {MetList[CompID].Formula1}"
                                     )
                                     LOGGER.debug(
-                                        f"  - Formula2: {MetList[CompID].Formula2()}"
+                                        f"  - Formula2: {MetList[CompID].Formula2}"
                                     )
                                     if (
-                                        MetList[CompID].ID1()
-                                        and MetList[CompID].ID1()[0] == "G"
+                                        MetList[CompID].ID1
+                                        and MetList[CompID].ID1[0] == "G"
                                     ):
                                         LOGGER.debug(
-                                            f"  - [GLYCAN] Formula4 (reformulated): {MetList[CompID].Formula4()}"
+                                            f"  - [GLYCAN] Formula4 (reformulated): {MetList[CompID].Formula4}"
                                         )
                                     LOGGER.debug(
-                                        f"  - Atom composition: {MetList[CompID].Atom1()}"
+                                        f"  - Atom composition: {MetList[CompID].Atom1}"
                                     )
 
                                     # Handle ID equivalences
-                                    if MetList[CompID].ID1() != MetList[CompID].ID2():
+                                    if MetList[CompID].ID1 != MetList[CompID].ID2:
                                         LOGGER.debug(
-                                            f"ID equivalence found: {CompID} -> {MetList[CompID].ID1()}"
+                                            f"ID equivalence found: {CompID} -> {MetList[CompID].ID1}"
                                         )
                                         MetIdent[len(MetIdent) - 1] = MetList[
                                             CompID
-                                        ].ID1()
-                                        MetEquiv[CompID] = MetList[CompID].ID1()
+                                        ].ID1
+                                        MetEquiv[CompID] = MetList[CompID].ID1
                                         # Direct assignment instead of deepcopy when possible
-                                        MetList[MetList[CompID].ID1()] = MetList[CompID]
+                                        MetList[MetList[CompID].ID1] = MetList[CompID]
                                         del MetList[CompID]
                                 except Exception as e:
                                     LOGGER.error(
@@ -1008,18 +1026,14 @@ if __name__ == "__main__":
                         for sub in S:
                             met_id = sub[2]
                             met_name = (
-                                MetList[met_id].Name()
-                                if met_id in MetList
-                                else "Unknown"
+                                MetList[met_id].Name if met_id in MetList else "Unknown"
                             )
                             LOGGER.debug(f"    {sub[0]} {met_id} ({met_name})")
                         LOGGER.debug(f"  Products:")
                         for prod in P:
                             met_id = prod[2]
                             met_name = (
-                                MetList[met_id].Name()
-                                if met_id in MetList
-                                else "Unknown"
+                                MetList[met_id].Name if met_id in MetList else "Unknown"
                             )
                             LOGGER.debug(f"    {prod[0]} {met_id} ({met_name})")
 
@@ -1133,6 +1147,9 @@ if __name__ == "__main__":
                         RxnList[RxnID].GPR = tmpGPR
                         RxnList[RxnID].Subcel = tmpSC2
 
+                        logging.debug(
+                            f"len metlist_CL before rxnSubcel: {len(MetList_CL)}"
+                        )
                         ######### Expand the annotations based on the cellular location ###########
                         Compartment_CL, rxn_cl, comp_cl = rxnSubcel(
                             RxnList[RxnID],
@@ -1144,6 +1161,9 @@ if __name__ == "__main__":
                             RxnList,
                             MetList,
                             MetEquiv,
+                        )
+                        logging.debug(
+                            f"len metlist_CL after rxnSubcel: {len(MetList_CL)}"
                         )
 
                         RxnIdent_CL.extend(
@@ -1165,6 +1185,23 @@ if __name__ == "__main__":
                             + str(len(Path) - 1)
                             + ")"
                         )
+                        # Increment processed reactions and check debug limit
+                        try:
+                            processed_reactions += 1
+                        except NameError:
+                            # If variables not present for some reason, initialize
+                            processed_reactions = 1
+
+                        if (
+                            MAX_REACTIONS is not None
+                            and processed_reactions >= MAX_REACTIONS
+                        ):
+                            LOGGER.info(
+                                "Reached MAX_REACTIONS=%s. Stopping early for debugging.",
+                                MAX_REACTIONS,
+                            )
+                            stop_processing = True
+                            break
                 except Exception as e:
                     LOGGER.error(
                         f"Failed to process reaction {RxnID if 'RxnID' in locals() else 'unknown'}: {e}"
@@ -1211,6 +1248,14 @@ if __name__ == "__main__":
             LOGGER.debug(f"Checkpoint saved after pathway {i + 1}/{len(Path) - 1}")
         except Exception as e:
             LOGGER.warning(f"Failed to save checkpoint: {e}")
+
+        # If a debugging stop was requested (MAX_REACTIONS reached), break out
+        # after saving the checkpoint so partial work is preserved.
+        if stop_processing:
+            LOGGER.info(
+                "Stopping processing after reaching MAX_REACTIONS=%s", MAX_REACTIONS
+            )
+            break
 
         i = i + 1
 

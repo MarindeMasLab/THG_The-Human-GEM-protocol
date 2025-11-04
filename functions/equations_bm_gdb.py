@@ -377,48 +377,48 @@ def WrapRxnSubsProdParam(Reaction, MetList, MetEquiv):
     if gly_test == 1:
         for s in range(0, len(Substrate)):
             if Substrate[s][2] in MetEquiv:
-                DS[MetList[MetEquiv[Substrate[s][2]]].Formula2()] = [
+                DS[MetList[MetEquiv[Substrate[s][2]]].Formula2] = [
                     1,
-                    MetList[MetEquiv[Substrate[s][2]]].ID1(),
+                    MetList[MetEquiv[Substrate[s][2]]].ID1,
                 ]  # Formula1
             else:
-                DS[MetList[Substrate[s][2]].Formula2()] = [
+                DS[MetList[Substrate[s][2]].Formula2] = [
                     1,
-                    MetList[Substrate[s][2]].ID1(),
+                    MetList[Substrate[s][2]].ID1,
                 ]  # Formula1
         for p in range(0, len(Product)):
             if Product[p][2] in MetEquiv:
-                DP[MetList[MetEquiv[Product[p][2]]].Formula2()] = [
+                DP[MetList[MetEquiv[Product[p][2]]].Formula2] = [
                     1,
-                    MetList[MetEquiv[Product[p][2]]].ID1(),
+                    MetList[MetEquiv[Product[p][2]]].ID1,
                 ]  # Formula1
             else:
-                DP[MetList[Product[p][2]].Formula2()] = [
+                DP[MetList[Product[p][2]].Formula2] = [
                     1,
-                    MetList[Product[p][2]].ID1(),
+                    MetList[Product[p][2]].ID1,
                 ]  # Formula1
     else:
         for s in range(0, len(Substrate)):
             if Substrate[s][2] in MetEquiv:
-                DS[MetList[MetEquiv[Substrate[s][2]]].Formula1()] = [
+                DS[MetList[MetEquiv[Substrate[s][2]]].Formula1] = [
                     1,
-                    MetList[MetEquiv[Substrate[s][2]]].ID1(),
+                    MetList[MetEquiv[Substrate[s][2]]].ID1,
                 ]  # Formula1
             else:
-                DS[MetList[Substrate[s][2]].Formula1()] = [
+                DS[MetList[Substrate[s][2]].Formula1] = [
                     1,
-                    MetList[Substrate[s][2]].ID1(),
+                    MetList[Substrate[s][2]].ID1,
                 ]  # Formula1
         for p in range(0, len(Product)):
             if Product[p][2] in MetEquiv:
-                DP[MetList[MetEquiv[Product[p][2]]].Formula1()] = [
+                DP[MetList[MetEquiv[Product[p][2]]].Formula1] = [
                     1,
-                    MetList[MetEquiv[Product[p][2]]].ID1(),
+                    MetList[MetEquiv[Product[p][2]]].ID1,
                 ]  # Formula1
             else:
-                DP[MetList[Product[p][2]].Formula1()] = [
+                DP[MetList[Product[p][2]].Formula1] = [
                     1,
-                    MetList[Product[p][2]].ID1(),
+                    MetList[Product[p][2]].ID1,
                 ]  # Formula1
     return DS, DP
 
@@ -545,11 +545,11 @@ def RxnParam2Eq(Reaction, MetList, MetEquiv):
                         + " + "
                         + SStch
                         + " "
-                        + MetList[MetEquiv[Substrate[s][2]]].Formula2()
+                        + MetList[MetEquiv[Substrate[s][2]]].Formula2
                     )  # Formula2
                 else:
                     S = (
-                        S + " + " + SStch + " " + MetList[Substrate[s][2]].Formula2()
+                        S + " + " + SStch + " " + MetList[Substrate[s][2]].Formula2
                     )  # Formula2
                 s = s + 1
             S = S[3:].replace(" +  + ", " + ")
@@ -563,11 +563,11 @@ def RxnParam2Eq(Reaction, MetList, MetEquiv):
                         + " + "
                         + PStch
                         + " "
-                        + MetList[MetEquiv[Product[p][2]]].Formula2()
+                        + MetList[MetEquiv[Product[p][2]]].Formula2
                     )  # Formula2
                 else:
                     P = (
-                        P + " + " + PStch + " " + MetList[Product[p][2]].Formula2()
+                        P + " + " + PStch + " " + MetList[Product[p][2]].Formula2
                     )  # Formula2
                 p = p + 1
             P = P[3:].replace(" +  + ", " + ")
@@ -584,10 +584,10 @@ def RxnParam2Eq(Reaction, MetList, MetEquiv):
                         + " + "
                         + SStch
                         + " "
-                        + MetList[MetEquiv[Substrate[s][2]]].Formula1()
+                        + MetList[MetEquiv[Substrate[s][2]]].Formula1
                     )
                 else:
-                    S = S + " + " + SStch + " " + MetList[Substrate[s][2]].Formula1()
+                    S = S + " + " + SStch + " " + MetList[Substrate[s][2]].Formula1
                 s = s + 1
             S = S[3:].replace(" +  + ", " + ")
             p = 0
@@ -600,10 +600,10 @@ def RxnParam2Eq(Reaction, MetList, MetEquiv):
                         + " + "
                         + PStch
                         + " "
-                        + MetList[MetEquiv[Product[p][2]]].Formula1()
+                        + MetList[MetEquiv[Product[p][2]]].Formula1
                     )
                 else:
-                    P = P + " + " + PStch + " " + MetList[Product[p][2]].Formula1()
+                    P = P + " + " + PStch + " " + MetList[Product[p][2]].Formula1
                 p = p + 1
             P = P[3:].replace(" +  + ", " + ")
             eq0 = S + " -> " + P

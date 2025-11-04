@@ -4,6 +4,7 @@ import dill
 import logging
 import importlib.util
 import traceback
+from pprint import pformat
 
 
 # Setup logging
@@ -54,6 +55,97 @@ RxnList_CL = data.get("reactions_cl") if isinstance(data, dict) else {}
 GeneList = data.get("genes") if isinstance(data, dict) else {}
 PathNameRxn = data.get("pathways") if isinstance(data, dict) else {}
 LocVar = data.get("loc") if isinstance(data, dict) else {}
+
+
+# --- Debug: print detailed information for a couple of metabolites from the pickle
+def _safe_call(obj, attr):
+    try:
+        val = getattr(obj, attr)
+        if callable(val):
+            try:
+                return val()
+            except TypeError:
+                # some callables require args; skip
+                return f"<callable {attr} requires arguments>"
+            except Exception as e:
+                return f"<error calling {attr}: {e}>"
+        else:
+            return val
+    except Exception as e:
+        return f"<missing {attr}: {e}>"
+
+
+def print_compound_info(label, compound):
+    LOGGER.info("--- Compound info: %s ---", label)
+    try:
+        LOGGER.info("Type: %s", type(compound))
+        LOGGER.info("Repr: %s", repr(compound))
+        # If object stores attributes in __dict__, print them
+        if hasattr(compound, "__dict__"):
+            try:
+                LOGGER.info("__dict__: %s", pformat(compound.__dict__))
+            except Exception:
+                LOGGER.info("Could not pretty-print __dict__", exc_info=True)
+
+        # Try a set of commonly-used accessor methods safely
+        probe_methods = [
+            "ID1",
+            "ID2",
+            "Name",
+            "Formula1",
+            "Formula2",
+            "Formula3",
+            "Formula4",
+            "PubChem",
+            "CheBI",
+            "GlyDB",
+            "JCGGDB",
+            "inchi",
+            "inchikey",
+            "LipidBank",
+            "LIPIDMAPS",
+            "Atom1",
+            "charge",
+            "Subcel",
+        ]
+        for m in probe_methods:
+            LOGGER.info("%s(): %s", m, _safe_call(compound, m))
+
+        # Show available attributes/methods (shortened)
+        try:
+            names = [n for n in dir(compound) if not n.startswith("__")]
+            LOGGER.info(
+                "dir(): %s", ", ".join(names[:50]) + ("..." if len(names) > 50 else "")
+            )
+        except Exception:
+            LOGGER.debug("Could not list dir() for compound", exc_info=True)
+    except Exception as e:
+        LOGGER.error("Failed to print compound info for %s: %s", label, e)
+
+
+# Pick a couple of metabolites from the raw and compartmentalized lists and print them
+try:
+    sample_raw = list(MetList.keys())[:2]
+    sample_cl = list(MetList_CL.keys())[:2]
+    if sample_raw:
+        LOGGER.info("Printing up to 2 metabolites from raw MetList: %s", sample_raw)
+        for k in sample_raw:
+            print_compound_info(f"raw:{k}", MetList.get(k))
+    else:
+        LOGGER.info("No entries found in MetList to print")
+
+    if sample_cl:
+        LOGGER.info(
+            "Printing up to 2 metabolites from compartmentalized MetList_CL: %s",
+            sample_cl,
+        )
+        for k in sample_cl:
+            print_compound_info(f"cl:{k}", MetList_CL.get(k))
+    else:
+        LOGGER.info("No entries found in MetList_CL to print")
+except Exception as e:
+    LOGGER.warning("Failed while printing sample metabolites: %s", e)
+
 
 # Ensure there is an output path. The original flow used Output=ModID or a models path.
 if isinstance(ModID, str) and ModID.lower().endswith(".xml"):
