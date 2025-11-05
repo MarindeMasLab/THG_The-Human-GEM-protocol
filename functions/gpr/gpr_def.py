@@ -1,5 +1,6 @@
 import logging
 import re
+import socket
 from io import StringIO
 from typing import List, Optional, Tuple
 from collections import defaultdict
@@ -9,6 +10,10 @@ import requests
 import pdb
 from functions.gpr.ast_gpr import sanitize_gpr
 from functions.gpr.auth_gpr import setup_biocyc_session
+
+# Set default timeout for all socket operations (including urllib)
+# This prevents urllib.request.urlopen from hanging indefinitely
+socket.setdefaulttimeout(30)
 
 LOGGER = logging.getLogger(__name__)
 GPRURL2 = "http://www.genome.jp/dbget-bin/www_bget?ec:"
@@ -27,12 +32,20 @@ def get_ecnumber_biocyc_html(
     ).text
 
 
-def get_html(request_url: str, session: Optional[requests.Session] = None) -> str:
-    """Fetch an html by perfoming a GET HTTPS request, maybe with session."""
+def get_html(
+    request_url: str, session: Optional[requests.Session] = None, timeout: int = 30
+) -> str:
+    """Fetch an html by perfoming a GET HTTPS request, maybe with session.
+
+    Args:
+        request_url: URL to fetch
+        session: Optional requests session to use
+        timeout: Timeout in seconds (default: 30)
+    """
     if session is not None:
-        return session.get(request_url).text
+        return session.get(request_url, timeout=timeout).text
     else:
-        return requests.get(request_url).text
+        return requests.get(request_url, timeout=timeout).text
 
 
 def pattern_match_org(page: str, org: str = "Homo Sapiens") -> List[str]:
@@ -342,16 +355,20 @@ def replace_specific_and_with_or(gpr, pairs, d2):
     for gene1, gene2 in pairs:
         if check_genes_in_d2((gene1, gene2), d2):
             # Create a regex pattern to find "and" between gene1 and gene2 with wildcards around them
-            pattern = re.compile(rf"{gene1}.*?and.*?{gene2}", re.DOTALL)
+            pattern = re.compile(
+                rf"{re.escape(gene1)}.*?and.*?{re.escape(gene2)}", re.DOTALL
+            )
             # Find the match
             match = pattern.search(gpr)
 
-            # Replace the "and" with "or" leaving the rest of the match unchanged
-            gpr = (
-                gpr[: match.start()]
-                + gpr[match.start() : match.end()].replace("and", "or")
-                + gpr[match.end() :]
-            )
+            # Only replace if match was found
+            if match:
+                # Replace the "and" with "or" leaving the rest of the match unchanged
+                gpr = (
+                    gpr[: match.start()]
+                    + gpr[match.start() : match.end()].replace("and", "or")
+                    + gpr[match.end() :]
+                )
     return gpr
 
 
@@ -453,9 +470,28 @@ def update_urls3_with_coefficients(urls3, w):
 def parseGPRnewest(
     ec_number, urls0: List[str], page: str, session: requests.Session
 ) -> Tuple[List[str], str, str, str, str]:
+    # Attach a short, per-invocation diagnostic id so we can trace repeated
+    # calls or duplicated log lines more easily when running in threads.
+    try:
+        import threading
+
+        _call_thread = threading.get_ident()
+    except Exception:
+        _call_thread = 0
+    try:
+        import uuid
+
+        _call_uuid = uuid.uuid4().hex[:8]
+    except Exception:
+        _call_uuid = "-"
+    call_id = f"{ec_number}:{_call_uuid}:{_call_thread}"
+    LOGGER.debug(
+        f"parseGPRnewest START for EC {ec_number}, urls0 length: {len(urls0)} call_id={call_id}"
+    )
     urls1 = [
         i for i in reversed(sorted([x[0:][0] for x in urls0], key=len))
     ]  # Sort genes by name lenght
+    LOGGER.debug(f"parseGPRnewest: sorted {len(urls1)} genes")
     Ls = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
     urls2 = []
     # urls22 = []
@@ -532,7 +568,13 @@ def parseGPRnewest(
     rxn_gpr_dict = {}
 
     # From here :
+    LOGGER.debug(
+        f"parseGPRnewest: Starting to process {len(c)} isoforms call_id={call_id}"
+    )
     while iters < len(c):  # isoforms
+        LOGGER.debug(
+            f"parseGPRnewest: Processing isoform {iters+1}/{len(c)} call_id={call_id}"
+        )
 
         if re.findall(r'class="GENE"', c[iters]):
 
@@ -557,15 +599,23 @@ def parseGPRnewest(
                     ]
 
                 else:
+                    hs_match = re.findall("HS\w+", c3)
+                    if hs_match:
+                        isourl = [
+                            "https://biocyc.org/gene?orgid=HUMAN&id="
+                            + hs_match[0].strip()
+                        ]
+                    else:
+                        # No valid gene ID found, skip this entry
+                        LOGGER.debug("No valid gene ID found in c3, skipping isoform")
+                        iters += 1
+                        continue
 
-                    isourl = [
-                        "https://biocyc.org/gene?orgid=HUMAN&id="
-                        + re.findall("HS\w+", c3)[0].strip()
-                    ]
-
+            LOGGER.debug(f"parseGPRnewest: Fetching isopage from {isourl[0][:80]}...")
             isopage = str(
                 get_html(isourl[0].replace(" ", "").replace('"', ""), session)
             )
+            LOGGER.debug(f"parseGPRnewest: Got isopage, length={len(isopage)}")
             d1 = isopage.replace("\n", " ").replace(
                 "</a>", "\n</a>"
             )  # d1 =  isopage.replace('\n',' ').replace('<br>','<br>\n')
@@ -615,11 +665,17 @@ def parseGPRnewest(
                     ]
 
                 else:
-
-                    isourl = [
-                        "https://biocyc.org/gene?orgid=HUMAN&id="
-                        + re.findall("HS\w+", c3)[0].strip()
-                    ]
+                    hs_match = re.findall("HS\w+", c3)
+                    if hs_match:
+                        isourl = [
+                            "https://biocyc.org/gene?orgid=HUMAN&id="
+                            + hs_match[0].strip()
+                        ]
+                    else:
+                        # No valid gene ID found, skip this entry
+                        LOGGER.debug("No valid gene ID found in c3, skipping isoform")
+                        iters += 1
+                        continue
                 isopage = str(
                     get_html(isourl[0].replace(" ", "").replace('"', ""), session)
                 )
@@ -783,11 +839,7 @@ def parseGPRnewest(
                                             None,
                                             [
                                                 re.findall(
-                                                    x.upper()
-                                                    .replace("(", "\(")
-                                                    .replace(")", "\)")
-                                                    .replace('"', '"')
-                                                    .replace("'", "'"),
+                                                    re.escape(x.upper()),
                                                     d[j].upper(),
                                                 )
                                                 for x in synonim
@@ -1009,6 +1061,9 @@ def parseGPRnewest(
                         rxn_gpr_dict[reaction_id] = gpr
 
         iters = iters + 1
+        LOGGER.debug(
+            f"parseGPRnewest: Completed isoform {iters}/{len(c)} call_id={call_id}"
+        )
 
     urls3 = [
         str(sorted(set(gpr2list)))
@@ -1182,8 +1237,11 @@ def parseGPRnewest(
         if not rxn_gpr_dict[key]:
             del rxn_gpr_dict[key]
 
+    LOGGER.debug(f"parseGPRnewest: Finished processing, urls4 length={len(urls4)}")
     if not urls4:
+        LOGGER.debug(f"parseGPRnewest: Returning empty result for EC {ec_number}")
         return ([], "", "", "", "", {})
     else:
         print("Full GPR: ", urls0, urls1, urls2, urls3, urls4, rxn_gpr_dict)
+        LOGGER.debug(f"parseGPRnewest: Returning full result for EC {ec_number}")
         return urls0, urls1, urls2, urls3, urls4, rxn_gpr_dict

@@ -126,20 +126,21 @@ def reduce_gpr(ast_str: str) -> GPR:
     ast_str = re.sub(r"\*\d+", "", ast_str)
 
     # Fix numeric gene IDs by prefixing them with 'G' to make them valid identifiers
-    # This prevents ast.Constant errors when gene IDs are pure numbers
-    # Pattern: Match numbers that are NOT preceded or followed by alphanumeric characters
-    # This ensures we only replace standalone numbers, not numbers within identifiers
+    # This prevents ast.Constant errors when gene IDs are pure numbers or start with numbers
+    # Pattern 1: Match pure numbers (e.g., "123")
+    # Pattern 2: Match identifiers starting with numbers (e.g., "4CL5", "2AAA")
     def prefix_numeric_genes(match):
-        num = match.group(1)
-        return f"G{num}"
+        identifier = match.group(0)
+        return f"G{identifier}"
 
-    # Look for numbers that appear after non-word characters or at start,
-    # and before non-word characters or at end (but not * which we just removed)
-    # (?<![a-zA-Z0-9_]) - not preceded by alphanumeric or underscore
-    # (\d+) - one or more digits
-    # (?![a-zA-Z0-9_]) - not followed by alphanumeric or underscore
+    # Match gene identifiers that are either:
+    # 1. Pure numbers: (?<![a-zA-Z0-9_])(\d+)(?![a-zA-Z0-9_])
+    # 2. Starting with number: (?<![a-zA-Z0-9_])(\d+[a-zA-Z0-9_]*)(?![a-zA-Z0-9_])
+    # Combined pattern: identifiers that start with a digit
     ast_str = re.sub(
-        r"(?<![a-zA-Z0-9_])(\d+)(?![a-zA-Z0-9_])", prefix_numeric_genes, ast_str
+        r"(?<![a-zA-Z0-9_])(\d+[a-zA-Z0-9_]*)(?![a-zA-Z0-9_])",
+        prefix_numeric_genes,
+        ast_str,
     )
 
     to_reduce = ast_parse(ast_str).body[0].value

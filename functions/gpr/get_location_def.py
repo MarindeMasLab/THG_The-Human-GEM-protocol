@@ -20,11 +20,13 @@ import dill
 import pdb
 from typing import List, Optional, Tuple
 import sys
+import logging
+
+LOGGER = logging.getLogger(__name__)
 
 # import the functions
 from functions.gpr.gpr_def import getGPR, setup_biocyc_session
 
-from functions.function_bm_gdb import *
 from functions.equations_bm_gdb import *
 
 
@@ -74,6 +76,7 @@ def getLocationnew(
     impose_locations,
     location_dict_file,
     session: Optional[requests.Session] = None,
+    ensembl_cache: Optional[dict] = None,
 ):
     """Finds subcellular location.
     Using a SGPR (or GPR), it identifies the corresponding cellular locations and adapts the location-specific SGPRs accordingly.
@@ -163,9 +166,17 @@ def getLocationnew(
                             ]
                         if not isinstance(genelist1, str):
                             genelist11 = genelist1
-                        index = [x.upper() for x in genelist11].index(
-                            re.sub(r"\*[0-9]+", "", a[m].upper())
-                        )
+                        # Use a try-except to handle genes not in the list
+                        try:
+                            index = [x.upper() for x in genelist11].index(
+                                re.sub(r"\*[0-9]+", "", a[m].upper())
+                            )
+                        except ValueError:
+                            # Gene not found in list, skip this gene
+                            LOGGER.warning(
+                                f"Gene {a[m].upper()} not found in genelist11, skipping"
+                            )
+                            continue
                         b = (
                             "http://biocyc.org/gene?orgid=META&id="
                             + genelist2[index].upper()
@@ -535,6 +546,26 @@ def getLocationnew(
                             )
                         if iiii2:
                             iiii = iiii2.group(1)
+                        # If an external ensembl cache was provided, prefer it to avoid
+                        # expensive web requests. The cache is expected to map gene
+                        # identifiers (symbols or other ids) to Ensembl IDs or to a
+                        # dictionary containing an 'ensembl' key.
+                        if ensembl_cache is not None:
+                            try:
+                                if LocGPR2[i] in ensembl_cache:
+                                    val = ensembl_cache[LocGPR2[i]]
+                                    # fetch_ensembl_annotations returns either a dict of
+                                    # annotation fields or a single Ensembl id string in
+                                    # some contexts; handle both
+                                    if isinstance(val, dict):
+                                        maybe_ens = val.get("ensembl")
+                                        if maybe_ens:
+                                            iiii = maybe_ens
+                                    elif isinstance(val, str):
+                                        iiii = val
+                            except Exception:
+                                # fall back to existing lookup behaviour on any error
+                                pass
                 RuleLoc4[iiii] = list()
                 RuleLoc4[iiii].append(LocGPR2[i])
                 create_dict(LocGPR2[i], iiii)

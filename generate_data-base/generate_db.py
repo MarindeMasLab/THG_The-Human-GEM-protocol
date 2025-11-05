@@ -57,6 +57,11 @@ from functions.function_bm_gdb import batch_fetch_kegg_entries
 from types import MethodType
 from functions.ensembl_client import fetch_ensembl_annotations
 
+# Debugging flag: limit number of reactions to process (None = no limit)
+# Set this to an integer to process at most that many reactions and then
+# stop early. Useful when debugging to avoid long runs.
+MAX_REACTIONS = None  # e.g. set to 100 for debugging
+
 
 # Module-level helper methods to avoid fragile lambdas/closures when
 # attaching callable accessors to reaction objects. These read the
@@ -688,11 +693,6 @@ if __name__ == "__main__":
             print(f"Could not load checkpoint file: {e}. Starting from beginning.")
             start_pathway_index = 0
 
-    # Debugging flag: limit number of reactions to process (None = no limit)
-    # Set this to an integer to process at most that many reactions and then
-    # stop early. Useful when debugging to avoid long runs.
-    MAX_REACTIONS = 10  # e.g. set to 100 for debugging
-
     # Internal counters/flags used when MAX_REACTIONS is set
     processed_reactions = 0
     stop_processing = False
@@ -1150,6 +1150,9 @@ if __name__ == "__main__":
                         logging.debug(
                             f"len metlist_CL before rxnSubcel: {len(MetList_CL)}"
                         )
+
+                        # TODO: rxnSubcel should also return MetList_CL - now it
+                        # updates it in place
                         ######### Expand the annotations based on the cellular location ###########
                         Compartment_CL, rxn_cl, comp_cl = rxnSubcel(
                             RxnList[RxnID],

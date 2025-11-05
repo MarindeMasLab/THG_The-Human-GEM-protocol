@@ -38,6 +38,7 @@ from functions.gpr.gpr_def import getGPR, setup_biocyc_session
 
 # 👇 import the addtional function
 from functions.gpr.get_location_def import getLocationnew as getLocation
+from functions.ensembl_client import fetch_ensembl_annotations
 from datetime import datetime
 
 if __name__ == "__main__":
@@ -45,6 +46,19 @@ if __name__ == "__main__":
     USE_CHECKPOINT = False
 
     session = setup_biocyc_session()
+
+    # Ensembl annotation cache (persisted across runs to speed up lookups)
+    ensembl_cache_file = os.path.join(project_root, "files", "ensembl_cache.pkl")
+    ensembl_cache = {}
+    try:
+        if os.path.exists(ensembl_cache_file):
+            with open(ensembl_cache_file, "rb") as _f:
+                ensembl_cache = pickle.load(_f)
+                if not isinstance(ensembl_cache, dict):
+                    ensembl_cache = dict(ensembl_cache)
+            print(f"Loaded ensembl cache with {len(ensembl_cache)} entries")
+    except Exception as _e:
+        print("Warning: could not load ensembl cache:", _e)
 
     input_model_path = os.path.join(project_root, "models", "THG-beta1.1.1_251031.xml")
     # input_model_path = os.path.join(project_root, "models", "Human_Database_old.xml")
@@ -67,6 +81,8 @@ if __name__ == "__main__":
         project_root, "files", "ListOfCompartments_sept2024.xlsx"
     )  # Excel file containing the compartments information
     compartments_sheet_name = "Def-Compartments"  # Sheet name containing the compartments information, where the first column corresponds to the compartment name and the rest of the columns correspond to the mapping of this compartment in different models
+
+    # Column index 2 is for endoA
     column_index = (
         2  # Column with the compartment mapping corresponding to your desired model
     )
@@ -357,7 +373,53 @@ if __name__ == "__main__":
                                             # add the corresponding biocyc id to genelist2
                                             genelist2.append(new_gpr[2][index])
 
-                                    # call the getLocation function
+                                    # Prefetch Ensembl annotations for the genes in this
+                                    # GPR to avoid many per-gene web calls inside
+                                    # getLocation/getLocationnew. We update a local
+                                    # cache and persist it to disk so subsequent runs
+                                    # are faster.
+                                    try:
+                                        if genelist1:
+                                            unseen = [
+                                                g
+                                                for g in genelist1
+                                                if g and g not in ensembl_cache
+                                            ]
+                                            if unseen:
+                                                # fetch in batches using the shared client
+                                                try:
+                                                    fetched = fetch_ensembl_annotations(
+                                                        unseen,
+                                                        batch_size=50,
+                                                        max_workers=10,
+                                                    )
+                                                    if fetched:
+                                                        ensembl_cache.update(fetched)
+                                                        try:
+                                                            with open(
+                                                                ensembl_cache_file, "wb"
+                                                            ) as _f:
+                                                                pickle.dump(
+                                                                    ensembl_cache,
+                                                                    _f,
+                                                                    protocol=pickle.HIGHEST_PROTOCOL,
+                                                                )
+                                                        except Exception as _e:
+                                                            print(
+                                                                "Warning: could not persist ensembl cache:",
+                                                                _e,
+                                                            )
+                                                except Exception as _e:
+                                                    print(
+                                                        "Warning: ensembl prefetch failed:",
+                                                        _e,
+                                                    )
+                                    except Exception:
+                                        # If anything goes wrong, proceed without cache
+                                        pass
+
+                                    # call the getLocation function, provide the cache so
+                                    # it can avoid remote Ensembl lookups
                                     new_locations = getLocation(
                                         gpr,
                                         genelist1,
@@ -365,6 +427,7 @@ if __name__ == "__main__":
                                         1,
                                         location_pkl_file,
                                         session,
+                                        ensembl_cache,
                                     )
                                     print("new_locations: ", new_locations)
                                     genelist1 = []
@@ -527,21 +590,40 @@ if __name__ == "__main__":
 
                                     gene = gene.replace(")", "").replace("(", "")
                                     if not gene in variables:
-                                        ensemble = sorted(
-                                            list(
-                                                set(
-                                                    re.findall(
-                                                        "ENS[A-Z][0-9]+",
-                                                        str(
-                                                            urllib.request.urlopen(
-                                                                "https://www.ensembl.org/Homo_sapiens/Gene/Summary?g="
-                                                                + gene
-                                                            ).read()
-                                                        ),
+                                        # Prefer cached Ensembl annotations when available
+                                        ensemble = None
+                                        try:
+                                            if ensembl_cache and gene in ensembl_cache:
+                                                val = ensembl_cache[gene]
+                                                if isinstance(val, dict):
+                                                    maybe = val.get("ensembl")
+                                                    if maybe:
+                                                        ensemble = [maybe]
+                                                elif isinstance(val, str):
+                                                    ensemble = [val]
+                                        except Exception:
+                                            ensemble = None
+
+                                        if not ensemble:
+                                            try:
+                                                ensemble = sorted(
+                                                    list(
+                                                        set(
+                                                            re.findall(
+                                                                "ENS[A-Z][0-9]+",
+                                                                str(
+                                                                    urllib.request.urlopen(
+                                                                        "https://www.ensembl.org/Homo_sapiens/Gene/Summary?g="
+                                                                        + gene
+                                                                    ).read()
+                                                                ),
+                                                            )
+                                                        )
                                                     )
                                                 )
-                                            )
-                                        )
+                                            except Exception:
+                                                ensemble = []
+
                                         variables[gene] = ensemble
                                     else:
                                         ensemble = variables[gene]
@@ -607,21 +689,40 @@ if __name__ == "__main__":
                                 ):
                                     gene = gene.replace(")", "").replace("(", "")
                                     if not gene in variables:
-                                        ensemble = sorted(
-                                            list(
-                                                set(
-                                                    re.findall(
-                                                        "ENS[A-Z][0-9]+",
-                                                        str(
-                                                            urllib.request.urlopen(
-                                                                "https://www.ensembl.org/Homo_sapiens/Gene/Summary?g="
-                                                                + gene
-                                                            ).read()
-                                                        ),
+                                        # Try cache first
+                                        ensemble = None
+                                        try:
+                                            if ensembl_cache and gene in ensembl_cache:
+                                                val = ensembl_cache[gene]
+                                                if isinstance(val, dict):
+                                                    maybe = val.get("ensembl")
+                                                    if maybe:
+                                                        ensemble = [maybe]
+                                                elif isinstance(val, str):
+                                                    ensemble = [val]
+                                        except Exception:
+                                            ensemble = None
+
+                                        if not ensemble:
+                                            try:
+                                                ensemble = sorted(
+                                                    list(
+                                                        set(
+                                                            re.findall(
+                                                                "ENS[A-Z][0-9]+",
+                                                                str(
+                                                                    urllib.request.urlopen(
+                                                                        "https://www.ensembl.org/Homo_sapiens/Gene/Summary?g="
+                                                                        + gene
+                                                                    ).read()
+                                                                ),
+                                                            )
+                                                        )
                                                     )
                                                 )
-                                            )
-                                        )
+                                            except Exception:
+                                                ensemble = []
+
                                         variables[gene] = ensemble
                                     else:
                                         ensemble = variables[gene]

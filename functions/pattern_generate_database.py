@@ -710,6 +710,9 @@ def DefGrp(PathNameRxn):
     return listOfGroups
 
 
+# TODO: rxnSubcel should also return MetList_CL - now it updates it in place
+
+
 def rxnSubcel(
     Rxn,
     RxnList_CL,
