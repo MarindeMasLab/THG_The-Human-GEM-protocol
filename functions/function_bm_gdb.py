@@ -252,21 +252,25 @@ def compartment_file_to_dict_bm(
     # ComEquiv is the comp_dict but reversed (keys and values are swapped) -> compartment name: abbreviation
     ComEquiv = {v: k for k, v in comp_dict.items()}
     CompList = list(ComEquiv.values())
-    Compartment_CL = list(
-        set(
-            sorted(
-                [
-                    x
-                    for x in pd.read_excel(
-                        excel_file,
-                        sheet_name=compartments_sheet_name,
-                        header=None,
-                        skiprows=lambda x: x in [0, 1],
-                    )[0]
-                ]
-            )
-        )
+
+    # Read the full dataframe to get both column 0 (BioCyc names) and column 2 (Endo1-a)
+    full_df = pd.read_excel(
+        excel_file,
+        sheet_name=compartments_sheet_name,
+        header=None,
+        skiprows=lambda x: x in [0, 1],
     )
+
+    # Create mapping from BioCyc compartment names (column 0) to Endo1-a compartments (column 2)
+    col0_to_col2 = {}
+    for _, row in full_df.iterrows():
+        if pd.notna(row[0]) and pd.notna(row[2]):
+            biocyc_name = str(row[0]).strip().lower()
+            endo1a_name = str(row[2]).strip().lower()
+            col0_to_col2[biocyc_name] = endo1a_name
+
+    # Extract unique values from column 2 (Endo1-a compartments)
+    Compartment_CL = list(set(sorted([x for x in full_df[2] if pd.notna(x)])))
     Compartment_CL = [
         x.strip() for x in Compartment_CL
     ]  # remove leading and trailing whitespaces
@@ -301,8 +305,8 @@ def compartment_file_to_dict_bm(
     # Save the dictionary as a pickle file
     pd.to_pickle(abbr_to_name, pickle_file)
 
-    # Return both mappings.
-    return name_to_abbr, abbr_to_name
+    # Return both mappings AND the BioCyc-to-Endo1a mapping
+    return name_to_abbr, abbr_to_name, col0_to_col2
 
 
 # This function creates a dictionary with the abbreviations and the complete names of the compartments´

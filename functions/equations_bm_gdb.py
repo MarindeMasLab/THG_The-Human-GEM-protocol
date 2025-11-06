@@ -173,21 +173,29 @@ def inarray(A, B):
 ## Transform equation to matrix
 def eq2mat(eq):
     # Transform Equation to Matrix
-    Subs = [x.split(" + ") for x in eq.split(" -> ")][0]
-    Prod = [x.split(" + ") for x in eq.split(" -> ")][1]
+    # split substrates/products on a variety of arrow forms, tolerate surrounding spaces
+    parts = re.split(r"\s*->\s*|\s*<=>\s*|\s*-->\s*|\s*=>\s*|\s*→\s*", eq)
+    if len(parts) < 2:
+        # fallback: try a simple '->' split without surrounding spaces
+        parts = eq.split("->")
+    if len(parts) < 2:
+        raise ValueError(f"Cannot split equation into substrates/products: {eq!r}")
+    Subs = [x.strip() for x in re.split(r"\s*\+\s*", parts[0]) if x.strip()]
+    Prod = [x.strip() for x in re.split(r"\s*\+\s*", parts[1]) if x.strip()]
     Met = Subs + Prod
-    a = [re.findall("[A-Z]", x) for x in Met]
+    # detect atoms as capital letter followed by optional lowercase (e.g. C, Ca, Na)
+    a = [re.findall(r"[A-Z][a-z]?", x) for x in Met]
     AtomList = []
     for j in a:
         for x in j:
-            if not x in AtomList:
-                AtomList = AtomList + [x]
-    Matrix = numpy.zeros(shape=(len(AtomList), len(Met)))
+            if x not in AtomList:
+                AtomList.append(x)
+    Matrix = np.zeros(shape=(len(AtomList), len(Met)))
     i = 0
     while i < len(AtomList):  # loop for atoms (row)
         j = 0
         while j < len(Met):  # loop for compounds (column)
-            AtomJth = re.findall(AtomList[i] + "([0-9]+)", Met[j])
+            AtomJth = re.findall(re.escape(AtomList[i]) + r"([0-9]+)", Met[j])
             if not AtomJth:
                 AtomJth = re.findall(AtomList[i], Met[j])
                 if AtomJth:
@@ -242,19 +250,19 @@ def nullity(Matrix):
 ## Inverse Matrix
 def inv(A):
     # Cofactor Matrix
-    MC = numpy.zeros(shape=(len(A), len(A)))
+    MC = np.zeros(shape=(len(A), len(A)))
     r = 1
     for i in range(size(A[0])):
         for j in range(size(A[1])):
             cof = scipy.delete(scipy.delete(A, i, 0), j, 1)
-            MC[i, j] = numpy.linalg.det(cof) * r
+            MC[i, j] = np.linalg.det(cof) * r
             if abs(MC[i, j]) < 0.001:
                 MC[i, j] = 0.0
             r = -1 * r
     # Adjunt Matrix
     MADJ = MC.transpose()  # Matriz adjunta
     # Determinant
-    determ = numpy.linalg.det(A)
+    determ = np.linalg.det(A)
     # Inverse Matrix
     IM = 1 / determ * (MADJ)
     # np.linalg.inv(A)
@@ -653,9 +661,16 @@ def CountAtom(eq, AddH, H2O, RxnID):
     Ss, Es, i, ii = defaultdict(list), [], 1, defaultdict(list)
     for p in eq.split("->"):
         for kk in p.split("+"):
-            StCoeff = [
-                reduce(lambda i, j: i + j, kk[0 : re.search("[A-Z]", kk).start()])
-            ]  # This line improves the previous AtomCount function allowing to account for the stoichiometric coeff
+            match = re.search("[A-Z]", kk)
+            if match:
+                coeff_str = kk[: match.start()].strip()
+                StCoeff = [float(coeff_str) if coeff_str else 1.0]
+            else:
+                # No elements found, perhaps invalid formula, set coeff to 1
+                StCoeff = [1.0]
+            # StCoeff = [
+            #     reduce(lambda i, j: i + j, kk[0 : re.search("[A-Z]", kk).start()])
+            # ]  # This line improves the previous AtomCount function allowing to account for the stoichiometric coeff
             StCoeff = (
                 1 if StCoeff[0] == " " else float(StCoeff[0])
             )  # Stoichiometric Coeff improvement
@@ -763,7 +778,7 @@ def MB_Core(eq, AddH, H2O, RxnID):
             [1 for x in Solution if x <= 0]
         )  # Check for possible negative values
         if TestSol == 0:
-            Solution = [numpy.round(x, 1) for x in Solution / min(abs(Solution))]
+            Solution = [np.round(x, 1) for x in Solution / min(abs(Solution))]
 
             k[I] = I
             parameters = [str(x) for x in k.keys()]
@@ -911,9 +926,7 @@ def MB_REM(eq, AddH, H2O, RxnID):
                     [1 for x in Solution if x <= 0]
                 )  # Check for possible negative values
                 if TestSol == 0:
-                    Solution = [
-                        numpy.round(x, 1) for x in Solution / min(abs(Solution))
-                    ]
+                    Solution = [np.round(x, 1) for x in Solution / min(abs(Solution))]
 
                     k[I] = I
                     parameters = [str(x) for x in k.keys()]
@@ -933,7 +946,7 @@ def MB_REM(eq, AddH, H2O, RxnID):
             SubsStch = ""
             ProdStch = ""
     else:
-        Solution = [numpy.round(x, 1) for x in abs(Solution) / min(abs(Solution))]
+        Solution = [np.round(x, 1) for x in abs(Solution) / min(abs(Solution))]
 
         k[I] = I
         parameters = [str(x) for x in k.keys()]
@@ -952,8 +965,14 @@ def MB_REM(eq, AddH, H2O, RxnID):
 ## 3.4 New MB_LP
 def MB_LP(eq, AddH, H2O, RxnID):
     A = eq2mat(eq).tolist()  # Matrix
-    C_subs = numpy.ones(shape=(1, len(eq.split("->")[0].split("+")))).tolist()[0]
-    C_prod = (numpy.ones(shape=(1, len(eq.split("->")[1].split("+")))) * (-1)).tolist()[
+    # robustly split substrates/products for counting
+    parts = re.split(r"\s*->\s*|\s*<=>\s*|\s*-->\s*|\s*=>\s*|\s*→\s*", eq)
+    if len(parts) < 2:
+        parts = eq.split("->")
+    if len(parts) < 2:
+        raise ValueError(f"Cannot split equation into substrates/products: {eq!r}")
+    C_subs = np.ones(shape=(1, len(re.split(r"\s*\+\s*", parts[0])))).tolist()[0]
+    C_prod = (np.ones(shape=(1, len(re.split(r"\s*\+\s*", parts[1])))) * (-1)).tolist()[
         0
     ]
     C = C_subs + C_prod  # array to minimize
@@ -1259,9 +1278,9 @@ def Proton(isH, Reaction, time, MetIdent, MetList, EF, specialCompounds):
             MetList[CompoundID] = compound(
                 MetURL, CompoundID, time, EF, specialCompounds
             )
-            MetList[CompoundID].AssRxn1 = lambda: ""
-            MetList[CompoundID].AssRxn2 = lambda: ""
-            MetList[CompoundID].AssRxn3 = lambda: ""
+            MetList[CompoundID].AssRxn1 = ""
+            MetList[CompoundID].AssRxn2 = ""
+            MetList[CompoundID].AssRxn3 = ""
         if isH < 0:  # a H+ is added to substrates
             AddMet = Reaction.Substrate() + [
                 [1, "http://www.genome.jp/dbget-bin/www_bget?cpd:C00080", "C00080"]
@@ -1290,9 +1309,9 @@ def Water(isW, Reaction, time, MetIdent, MetList, EF, specialCompounds):
             MetList[CompoundID] = compound(
                 MetURL, CompoundID, time, EF, specialCompounds
             )
-            MetList[CompoundID].AssRxn1 = lambda: ""
-            MetList[CompoundID].AssRxn2 = lambda: ""
-            MetList[CompoundID].AssRxn3 = lambda: ""
+            MetList[CompoundID].AssRxn1 = ""
+            MetList[CompoundID].AssRxn2 = ""
+            MetList[CompoundID].AssRxn3 = ""
         if isW < 0:  # a H+ is added to substrates
             AddMet = Reaction.Substrate() + [
                 [1, "http://www.genome.jp/dbget-bin/www_bget?cpd:C00001", "C00001"]
@@ -1316,30 +1335,30 @@ def add_extra_compound(new_compound, lib, time, EF, specialCompounds):
         specialCompounds,
         None,
     )
-    nc.AssRxn1 = lambda: ""
-    nc.AssRxn2 = lambda: ""
-    nc.AssRxn3 = lambda: ""
-    nc.CheBI = lambda: ""
-    nc.CID = lambda: ""
-    nc.PubChem = lambda: ""
-    nc.Subcel = lambda: ""
-    nc.inchi = lambda: ""
-    nc.inchikey = lambda: ""
-    nc.JCGGDB = lambda: ""
-    nc.LipidBank = lambda: ""
-    nc.LIPIDMAPS = lambda: ""
-    nc.GlyDB = lambda: ""
+    nc.AssRxn1 = ""
+    nc.AssRxn2 = ""
+    nc.AssRxn3 = ""
+    nc.CheBI = ""
+    nc.CID = ""
+    nc.PubChem = ""
+    nc.Subcel = ""
+    nc.inchi = ""
+    nc.inchikey = ""
+    nc.JCGGDB = ""
+    nc.LipidBank = ""
+    nc.LIPIDMAPS = ""
+    nc.GlyDB = ""
     nc.Atom1 = atom10(new_compound)
     nc.Atom2 = atom10(new_compound)
     nc.Atom3 = atom10(new_compound)
     nc.charge = 0
-    nc.Formula1 = lambda: new_compound
-    nc.Formula2 = lambda: new_compound
-    nc.Formula3 = lambda: new_compound
-    nc.Formula4 = lambda: new_compound
+    nc.Formula1 = new_compound
+    nc.Formula2 = new_compound
+    nc.Formula3 = new_compound
+    nc.Formula4 = new_compound
     nc.ID1 = lib[new_compound]
-    nc.ID2 = lambda: lib[new_compound]
-    nc.Name = lambda: new_compound
+    nc.ID2 = lib[new_compound]
+    nc.Name = new_compound
     return nc
 
 
@@ -1366,9 +1385,16 @@ def test_reaction_balance(eq):
     Ss, Es, i, ii = defaultdict(list), [], 1, defaultdict(list)
     for p in eq.split("->"):
         for kk in p.split("+"):
-            StCoeff = [
-                reduce(lambda i, j: i + j, kk[0 : re.search("[A-Z]", kk).start()])
-            ]  # This line improves the previous AtomCount function allowing to account for the stoichiometric coeff
+            match = re.search("[A-Z]", kk)
+            if match:
+                coeff_str = kk[: match.start()].strip()
+                StCoeff = [float(coeff_str) if coeff_str else 1.0]
+            else:
+                # No elements found, perhaps invalid formula, set coeff to 1
+                StCoeff = [1.0]
+            # StCoeff = [
+            #     reduce(lambda i, j: i + j, kk[0 : re.search("[A-Z]", kk).start()])
+            # ]  # This line improves the previous AtomCount function allowing to account for the stoichiometric coeff
             StCoeff = (
                 1 if StCoeff[0] == " " else float(StCoeff[0])
             )  # Stoichiometric Coeff improvement

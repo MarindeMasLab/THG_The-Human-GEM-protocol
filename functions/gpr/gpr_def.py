@@ -1242,6 +1242,6 @@ def parseGPRnewest(
         LOGGER.debug(f"parseGPRnewest: Returning empty result for EC {ec_number}")
         return ([], "", "", "", "", {})
     else:
-        print("Full GPR: ", urls0, urls1, urls2, urls3, urls4, rxn_gpr_dict)
+        # print("Full GPR: ", urls0, urls1, urls2, urls3, urls4, rxn_gpr_dict)
         LOGGER.debug(f"parseGPRnewest: Returning full result for EC {ec_number}")
         return urls0, urls1, urls2, urls3, urls4, rxn_gpr_dict

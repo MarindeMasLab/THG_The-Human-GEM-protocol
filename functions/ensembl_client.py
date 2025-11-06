@@ -98,8 +98,16 @@ def fetch_ensembl_annotations(
                         r.status_code,
                         len(batch),
                     )
-                    continue
-                j = r.json()
+                    # Log response body for debugging when available
+                    try:
+                        LOGGER.debug("Ensembl response body: %s", r.text[:1000])
+                    except Exception:
+                        pass
+                    # Fall back to per-symbol GET lookups below
+                try:
+                    j = r.json()
+                except Exception:
+                    j = {}
                 found_in_batch = 0
                 for symbol, obj in j.items():
                     if not obj:
@@ -119,6 +127,41 @@ def fetch_ensembl_annotations(
                 LOGGER.debug(
                     f"Found {found_in_batch}/{len(batch)} symbols in this batch"
                 )
+                # If nothing was found in the batch response, try per-symbol GET lookups
+                if found_in_batch == 0:
+                    LOGGER.debug(
+                        "Batch lookup returned 0 results, trying per-symbol GET for batch"
+                    )
+                    for symbol in batch:
+                        try:
+                            url_sym = f"https://rest.ensembl.org/lookup/symbol/homo_sapiens/{symbol}"
+                            r2 = session.get(url_sym, headers=headers, timeout=timeout)
+                            if r2.status_code != 200:
+                                LOGGER.debug(
+                                    "Per-symbol lookup failed for %s (status %s)",
+                                    symbol,
+                                    r2.status_code,
+                                )
+                                continue
+                            obj = r2.json()
+                            if not obj:
+                                continue
+                            ens_id = obj.get("id")
+                            if ens_id:
+                                symbol_to_ensembl[symbol] = ens_id
+                                results[symbol] = {
+                                    "ensembl": ens_id,
+                                    "display_name": obj.get("display_name") or symbol,
+                                    "biotype": obj.get("biotype"),
+                                    "description": obj.get("description"),
+                                    "entrez": [],
+                                    "uniprot": [],
+                                }
+                                found_in_batch += 1
+                        except Exception as e:
+                            LOGGER.debug(
+                                "Per-symbol lookup exception for %s: %s", symbol, e
+                            )
             except Exception as e:
                 LOGGER.warning(
                     "Failed Ensembl symbol lookup for %d symbols: %s", len(batch), e
