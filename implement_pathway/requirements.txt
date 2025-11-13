@@ -1,0 +1,10 @@
+## Python Standard Library
+## Core pipeline uses only Python's standard library
+
+## Required for full FBA validation:
+cobra>=0.26.0
+
+## Optional: For development and testing
+## pytest>=7.0.0
+## black>=22.0.0
+## flake8>=4.0.0

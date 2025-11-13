@@ -1,0 +1,105 @@
+{
+  "pathway_name": "Hyaluronan",
+  "model": {
+    "base": "models/THG-beta-batch_251106_connected_minptr_combined_compartments.json",
+    "output": "models/THG-beta-batch_251106_connected_minptr_combined_compartments_with_hyaluronan.json"
+  },
+  "visualizations": {
+    "output_directory": "figures",
+    "d3js": "hyaluronan_network_d3.html",
+    "plotly": "hyaluronan_network_plotly.html",
+    "graphviz_base": "hyaluronan_network"
+  },
+  "compartments": [
+    {"name": "cytosol", "abbreviation": "c"},
+    {"name": "glycocalyx", "abbreviation": "gl"},
+    {"name": "extracellular", "abbreviation": "e"}
+  ],
+  "metabolites": {
+    "database_file": "data/metabolite_id_database.json",
+    "targets": [
+      "UDP",
+      "UDP-glucuronate",
+      "UDP-N-acetylglucosamine",
+      "H2O",
+      "H+"
+    ],
+    "Hyaluronan_specific": {
+      "Functional_HMW_Hyaluronan": {
+        "name": "High molecular weight hyaluronan (2500 disaccharides)",
+        "formula": "C17500H25000N2500O17500",
+        "compartment": "gl",
+        "charge": -5000,
+        "annotation": {
+          "chebi": "CHEBI:16336",
+          "kegg.compound": "C00518"
+        },
+        "sbo": "SBO:0000247"
+      },
+      "Shed_LMW_Hyaluronan_Fragment": {
+        "name": "Low molecular weight hyaluronan fragment (100 disaccharides)",
+        "formula": "C700H1000N100O700",
+        "compartment": "e",
+        "charge": -200,
+        "annotation": {
+          "chebi": "CHEBI:16336",
+          "kegg.compound": "C00518"
+        },
+        "sbo": "SBO:0000247"
+      }
+    }
+  },
+  "reactions": [
+    {
+      "id": "T_H2O_GL",
+      "name": "Transport of H2O between extracellular and glycocalyx",
+      "equation": "H2O[e] <=> H2O[gl]",
+      "subsystem": "Solvent transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_H_GL",
+      "name": "Transport of H+ between extracellular and glycocalyx",
+      "equation": "H+[e] <=> H+[gl]",
+      "subsystem": "Solvent transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "R_Hyaluronan_Synthesis",
+      "name": "Hyaluronan synthesis by membrane-bound HAS enzymes",
+      "description": "Direct synthesis of HMW hyaluronan (2500 disaccharides) at plasma membrane with extrusion to glycocalyx",
+      "equation": "2.5 UDP-glucuronate[c] + 2.5 UDP-N-acetylglucosamine[c] --> 0.001 Functional_HMW_Hyaluronan[gl] + 5 UDP[c]",
+      "subsystem": "Hyaluronan biosynthesis",
+      "ec": "2.4.1.212",
+      "gpr": "ENSG00000105509 or ENSG00000170961 or ENSG00000168264",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "R_Hyaluronan_Fragmentation",
+      "name": "Hyaluronan fragmentation to LMW pro-inflammatory fragments",
+      "description": "N-to-1 degradation (N=25): HMW HA (2500 units) to 25 LMW fragments (100 units each)",
+      "equation": "0.001 Functional_HMW_Hyaluronan[gl] + 0.024 H2O[gl] --> 0.025 Shed_LMW_Hyaluronan_Fragment[e] + 0.024 H+[gl]",
+      "subsystem": "Hyaluronan degradation",
+      "ec": "3.2.1.35",
+      "gpr": "ENSG00000068001 or ENSG00000170266 or ENSG00000072986 or ENSG00000115380 or ENSG00000068323 or ENSG00000278139",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "DM_LMW_Hyaluronan_Fragment",
+      "name": "Demand for LMW hyaluronan fragment",
+      "equation": "Shed_LMW_Hyaluronan_Fragment[e] -->",
+      "subsystem": "Demand",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000628"
+    }
+  ]
+}

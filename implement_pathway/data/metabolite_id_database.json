@@ -1,0 +1,289 @@
+{
+  "ATP": {
+    "kegg.compound": "C00002",
+    "chebi": "CHEBI:15422",
+    "bigg.metabolite": "atp",
+    "pubchem.compound": "5957",
+    "vmhmetabolite": "atp",
+    "metanetx.chemical": "MNXM3",
+    "inchikey": "ZKHQWZAMYRWXGA-KQYNXXCUSA-N"
+  },
+  "ADP": {
+    "kegg.compound": "C00008",
+    "chebi": "CHEBI:16761",
+    "bigg.metabolite": "adp",
+    "pubchem.compound": "6022",
+    "vmhmetabolite": "adp",
+    "metanetx.chemical": "MNXM7",
+    "inchikey": "XTWYTFMLZFPYCI-KQYNXXCUSA-N"
+  },
+  "GTP": {
+    "kegg.compound": "C00044",
+    "chebi": "CHEBI:15996",
+    "bigg.metabolite": "gtp",
+    "pubchem.compound": "6830",
+    "vmhmetabolite": "gtp",
+    "metanetx.chemical": "MNXM68",
+    "inchikey": "XKMLYUALXHKNFT-UUOKFMHZSA-N"
+  },
+  "GDP": {
+    "kegg.compound": "C00035",
+    "chebi": "CHEBI:17552",
+    "bigg.metabolite": "gdp",
+    "pubchem.compound": "8977",
+    "vmhmetabolite": "gdp",
+    "metanetx.chemical": "MNXM59",
+    "inchikey": "QGWNDRXFNXRZMB-UUOKFMHZSA-N"
+  },
+  "H2O": {
+    "kegg.compound": "C00001",
+    "chebi": "CHEBI:15377",
+    "bigg.metabolite": "h2o",
+    "pubchem.compound": "962",
+    "vmhmetabolite": "h2o",
+    "metanetx.chemical": "MNXM2",
+    "inchikey": "XLYOFNOQVPJJNP-UHFFFAOYSA-N"
+  },
+  "phosphate": {
+    "kegg.compound": "C00009",
+    "chebi": "CHEBI:43474",
+    "bigg.metabolite": "pi",
+    "pubchem.compound": "1061",
+    "vmhmetabolite": "pi",
+    "metanetx.chemical": "MNXM9",
+    "inchikey": "NBIIXXVUZAFLBC-UHFFFAOYSA-K"
+  },
+  "H+": {
+    "kegg.compound": "C00080",
+    "chebi": "CHEBI:15378",
+    "bigg.metabolite": "h",
+    "pubchem.compound": "1038",
+    "vmhmetabolite": "h",
+    "metanetx.chemical": "MNXM89",
+    "inchikey": "GPRLSGONYQIRFK-UHFFFAOYSA-N"
+  },
+  "L-alanine": {
+    "kegg.compound": "C00041",
+    "chebi": "CHEBI:16977",
+    "bigg.metabolite": "ala__L",
+    "pubchem.compound": "5950",
+    "vmhmetabolite": "ala_L",
+    "metanetx.chemical": "MNXM66",
+    "inchikey": "QNAYBMKLOCPYGJ-REOHCLBHSA-N"
+  },
+  "L-arginine": {
+    "kegg.compound": "C00062",
+    "chebi": "CHEBI:16467",
+    "bigg.metabolite": "arg__L",
+    "pubchem.compound": "6322",
+    "vmhmetabolite": "arg_L",
+    "metanetx.chemical": "MNXM83",
+    "inchikey": "ODKSFYDXXFIFQN-BYPYZUCNSA-N"
+  },
+  "L-asparagine": {
+    "kegg.compound": "C00152",
+    "chebi": "CHEBI:17196",
+    "bigg.metabolite": "asn__L",
+    "pubchem.compound": "6267",
+    "vmhmetabolite": "asn_L",
+    "metanetx.chemical": "MNXM168",
+    "inchikey": "DCXYFEDJOCDNAF-REOHCLBHSA-N"
+  },
+  "L-aspartate": {
+    "kegg.compound": "C00049",
+    "chebi": "CHEBI:17053",
+    "bigg.metabolite": "asp__L",
+    "pubchem.compound": "5960",
+    "vmhmetabolite": "asp_L",
+    "metanetx.chemical": "MNXM75",
+    "inchikey": "CKLJMWTZIZZHCS-REOHCLBHSA-N"
+  },
+  "L-cysteine": {
+    "kegg.compound": "C00097",
+    "chebi": "CHEBI:17561",
+    "bigg.metabolite": "cys__L",
+    "pubchem.compound": "5862",
+    "vmhmetabolite": "cys_L",
+    "metanetx.chemical": "MNXM113",
+    "inchikey": "XUJNEKJLAYXESH-REOHCLBHSA-N"
+  },
+  "L-glutamine": {
+    "kegg.compound": "C00064",
+    "chebi": "CHEBI:18050",
+    "bigg.metabolite": "gln__L",
+    "pubchem.compound": "5961",
+    "vmhmetabolite": "gln_L",
+    "metanetx.chemical": "MNXM85",
+    "inchikey": "ZDXPYRJPNDTMRX-VKHMYHEASA-N"
+  },
+  "L-glutamate": {
+    "kegg.compound": "C00025",
+    "chebi": "CHEBI:16015",
+    "bigg.metabolite": "glu__L",
+    "pubchem.compound": "33032",
+    "vmhmetabolite": "glu_L",
+    "metanetx.chemical": "MNXM46",
+    "inchikey": "WHUUTDBJXJRKMK-VKHMYHEASA-N"
+  },
+  "glycine": {
+    "kegg.compound": "C00037",
+    "chebi": "CHEBI:15428",
+    "bigg.metabolite": "gly",
+    "pubchem.compound": "750",
+    "vmhmetabolite": "gly",
+    "metanetx.chemical": "MNXM57",
+    "inchikey": "DHMQDGOQFOQNFH-UHFFFAOYSA-N"
+  },
+  "L-histidine": {
+    "kegg.compound": "C00135",
+    "chebi": "CHEBI:15971",
+    "bigg.metabolite": "his__L",
+    "pubchem.compound": "6274",
+    "vmhmetabolite": "his_L",
+    "metanetx.chemical": "MNXM151",
+    "inchikey": "HNDVDQJCIGZPNO-YFKPBYRVSA-N"
+  },
+  "L-isoleucine": {
+    "kegg.compound": "C00407",
+    "chebi": "CHEBI:17191",
+    "bigg.metabolite": "ile__L",
+    "pubchem.compound": "6306",
+    "vmhmetabolite": "ile_L",
+    "metanetx.chemical": "MNXM421",
+    "inchikey": "AGPKZVBTJJNPAG-WHFBIAKZSA-N"
+  },
+  "L-leucine": {
+    "kegg.compound": "C00123",
+    "chebi": "CHEBI:15603",
+    "bigg.metabolite": "leu__L",
+    "pubchem.compound": "6106",
+    "vmhmetabolite": "leu_L",
+    "metanetx.chemical": "MNXM139",
+    "inchikey": "ROHFNLRQFUQHCH-YFKPBYRVSA-N"
+  },
+  "L-lysine": {
+    "kegg.compound": "C00047",
+    "chebi": "CHEBI:18019",
+    "bigg.metabolite": "lys__L",
+    "pubchem.compound": "5962",
+    "vmhmetabolite": "lys_L",
+    "metanetx.chemical": "MNXM71",
+    "inchikey": "KDXKERNSBIXSRK-YFKPBYRVSA-N"
+  },
+  "L-methionine": {
+    "kegg.compound": "C00073",
+    "chebi": "CHEBI:16643",
+    "bigg.metabolite": "met__L",
+    "pubchem.compound": "6137",
+    "vmhmetabolite": "met_L",
+    "metanetx.chemical": "MNXM96",
+    "inchikey": "FFEARJCKVFRZRR-BYPYZUCNSA-N"
+  },
+  "L-phenylalanine": {
+    "kegg.compound": "C00079",
+    "chebi": "CHEBI:17295",
+    "bigg.metabolite": "phe__L",
+    "pubchem.compound": "6140",
+    "vmhmetabolite": "phe_L",
+    "metanetx.chemical": "MNXM102",
+    "inchikey": "COLNVLDHVKWLRT-QMMMGPOBSA-N"
+  },
+  "L-proline": {
+    "kegg.compound": "C00148",
+    "chebi": "CHEBI:17203",
+    "bigg.metabolite": "pro__L",
+    "pubchem.compound": "145742",
+    "vmhmetabolite": "pro_L",
+    "metanetx.chemical": "MNXM164",
+    "inchikey": "ONIBWKKTOPOVIA-BYPYZUCNSA-N"
+  },
+  "L-serine": {
+    "kegg.compound": "C00065",
+    "chebi": "CHEBI:17115",
+    "bigg.metabolite": "ser__L",
+    "pubchem.compound": "5951",
+    "vmhmetabolite": "ser_L",
+    "metanetx.chemical": "MNXM86",
+    "inchikey": "MTCFGRXMJLQNBG-REOHCLBHSA-N"
+  },
+  "L-threonine": {
+    "kegg.compound": "C00188",
+    "chebi": "CHEBI:16857",
+    "bigg.metabolite": "thr__L",
+    "pubchem.compound": "6288",
+    "vmhmetabolite": "thr_L",
+    "metanetx.chemical": "MNXM203",
+    "inchikey": "AYFVYJQAPQTCCC-GBXIJSLDSA-N"
+  },
+  "L-tryptophan": {
+    "kegg.compound": "C00078",
+    "chebi": "CHEBI:16828",
+    "bigg.metabolite": "trp__L",
+    "pubchem.compound": "6305",
+    "vmhmetabolite": "trp_L",
+    "metanetx.chemical": "MNXM101",
+    "inchikey": "QIVBCDIJIAJPQS-VIFPVBQESA-N"
+  },
+  "L-tyrosine": {
+    "kegg.compound": "C00082",
+    "chebi": "CHEBI:17895",
+    "bigg.metabolite": "tyr__L",
+    "pubchem.compound": "6057",
+    "vmhmetabolite": "tyr_L",
+    "metanetx.chemical": "MNXM105",
+    "inchikey": "OUYCCCASQSFEME-QMMMGPOBSA-N"
+  },
+  "L-valine": {
+    "kegg.compound": "C00183",
+    "chebi": "CHEBI:16414",
+    "bigg.metabolite": "val__L",
+    "pubchem.compound": "6287",
+    "vmhmetabolite": "val_L",
+    "metanetx.chemical": "MNXM198",
+    "inchikey": "KZSNJWFQEVHDMF-BYPYZUCNSA-N"
+  },
+  "UDP-N-acetyl-alpha-D-glucosamine": {
+    "kegg.compound": "C00043",
+    "chebi": "CHEBI:16264",
+    "bigg.metabolite": "uacgam",
+    "pubchem.compound": "445675",
+    "vmhmetabolite": "uacgam",
+    "metanetx.chemical": "MNXM71",
+    "inchikey": "LFTYTUAZOPRMMI-CFRASDGPSA-N"
+  },
+  "UDP-N-acetylglucosamine": {
+    "kegg.compound": "C00043",
+    "chebi": "CHEBI:16264",
+    "bigg.metabolite": "uacgam",
+    "pubchem.compound": "445675",
+    "vmhmetabolite": "uacgam",
+    "metanetx.chemical": "MNXM47",
+    "inchikey": "LFTYTUAZOPRMMI-CFRASDGPSA-N"
+  },
+  "UDP": {
+    "kegg.compound": "C00015",
+    "chebi": "CHEBI:17659",
+    "bigg.metabolite": "udp",
+    "pubchem.compound": "6031",
+    "vmhmetabolite": "udp",
+    "metanetx.chemical": "MNXM26",
+    "inchikey": "XCCTYIAWTASOJW-XVFCMESISA-N"
+  },
+  "UDP-galactose": {
+    "kegg.compound": "C00052",
+    "chebi": "CHEBI:67119",
+    "bigg.metabolite": "udpgal",
+    "pubchem.compound": "18068",
+    "vmhmetabolite": "udpgal",
+    "metanetx.chemical": "MNXM89795",
+    "inchikey": "HSCJRCZFDFQWRP-ABVWGUQPSA-N"
+  },
+  "1-phosphatidyl-1D-myo-inositol 4-phosphate": {
+    "kegg.compound": "C04637",
+    "chebi": "CHEBI:17526",
+    "bigg.metabolite": "pi4p",
+    "vmhmetabolite": "pi4p_hs",
+    "metanetx.chemical": "MNXM1105",
+    "inchikey": "MLRXMHJAPDAXBE-GVYPWVHMSA-N"
+  }
+}
