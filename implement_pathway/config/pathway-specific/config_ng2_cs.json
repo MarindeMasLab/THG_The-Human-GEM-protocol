@@ -1,0 +1,761 @@
+{
+  "pathway_name": "NG2_CS",
+  "model": {
+    "base": "models/THG-beta-batch_251106_connected_minptr_combined_compartments.json",
+    "output": "models/THG-beta-batch_251106_connected_minptr_combined_compartments_with_ng2_cs.json"
+  },
+  "visualizations": {
+    "output_directory": "figures",
+    "d3js": "ng2_cs_network_d3.html",
+    "plotly": "ng2_cs_network_plotly.html",
+    "graphviz_base": "ng2_cs_network"
+  },
+  "compartments": [
+    {"name": "cell membrane", "abbreviation": "a"},
+    {"name": "cytosol", "abbreviation": "c"},
+    {"name": "endoplasmic reticulum", "abbreviation": "r"},
+    {"name": "golgi apparatus", "abbreviation": "g"},
+    {"name": "vesicle", "abbreviation": "v"},
+    {"name": "glycocalyx", "abbreviation": "gl"},
+    {"name": "extracellular", "abbreviation": "e"}
+  ],
+  "metabolites": {
+    "database_file": "data/metabolite_id_database.json",
+    "targets": [
+      "ATP",
+      "ADP",
+      "GTP",
+      "GDP",
+      "UDP",
+      "UDP-N-acetyl-alpha-D-glucosamine",
+      "UDP-N-acetyl-D-galactosamine",
+      "UDP-glucuronate",
+      "PAPS",
+      "PAP",
+      "phosphate",
+      "H2O",
+      "H+",
+      "L-alanine",
+      "L-arginine",
+      "L-asparagine",
+      "L-aspartate",
+      "L-cysteine",
+      "L-glutamine",
+      "L-glutamate",
+      "L-glycine",
+      "L-histidine",
+      "L-isoleucine",
+      "L-leucine",
+      "L-lysine",
+      "L-methionine",
+      "L-phenylalanine",
+      "L-proline",
+      "L-serine",
+      "L-threonine",
+      "L-tryptophan",
+      "L-tyrosine",
+      "L-valine",
+      "phosphatidylinositol",
+      "dolichyl-phosphate-D-mannose",
+      "1-Palmitoylglycerophosphoethanolamine",
+      "dolichyl-phosphate",
+      "mannose",
+      "UDP-N-acetylglucosamine[er]"
+    ],
+    "NG2_CS_specific": {
+      "NG2_Core_Protein": {
+        "name": "NG2 core protein (CSPG4)",
+        "formula": "CXXXXXHXXXXXNXXXXXOXXXXXSXX",
+        "compartment": "r",
+        "charge": 0,
+        "annotation": {
+          "uniprot": "Q6UVK1",
+          "ensembl": "ENSG000001XXXXXX"
+        },
+        "sbo": "SBO:0000247"
+      },
+      "CS_Chain_100_on_NG2_Unsulfated": {
+        "name": "Chondroitin sulfate chain (100 disaccharides) on NG2 (unsulfated)",
+        "formula": "C1000H1500N100O1100S0",
+        "compartment": "g",
+        "charge": -200,
+        "annotation": {},
+        "sbo": "SBO:0000247"
+      },
+      "Fully_Assembled_CSA_B_Proteoglycan_on_NG2": {
+        "name": "Fully assembled NG2 proteoglycan with CSA/B pattern (Golgi)",
+        "formula": "C1000H1500N100O1400S100",
+        "compartment": "g",
+        "charge": -300,
+        "annotation": {},
+        "sbo": "SBO:0000247"
+      },
+      "Fully_Assembled_CSE_Proteoglycan_on_NG2": {
+        "name": "Fully assembled NG2 proteoglycan with CSE pattern (Golgi)",
+        "formula": "C1000H1500N100O1400S200",
+        "compartment": "g",
+        "charge": -400,
+        "annotation": {},
+        "sbo": "SBO:0000247"
+      },
+      "Packaged_CSA_B_on_NG2": {
+        "name": "Packaged NG2 CSA/B cargo (vesicle)",
+        "formula": "C1000H1500N100O1400S100",
+        "compartment": "v",
+        "charge": -300,
+        "sbo": "SBO:0000247"
+      },
+      "Activated_CSA_B_on_NG2_Cargo": {
+        "name": "Activated NG2 CSA/B cargo (vesicle)",
+        "formula": "C1000H1500N100O1400S100",
+        "compartment": "v",
+        "charge": -300,
+        "sbo": "SBO:0000247"
+      },
+      "Packaged_CSE_on_NG2": {
+        "name": "Packaged NG2 CSE cargo (vesicle)",
+        "formula": "C1000H1500N100O1400S200",
+        "compartment": "v",
+        "charge": -400,
+        "sbo": "SBO:0000247"
+      },
+      "Activated_CSE_on_NG2_Cargo": {
+        "name": "Activated NG2 CSE cargo (vesicle)",
+        "formula": "C1000H1500N100O1400S200",
+        "compartment": "v",
+        "charge": -400,
+        "sbo": "SBO:0000247"
+      },
+      "Full_NG2_CSA_Anchored": {
+        "name": "Full NG2 CSA proteoglycan anchored in membrane",
+        "formula": "C1000H1500N100O1400S100",
+        "compartment": "a",
+        "charge": -300,
+        "sbo": "SBO:0000247"
+      },
+      "Full_NG2_CSB_Anchored": {
+        "name": "Full NG2 CSB proteoglycan anchored in membrane",
+        "formula": "C1000H1500N100O1400S100",
+        "compartment": "a",
+        "charge": -300,
+        "sbo": "SBO:0000247"
+      },
+      "Full_NG2_CSE_Anchored": {
+        "name": "Full NG2 CSE proteoglycan anchored in membrane",
+        "formula": "C1000H1500N100O1400S200",
+        "compartment": "a",
+        "charge": -400,
+        "sbo": "SBO:0000247"
+      },
+      "NG2_Anchor": {
+        "name": "NG2 transmembrane anchor/stub",
+        "formula": "CXXXHXXXNXXOXXSx",
+        "compartment": "a",
+        "charge": 0,
+        "sbo": "SBO:0000247"
+      },
+      "Functional_CSA_Ectodomain_on_NG2": {
+        "name": "Functional CSA ectodomain on NG2 (glycocalyx)",
+        "formula": "C1000H1500N100O1400S100",
+        "compartment": "gl",
+        "charge": -300,
+        "sbo": "SBO:0000247"
+      },
+      "Functional_CSB_Ectodomain_on_NG2": {
+        "name": "Functional CSB ectodomain on NG2 (glycocalyx)",
+        "formula": "C1000H1500N100O1400S100",
+        "compartment": "gl",
+        "charge": -300,
+        "sbo": "SBO:0000247"
+      },
+      "Functional_CSE_Ectodomain_on_NG2": {
+        "name": "Functional CSE ectodomain on NG2 (glycocalyx)",
+        "formula": "C1000H1500N100O1400S200",
+        "compartment": "gl",
+        "charge": -400,
+        "sbo": "SBO:0000247"
+      },
+      "NG2_Stub_from_CSA": {
+        "name": "NG2 stub after CSA shedding",
+        "formula": "CXXXXX",
+        "compartment": "a",
+        "charge": 0,
+        "sbo": "SBO:0000247"
+      },
+      "NG2_Stub_from_CSB": {
+        "name": "NG2 stub after CSB shedding",
+        "formula": "CXXXXX",
+        "compartment": "a",
+        "charge": 0,
+        "sbo": "SBO:0000247"
+      },
+      "NG2_Stub_from_CSE": {
+        "name": "NG2 stub after CSE shedding",
+        "formula": "CXXXXX",
+        "compartment": "a",
+        "charge": 0,
+        "sbo": "SBO:0000247"
+      },
+      "Shed_CS_Fragment_A": {
+        "name": "Shed CS fragment A (10-disaccharide)",
+        "formula": "C100H150N10O110S10",
+        "compartment": "e",
+        "charge": -30,
+        "sbo": "SBO:0000247"
+      },
+      "Shed_CS_Fragment_B": {
+        "name": "Shed CS fragment B (10-disaccharide)",
+        "formula": "C100H150N10O110S10",
+        "compartment": "e",
+        "charge": -30,
+        "sbo": "SBO:0000247"
+      },
+      "Shed_CS_Fragment_E": {
+        "name": "Shed CS fragment E (10-disaccharide)",
+        "formula": "C100H150N10O110S20",
+        "compartment": "e",
+        "charge": -40,
+        "sbo": "SBO:0000247"
+      },
+      "GalNAc": {
+        "name": "N-acetyl-D-galactosamine",
+        "formula": "C8H15NO6",
+        "compartment": "e",
+        "charge": 0,
+        "sbo": "SBO:0000247"
+      }
+    }
+  },
+  "reactions": [
+    {
+      "id": "T_Lalanine_c_r",
+      "name": "Transport of L-alanine between cytosol and ER",
+      "equation": "L-alanine[c] <=> L-alanine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Larginine_c_r",
+      "name": "Transport of L-arginine between cytosol and ER",
+      "equation": "L-arginine[c] <=> L-arginine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lasparagine_c_r",
+      "name": "Transport of L-asparagine between cytosol and ER",
+      "equation": "L-asparagine[c] <=> L-asparagine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Laspartate_c_r",
+      "name": "Transport of L-aspartate between cytosol and ER",
+      "equation": "L-aspartate[c] <=> L-aspartate[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lcysteine_c_r",
+      "name": "Transport of L-cysteine between cytosol and ER",
+      "equation": "L-cysteine[c] <=> L-cysteine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lglutamine_c_r",
+      "name": "Transport of L-glutamine between cytosol and ER",
+      "equation": "L-glutamine[c] <=> L-glutamine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lglutamate_c_r",
+      "name": "Transport of L-glutamate between cytosol and ER",
+      "equation": "L-glutamate[c] <=> L-glutamate[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lglycine_c_r",
+      "name": "Transport of L-glycine between cytosol and ER",
+      "equation": "L-glycine[c] <=> L-glycine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lhistidine_c_r",
+      "name": "Transport of L-histidine between cytosol and ER",
+      "equation": "L-histidine[c] <=> L-histidine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lisoleucine_c_r",
+      "name": "Transport of L-isoleucine between cytosol and ER",
+      "equation": "L-isoleucine[c] <=> L-isoleucine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lleucine_c_r",
+      "name": "Transport of L-leucine between cytosol and ER",
+      "equation": "L-leucine[c] <=> L-leucine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Llysine_c_r",
+      "name": "Transport of L-lysine between cytosol and ER",
+      "equation": "L-lysine[c] <=> L-lysine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lmethionine_c_r",
+      "name": "Transport of L-methionine between cytosol and ER",
+      "equation": "L-methionine[c] <=> L-methionine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lphenylalanine_c_r",
+      "name": "Transport of L-phenylalanine between cytosol and ER",
+      "equation": "L-phenylalanine[c] <=> L-phenylalanine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lproline_c_r",
+      "name": "Transport of L-proline between cytosol and ER",
+      "equation": "L-proline[c] <=> L-proline[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lserine_c_r",
+      "name": "Transport of L-serine between cytosol and ER",
+      "equation": "L-serine[c] <=> L-serine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lthreonine_c_r",
+      "name": "Transport of L-threonine between cytosol and ER",
+      "equation": "L-threonine[c] <=> L-threonine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Ltryptophan_c_r",
+      "name": "Transport of L-tryptophan between cytosol and ER",
+      "equation": "L-tryptophan[c] <=> L-tryptophan[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Ltyrosine_c_r",
+      "name": "Transport of L-tyrosine between cytosol and ER",
+      "equation": "L-tyrosine[c] <=> L-tyrosine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lvaline_c_r",
+      "name": "Transport of L-valine between cytosol and ER",
+      "equation": "L-valine[c] <=> L-valine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_ATP_c_r",
+      "name": "Transport of ATP between cytosol and ER",
+      "equation": "ATP[c] <=> ATP[r]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_H2O_c_r",
+      "name": "Transport of H2O between cytosol and ER",
+      "equation": "H2O[c] <=> H2O[r]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_UDP_GalNAc_golgi",
+      "name": "Transport of UDP-N-acetyl-D-galactosamine between cytosol and Golgi",
+      "equation": "UDP-N-acetyl-D-galactosamine[c] <=> UDP-N-acetyl-D-galactosamine[g]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_UDP_glucuronate_c_g",
+      "name": "Transport of UDP-glucuronate between cytosol and Golgi",
+      "equation": "UDP-glucuronate[c] <=> UDP-glucuronate[g]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_PAPS_c_g",
+      "name": "Transport of PAPS between cytosol and Golgi",
+      "equation": "PAPS[c] <=> PAPS[g]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_H2O_c_g",
+      "name": "Transport of H2O between cytosol and Golgi",
+      "equation": "H2O[c] <=> H2O[g]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_H_e_gl",
+      "name": "Proton exchange extracellular <-> glycocalyx",
+      "equation": "H+[e] <=> H+[gl]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_H2O_e_gl",
+      "name": "Water exchange extracellular <-> glycocalyx",
+      "equation": "H2O[e] <=> H2O[gl]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_H_e_c",
+      "name": "Proton exchange extracellular <-> cytosol",
+      "equation": "H+[e] <=> H+[c]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_H2O_e_c",
+      "name": "Water exchange extracellular <-> cytosol",
+      "equation": "H2O[e] <=> H2O[c]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "R_Synth_NG2_Core",
+      "name": "Synthesis of NG2 core protein (scaled 1/1000)",
+      "equation": "0.173000 L-alanine[r] + 0.104000 L-arginine[r] + 0.080000 L-asparagine[r] + 0.143000 L-aspartate[r] + 0.022000 L-cysteine[r] + 0.099000 L-glutamine[r] + 0.211000 L-glutamate[r] + 0.193000 L-glycine[r] + 0.041000 L-histidine[r] + 0.083000 L-isoleucine[r] + 0.228000 L-leucine[r] + 0.082000 L-lysine[r] + 0.022000 L-methionine[r] + 0.071000 L-phenylalanine[r] + 0.135000 L-proline[r] + 0.189000 L-serine[r] + 0.141000 L-threonine[r] + 0.012000 L-tryptophan[r] + 0.045000 L-tyrosine[r] + 0.148000 L-valine[r] + 9.284000 ATP[r] + 6.963000 H2O[r] --> 0.001 NG2_Core_Protein[r] + 9.284000 ADP[r] + 9.284000 phosphate[r] + 9.284000 H+[r]",
+      "subsystem": "NG2 synthesis",
+      "ec": "6.1.-.-",
+      "gpr": "ENSG000001XXXXXX",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "T_Core_NG2_r_g",
+      "name": "Transport of nascent NG2 core protein ER -> Golgi",
+      "equation": "NG2_Core_Protein[r] --> NG2_Core_Protein[g]",
+      "subsystem": "Protein trafficking",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "R_CS_Elongation_on_NG2",
+      "name": "Chondroitin sulfate elongation on NG2",
+      "equation": "NG2_Core_Protein[g] + 100 UDP-N-acetyl-D-galactosamine[g] + 100 UDP-glucuronate[g] --> CS_Chain_100_on_NG2_Unsulfated[g] + 200 UDP[g]",
+      "subsystem": "Chondroitin sulfate biosynthesis",
+      "ec": "2.4.1.-",
+      "gpr": "ENSG00000181029 or ENSG00000163918",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "R_CS_Sulfation_A_B_on_NG2",
+      "name": "CS A/B sulfation on NG2",
+      "equation": "CS_Chain_100_on_NG2_Unsulfated[g] + 100 PAPS[g] --> Fully_Assembled_CSA_B_Proteoglycan_on_NG2[g] + 100 PAP[g]",
+      "subsystem": "CS sulfation",
+      "ec": "2.8.2.-",
+      "gpr": "ENSG000001XXXXXX",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "R_CS_Sulfation_E_on_NG2",
+      "name": "CS E sulfation on NG2",
+      "equation": "CS_Chain_100_on_NG2_Unsulfated[g] + 200 PAPS[g] --> Fully_Assembled_CSE_Proteoglycan_on_NG2[g] + 200 PAP[g]",
+      "subsystem": "CS sulfation",
+      "ec": "2.8.2.-",
+      "gpr": "ENSG000001XXXXXX",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "T_Waste_UDP_out",
+      "name": "Transport UDP from Golgi to cytosol",
+      "equation": "UDP[g] <=> UDP[c]",
+      "subsystem": "Waste export",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Waste_PAP_out",
+      "name": "Transport PAP from Golgi to cytosol",
+      "equation": "PAP[g] <=> PAP[c]",
+      "subsystem": "Waste export",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "R_CSA_B_on_NG2_Packaging",
+      "name": "Packaging of CSA/B NG2 into Golgi vesicle",
+      "equation": "Fully_Assembled_CSA_B_Proteoglycan_on_NG2[g] --> Packaged_CSA_B_on_NG2[v]",
+      "subsystem": "Vesicular transport",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "R_CSA_B_on_NG2_Vesicle_Activation",
+      "name": "Vesicle activation for CSA/B NG2 cargo",
+      "equation": "Packaged_CSA_B_on_NG2[v] + ATP[c] + GTP[c] --> Activated_CSA_B_on_NG2_Cargo[v] + ADP[c] + GDP[c] + 2 phosphate[c]",
+      "subsystem": "Vesicular transport",
+      "ec": "3.6.5.2",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "R_CSA_on_NG2_Delivery",
+      "name": "Delivery of CSA NG2 cargo to membrane (A branch)",
+      "equation": "Activated_CSA_B_on_NG2_Cargo[v] --> Full_NG2_CSA_Anchored[a]",
+      "subsystem": "Membrane trafficking",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "R_CSB_on_NG2_Delivery",
+      "name": "Delivery of CSB NG2 cargo to membrane (B branch)",
+      "equation": "Activated_CSA_B_on_NG2_Cargo[v] --> Full_NG2_CSB_Anchored[a]",
+      "subsystem": "Membrane trafficking",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "R_CSE_on_NG2_Packaging",
+      "name": "Packaging of CSE NG2 into Golgi vesicle",
+      "equation": "Fully_Assembled_CSE_Proteoglycan_on_NG2[g] --> Packaged_CSE_on_NG2[v]",
+      "subsystem": "Vesicular transport",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "R_CSE_on_NG2_Vesicle_Activation",
+      "name": "Vesicle activation for CSE NG2 cargo",
+      "equation": "Packaged_CSE_on_NG2[v] + ATP[c] + GTP[c] --> Activated_CSE_on_NG2_Cargo[v] + ADP[c] + GDP[c] + 2 phosphate[c]",
+      "subsystem": "Vesicular transport",
+      "ec": "3.6.5.2",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "R_CSE_on_NG2_Delivery",
+      "name": "Delivery of CSE NG2 cargo to membrane",
+      "equation": "Activated_CSE_on_NG2_Cargo[v] --> Full_NG2_CSE_Anchored[a]",
+      "subsystem": "Membrane trafficking",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "R_CSA_on_NG2_Unfurling",
+      "name": "Unfurling of CSA ectodomain into glycocalyx",
+      "equation": "Full_NG2_CSA_Anchored[a] --> NG2_Anchor[a] + Functional_CSA_Ectodomain_on_NG2[gl]",
+      "subsystem": "Membrane -> Glycocalyx",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "R_CSB_on_NG2_Unfurling",
+      "name": "Unfurling of CSB ectodomain into glycocalyx",
+      "equation": "Full_NG2_CSB_Anchored[a] --> NG2_Anchor[a] + Functional_CSB_Ectodomain_on_NG2[gl]",
+      "subsystem": "Membrane -> Glycocalyx",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "R_CSE_on_NG2_Unfurling",
+      "name": "Unfurling of CSE ectodomain into glycocalyx",
+      "equation": "Full_NG2_CSE_Anchored[a] --> NG2_Anchor[a] + Functional_CSE_Ectodomain_on_NG2[gl]",
+      "subsystem": "Membrane -> Glycocalyx",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "R_CS_Shedding_A_on_NG2",
+      "name": "Proteolytic shedding / fragmentation of CSA ectodomain (A)",
+      "equation": "Functional_CSA_Ectodomain_on_NG2[gl] + 11 H2O[gl] --> NG2_Stub_from_CSA[a] + 12 Shed_CS_Fragment_A[e] + 11 H+[gl]",
+      "subsystem": "CS degradation",
+      "ec": "3.4.24.-",
+      "gpr": "ENSG000001XXXXXX",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "R_CS_Shedding_B_on_NG2",
+      "name": "Proteolytic shedding / fragmentation of CSB ectodomain (B)",
+      "equation": "Functional_CSB_Ectodomain_on_NG2[gl] + 11 H2O[gl] --> NG2_Stub_from_CSB[a] + 12 Shed_CS_Fragment_B[e] + 11 H+[gl]",
+      "subsystem": "CS degradation",
+      "ec": "3.4.24.-",
+      "gpr": "ENSG000001XXXXXX",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "R_CS_Shedding_E_on_NG2",
+      "name": "Proteolytic shedding / fragmentation of CSE ectodomain (E)",
+      "equation": "Functional_CSE_Ectodomain_on_NG2[gl] + 11 H2O[gl] --> NG2_Stub_from_CSE[a] + 12 Shed_CS_Fragment_E[e] + 11 H+[gl]",
+      "subsystem": "CS degradation",
+      "ec": "3.4.24.-",
+      "gpr": "ENSG000001XXXXXX",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "DM_Anchor_NG2",
+      "name": "Demand for NG2 anchor (turnover)",
+      "equation": "NG2_Anchor[a] --> ",
+      "subsystem": "Turnover",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000628"
+    },
+    {
+      "id": "DM_Stub_NG2_A",
+      "name": "Demand for NG2 stub after CSA shedding",
+      "equation": "NG2_Stub_from_CSA[a] --> ",
+      "subsystem": "Turnover",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000628"
+    },
+    {
+      "id": "DM_Stub_NG2_B",
+      "name": "Demand for NG2 stub after CSB shedding",
+      "equation": "NG2_Stub_from_CSB[a] --> ",
+      "subsystem": "Turnover",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000628"
+    },
+    {
+      "id": "DM_Stub_NG2_E",
+      "name": "Demand for NG2 stub after CSE shedding",
+      "equation": "NG2_Stub_from_CSE[a] --> ",
+      "subsystem": "Turnover",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000628"
+    },
+    {
+      "id": "DM_Clearance_CS_Fragment_A",
+      "name": "Clearance of shed CS fragment A",
+      "equation": "Shed_CS_Fragment_A[e] --> ",
+      "subsystem": "Clearance",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000628"
+    },
+    {
+      "id": "DM_Clearance_CS_Fragment_B",
+      "name": "Clearance of shed CS fragment B",
+      "equation": "Shed_CS_Fragment_B[e] --> ",
+      "subsystem": "Clearance",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000628"
+    },
+    {
+      "id": "DM_Clearance_CS_Fragment_E",
+      "name": "Clearance of shed CS fragment E",
+      "equation": "Shed_CS_Fragment_E[e] --> ",
+      "subsystem": "Clearance",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000628"
+    }
+  ]
+}
+

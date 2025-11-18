@@ -1,0 +1,524 @@
+{
+  "pathway_name": "Lumican_KS",
+  "model": {
+    "base": "models/THG-beta-batch_251106_connected_minptr_combined_compartments.json",
+    "output": "models/THG-beta-batch_251106_connected_minptr_combined_compartments_with_lumican_ks.json"
+  },
+  "visualizations": {
+    "output_directory": "figures",
+    "d3js": "lumican_ks_network_d3.html",
+    "plotly": "lumican_ks_network_plotly.html",
+    "graphviz_base": "lumican_ks_network"
+  },
+  "compartments": [
+    {"name": "cytosol", "abbreviation": "c"},
+    {"name": "endoplasmic reticulum", "abbreviation": "r"},
+    {"name": "golgi apparatus", "abbreviation": "g"},
+    {"name": "vesicle", "abbreviation": "v"},
+    {"name": "glycocalyx", "abbreviation": "gl"},
+    {"name": "extracellular", "abbreviation": "e"}
+  ],
+  "metabolites": {
+    "database_file": "data/metabolite_id_database.json",
+    "targets": [
+      "ATP",
+      "ADP",
+      "GTP",
+      "GDP",
+      "UDP",
+      "UDP-galactose",
+      "UDP-N-acetylglucosamine",
+      "PAPS",
+      "PAP",
+      "phosphate",
+      "H2O",
+      "H+",
+      "L-alanine",
+      "L-arginine",
+      "L-asparagine",
+      "L-aspartate",
+      "L-cysteine",
+      "L-glutamine",
+      "L-glutamate",
+      "L-glycine",
+      "L-histidine",
+      "L-isoleucine",
+      "L-leucine",
+      "L-lysine",
+      "L-methionine",
+      "L-phenylalanine",
+      "L-proline",
+      "L-serine",
+      "L-threonine",
+      "L-tryptophan",
+      "L-tyrosine",
+      "L-valine"
+    ],
+    "Lumican_KS_specific": {
+      "Lumican_Core_Protein": {
+        "name": "Lumican core protein",
+        "formula": "C1695H2634N450O531S4",
+        "compartment": "r",
+        "charge": -10,
+        "annotation": {
+          "uniprot": "P51884",
+          "hgnc": "LUM",
+          "ensembl": "ENSG00000139329"
+        },
+        "sbo": "SBO:0000247"
+      },
+      "Lumican_KS_Chain_25_Unsulfated": {
+        "name": "Keratan sulfate chain (25 disaccharides) on Lumican (unsulfated)",
+        "formula": "C350H500N25O275S0",
+        "compartment": "g",
+        "charge": -50,
+        "annotation": {"chebi": "CHEBI:28174"},
+        "sbo": "SBO:0000247"
+      },
+      "Fully_Assembled_Lumican_KS": {
+        "name": "Fully assembled Lumican with KS chains in Golgi",
+        "formula": "C2045H3134N475O806S29",
+        "compartment": "g",
+        "charge": -85,
+        "annotation": {"chebi": "CHEBI:28174"},
+        "sbo": "SBO:0000247"
+      },
+      "Packaged_Lumican_KS": {
+        "name": "Packaged Lumican-KS in vesicle",
+        "formula": "C2045H3134N475O806S29",
+        "compartment": "v",
+        "charge": -85,
+        "sbo": "SBO:0000247"
+      },
+      "Activated_Lumican_KS_Cargo": {
+        "name": "Activated Lumican-KS cargo in vesicle",
+        "formula": "C2045H3134N475O806S29",
+        "compartment": "v",
+        "charge": -85,
+        "sbo": "SBO:0000247"
+      },
+      "Functional_Lumican_KS": {
+        "name": "Functional Lumican with KS in glycocalyx",
+        "formula": "C2045H3134N475O806S29",
+        "compartment": "gl",
+        "charge": -85,
+        "annotation": {"chebi": "CHEBI:28174"},
+        "sbo": "SBO:0000247"
+      },
+      "Truncated_Lumican_Core": {
+        "name": "Truncated Lumican core after KS cleavage",
+        "formula": "C1695H2634N450O531S4",
+        "compartment": "gl",
+        "charge": -60,
+        "sbo": "SBO:0000247"
+      },
+      "Shed_KS_Fragment": {
+        "name": "Shed keratan sulfate fragment (5 disaccharides)",
+        "formula": "C70H100N5O55S5",
+        "compartment": "e",
+        "charge": -15,
+        "annotation": {"chebi": "CHEBI:28174"},
+        "sbo": "SBO:0000247"
+      }
+    }
+  },
+  "reactions": [
+    {
+      "id": "T_Lalanine_c_r",
+      "name": "Transport of L-alanine between cytosol and ER",
+      "description": "Bidirectional transport of L-alanine",
+      "equation": "L-alanine[c] <=> L-alanine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Larginine_c_r",
+      "name": "Transport of L-arginine between cytosol and ER",
+      "description": "Bidirectional transport of L-arginine",
+      "equation": "L-arginine[c] <=> L-arginine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lasparagine_c_r",
+      "name": "Transport of L-asparagine between cytosol and ER",
+      "description": "Bidirectional transport of L-asparagine",
+      "equation": "L-asparagine[c] <=> L-asparagine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Laspartate_c_r",
+      "name": "Transport of L-aspartate between cytosol and ER",
+      "description": "Bidirectional transport of L-aspartate",
+      "equation": "L-aspartate[c] <=> L-aspartate[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lcysteine_c_r",
+      "name": "Transport of L-cysteine between cytosol and ER",
+      "description": "Bidirectional transport of L-cysteine",
+      "equation": "L-cysteine[c] <=> L-cysteine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lglutamine_c_r",
+      "name": "Transport of L-glutamine between cytosol and ER",
+      "description": "Bidirectional transport of L-glutamine",
+      "equation": "L-glutamine[c] <=> L-glutamine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lglutamate_c_r",
+      "name": "Transport of L-glutamate between cytosol and ER",
+      "description": "Bidirectional transport of L-glutamate",
+      "equation": "L-glutamate[c] <=> L-glutamate[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lglycine_c_r",
+      "name": "Transport of L-glycine between cytosol and ER",
+      "description": "Bidirectional transport of L-glycine",
+      "equation": "L-glycine[c] <=> L-glycine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lhistidine_c_r",
+      "name": "Transport of L-histidine between cytosol and ER",
+      "description": "Bidirectional transport of L-histidine",
+      "equation": "L-histidine[c] <=> L-histidine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lisoleucine_c_r",
+      "name": "Transport of L-isoleucine between cytosol and ER",
+      "description": "Bidirectional transport of L-isoleucine",
+      "equation": "L-isoleucine[c] <=> L-isoleucine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lleucine_c_r",
+      "name": "Transport of L-leucine between cytosol and ER",
+      "description": "Bidirectional transport of L-leucine",
+      "equation": "L-leucine[c] <=> L-leucine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Llysine_c_r",
+      "name": "Transport of L-lysine between cytosol and ER",
+      "description": "Bidirectional transport of L-lysine",
+      "equation": "L-lysine[c] <=> L-lysine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lmethionine_c_r",
+      "name": "Transport of L-methionine between cytosol and ER",
+      "description": "Bidirectional transport of L-methionine",
+      "equation": "L-methionine[c] <=> L-methionine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lphenylalanine_c_r",
+      "name": "Transport of L-phenylalanine between cytosol and ER",
+      "description": "Bidirectional transport of L-phenylalanine",
+      "equation": "L-phenylalanine[c] <=> L-phenylalanine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lproline_c_r",
+      "name": "Transport of L-proline between cytosol and ER",
+      "description": "Bidirectional transport of L-proline",
+      "equation": "L-proline[c] <=> L-proline[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lserine_c_r",
+      "name": "Transport of L-serine between cytosol and ER",
+      "description": "Bidirectional transport of L-serine",
+      "equation": "L-serine[c] <=> L-serine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lthreonine_c_r",
+      "name": "Transport of L-threonine between cytosol and ER",
+      "description": "Bidirectional transport of L-threonine",
+      "equation": "L-threonine[c] <=> L-threonine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Ltryptophan_c_r",
+      "name": "Transport of L-tryptophan between cytosol and ER",
+      "description": "Bidirectional transport of L-tryptophan",
+      "equation": "L-tryptophan[c] <=> L-tryptophan[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Ltyrosine_c_r",
+      "name": "Transport of L-tyrosine between cytosol and ER",
+      "description": "Bidirectional transport of L-tyrosine",
+      "equation": "L-tyrosine[c] <=> L-tyrosine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lvaline_c_r",
+      "name": "Transport of L-valine between cytosol and ER",
+      "description": "Bidirectional transport of L-valine",
+      "equation": "L-valine[c] <=> L-valine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_ATP_ER",
+      "name": "Transport of ATP between cytosol and ER",
+      "equation": "ATP[c] <=> ATP[r]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_H2O_ER",
+      "name": "Transport of H2O between cytosol and ER",
+      "equation": "H2O[c] <=> H2O[r]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_UDP_Gal_Golgi",
+      "name": "Transport of UDP-galactose between cytosol and Golgi",
+      "equation": "UDP-galactose[c] <=> UDP-galactose[g]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_UDP_GlcNAc_Golgi",
+      "name": "Transport of UDP-N-acetylglucosamine between cytosol and Golgi",
+      "equation": "UDP-N-acetylglucosamine[c] <=> UDP-N-acetylglucosamine[g]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_PAPS_Golgi",
+      "name": "Transport of PAPS between cytosol and Golgi",
+      "equation": "PAPS[c] <=> PAPS[g]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_H2O_Golgi",
+      "name": "Transport of H2O between cytosol and Golgi",
+      "equation": "H2O[c] <=> H2O[g]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_H_E",
+      "name": "Transport of H+ between extracellular and cytosol",
+      "equation": "H+[e] <=> H+[c]",
+      "subsystem": "Ion transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_H2O_E",
+      "name": "Transport of H2O between extracellular and cytosol",
+      "equation": "H2O[e] <=> H2O[c]",
+      "subsystem": "Solvent transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "R_Synth_Lumican_Core",
+      "name": "Synthesis of Lumican core protein",
+      "description": "Protein synthesis of 338-residue Lumican core protein in ER",
+      "equation": "0.008 L-alanine[r] + 0.004 L-arginine[r] + 0.016 L-asparagine[r] + 0.018 L-aspartate[r] + 0.004 L-cysteine[r] + 0.004 L-glutamine[r] + 0.02 L-glutamate[r] + 0.013 L-glycine[r] + 0.005 L-histidine[r] + 0.012 L-isoleucine[r] + 0.043 L-leucine[r] + 0.013 L-lysine[r] + 0.006 L-methionine[r] + 0.007 L-phenylalanine[r] + 0.014 L-proline[r] + 0.026 L-serine[r] + 0.01 L-threonine[r] + 0.002 L-tryptophan[r] + 0.01 L-tyrosine[r] + 0.023 L-valine[r] + 1.348 ATP[r] + 1.011 H2O[r] --> 0.001 Lumican_Core_Protein[r] + 1.348 ADP[r] + 1.348 phosphate[r] + 1.348 H+[r]",
+      "subsystem": "Protein synthesis",
+      "ec": "6.1.1.-",
+      "gpr": "",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "T_Lumican_Core_ER_Golgi",
+      "name": "Transport of Lumican core protein from ER to Golgi",
+      "equation": "Lumican_Core_Protein[r] --> Lumican_Core_Protein[g]",
+      "subsystem": "Intracellular transport",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "R_Lumican_KS_Elongation",
+      "name": "Keratan sulfate elongation on Lumican",
+      "description": "Addition of 25 disaccharides to form unsulfated KS chain",
+      "equation": "Lumican_Core_Protein[g] + 25 UDP-galactose[g] + 25 UDP-N-acetylglucosamine[g] --> Lumican_KS_Chain_25_Unsulfated[g] + 50 UDP[g]",
+      "subsystem": "Keratan sulfate biosynthesis",
+      "ec": "2.4.1.-",
+      "gpr": "ENSG00000163747 or ENSG00000086062",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "R_Lumican_KS_Sulfation",
+      "name": "Keratan sulfate sulfation on Lumican",
+      "description": "KS sulfation at C6 position of galactose",
+      "equation": "Lumican_KS_Chain_25_Unsulfated[g] + 25 PAPS[g] --> Fully_Assembled_Lumican_KS[g] + 25 PAP[g]",
+      "subsystem": "Keratan sulfate biosynthesis",
+      "ec": "2.8.2.23",
+      "gpr": "ENSG00000178738",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "T_Waste_UDP_out",
+      "name": "Transport of UDP from Golgi to cytosol",
+      "equation": "UDP[g] <=> UDP[c]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Waste_PAP_out",
+      "name": "Transport of PAP from Golgi to cytosol",
+      "equation": "PAP[g] <=> PAP[c]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "R_Lumican_KS_Packaging",
+      "name": "Packaging of Lumican-KS in vesicle",
+      "description": "Vesicular packaging for secretion",
+      "equation": "Fully_Assembled_Lumican_KS[g] --> Packaged_Lumican_KS[v]",
+      "subsystem": "Vesicular transport",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "R_Lumican_KS_Vesicle_Activation",
+      "name": "Vesicle activation for Lumican-KS transport",
+      "description": "ATP/GTP-dependent vesicle activation",
+      "equation": "Packaged_Lumican_KS[v] + ATP[c] + GTP[c] --> Activated_Lumican_KS_Cargo[v] + ADP[c] + phosphate[c] + GDP[c] + phosphate[c]",
+      "subsystem": "Vesicular transport",
+      "ec": "3.6.1.-",
+      "gpr": "",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "R_Lumican_KS_Secretion",
+      "name": "Secretion of Lumican-KS to glycocalyx",
+      "description": "Vesicle fusion and secretion to pericellular space",
+      "equation": "Activated_Lumican_KS_Cargo[v] --> Functional_Lumican_KS[gl]",
+      "subsystem": "Secretion",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "R_Lumican_Shedding",
+      "name": "Enzymatic shedding of Lumican-KS",
+      "description": "Proteolytic and glycolytic cleavage of KS chains",
+      "equation": "Functional_Lumican_KS[gl] + 4 H2O[e] --> Truncated_Lumican_Core[gl] + 5 Shed_KS_Fragment[e] + 4 H+[e]",
+      "subsystem": "Glycocalyx degradation",
+      "ec": "3.2.1.-",
+      "gpr": "ENSG00000162595",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "DM_Truncated_Lumican",
+      "name": "Demand for truncated Lumican core after KS cleavage",
+      "equation": "Truncated_Lumican_Core[gl] -->",
+      "subsystem": "Demand",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000628"
+    },
+    {
+      "id": "DM_Shed_KS_Fragment",
+      "name": "Demand for shed KS fragment",
+      "equation": "Shed_KS_Fragment[e] -->",
+      "subsystem": "Demand",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000628"
+    }
+  ]
+}

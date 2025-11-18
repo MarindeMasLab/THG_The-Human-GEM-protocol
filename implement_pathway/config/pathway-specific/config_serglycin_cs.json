@@ -1,0 +1,587 @@
+{
+  "pathway_name": "Serglycin_CS",
+  "model": {
+    "base": "models/THG-beta-batch_251106_connected_minptr_combined_compartments.json",
+    "output": "models/THG-beta-batch_251106_connected_minptr_combined_compartments_with_serglycin_cs.json"
+  },
+  "visualizations": {
+    "output_directory": "figures",
+    "d3js": "serglycin_cs_network_d3.html",
+    "plotly": "serglycin_cs_network_plotly.html",
+    "graphviz_base": "serglycin_cs_network"
+  },
+  "compartments": [
+    {"name": "cytosol", "abbreviation": "c"},
+    {"name": "endoplasmic reticulum", "abbreviation": "r"},
+    {"name": "golgi apparatus", "abbreviation": "g"},
+    {"name": "vesicle", "abbreviation": "v"},
+    {"name": "glycocalyx", "abbreviation": "gl"},
+    {"name": "extracellular", "abbreviation": "e"}
+  ],
+  "metabolites": {
+    "database_file": "data/metabolite_id_database.json",
+    "targets": [
+      "ATP",
+      "ADP",
+      "GTP",
+      "GDP",
+      "UDP",
+      "UDP-N-acetyl-D-galactosamine",
+      "UDP-glucuronate",
+      "PAPS",
+      "PAP",
+      "phosphate",
+      "H2O",
+      "H+",
+      "L-alanine",
+      "L-arginine",
+      "L-asparagine",
+      "L-aspartate",
+      "L-cysteine",
+      "L-glutamine",
+      "L-glutamate",
+      "L-glycine",
+      "L-histidine",
+      "L-isoleucine",
+      "L-leucine",
+      "L-lysine",
+      "L-methionine",
+      "L-phenylalanine",
+      "L-proline",
+      "L-serine",
+      "L-threonine",
+      "L-tryptophan",
+      "L-tyrosine",
+      "L-valine"
+    ],
+    "Serglycin_CS_specific": {
+      "Serglycin_Core_Protein": {
+        "name": "Serglycin core protein",
+        "formula": "C792H1234N212O248S3",
+        "compartment": "r",
+        "charge": -6,
+        "annotation": {
+          "uniprot": "P10124",
+          "hgnc": "SRGN",
+          "ensembl": "ENSG00000122862"
+        },
+        "sbo": "SBO:0000247"
+      },
+      "Serglycin_CS_Chain_100_Unsulfated": {
+        "name": "Chondroitin sulfate chain (100 disaccharides) on Serglycin (unsulfated)",
+        "formula": "C1400H2000N100O1100S0",
+        "compartment": "g",
+        "charge": -200,
+        "annotation": {"chebi": "CHEBI:37397"},
+        "sbo": "SBO:0000247"
+      },
+      "Fully_Assembled_Serglycin_CSA_B": {
+        "name": "Fully assembled Serglycin with CS-A/B chains in Golgi",
+        "formula": "C2192H3234N312O1348S103",
+        "compartment": "g",
+        "charge": -406,
+        "annotation": {"chebi": "CHEBI:37397"},
+        "sbo": "SBO:0000247"
+      },
+      "Packaged_Serglycin_CSA_B": {
+        "name": "Packaged Serglycin-CS in vesicle",
+        "formula": "C2192H3234N312O1348S103",
+        "compartment": "v",
+        "charge": -406,
+        "sbo": "SBO:0000247"
+      },
+      "Activated_Serglycin_CSA_B_Cargo": {
+        "name": "Activated Serglycin-CS cargo in vesicle",
+        "formula": "C2192H3234N312O1348S103",
+        "compartment": "v",
+        "charge": -406,
+        "sbo": "SBO:0000247"
+      },
+      "Functional_Serglycin_CSA": {
+        "name": "Functional Serglycin with CS-A in glycocalyx",
+        "formula": "C2192H3234N312O1348S103",
+        "compartment": "gl",
+        "charge": -406,
+        "annotation": {"chebi": "CHEBI:37397"},
+        "sbo": "SBO:0000247"
+      },
+      "Functional_Serglycin_CSB": {
+        "name": "Functional Serglycin with CS-B (DS) in glycocalyx",
+        "formula": "C2192H3234N312O1348S103",
+        "compartment": "gl",
+        "charge": -406,
+        "annotation": {"chebi": "CHEBI:18241"},
+        "sbo": "SBO:0000247"
+      },
+      "Truncated_Serglycin_Core_A": {
+        "name": "Truncated Serglycin core after CS-A cleavage",
+        "formula": "C792H1234N212O248S3",
+        "compartment": "gl",
+        "charge": -206,
+        "sbo": "SBO:0000247"
+      },
+      "Truncated_Serglycin_Core_B": {
+        "name": "Truncated Serglycin core after CS-B cleavage",
+        "formula": "C792H1234N212O248S3",
+        "compartment": "gl",
+        "charge": -206,
+        "sbo": "SBO:0000247"
+      },
+      "Shed_CS_Fragment_A": {
+        "name": "Shed chondroitin sulfate-A fragment (8 disaccharides)",
+        "formula": "C112H160N8O88S8",
+        "compartment": "e",
+        "charge": -24,
+        "annotation": {"chebi": "CHEBI:37397"},
+        "sbo": "SBO:0000247"
+      },
+      "Shed_CS_Fragment_B": {
+        "name": "Shed dermatan sulfate (CS-B) fragment (8 disaccharides)",
+        "formula": "C112H160N8O88S8",
+        "compartment": "e",
+        "charge": -24,
+        "annotation": {"chebi": "CHEBI:18241"},
+        "sbo": "SBO:0000247"
+      }
+    }
+  },
+  "reactions": [
+    {
+      "id": "T_Lalanine_c_r",
+      "name": "Transport of L-alanine between cytosol and ER",
+      "description": "Bidirectional transport of L-alanine",
+      "equation": "L-alanine[c] <=> L-alanine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Larginine_c_r",
+      "name": "Transport of L-arginine between cytosol and ER",
+      "description": "Bidirectional transport of L-arginine",
+      "equation": "L-arginine[c] <=> L-arginine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lasparagine_c_r",
+      "name": "Transport of L-asparagine between cytosol and ER",
+      "description": "Bidirectional transport of L-asparagine",
+      "equation": "L-asparagine[c] <=> L-asparagine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Laspartate_c_r",
+      "name": "Transport of L-aspartate between cytosol and ER",
+      "description": "Bidirectional transport of L-aspartate",
+      "equation": "L-aspartate[c] <=> L-aspartate[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lcysteine_c_r",
+      "name": "Transport of L-cysteine between cytosol and ER",
+      "description": "Bidirectional transport of L-cysteine",
+      "equation": "L-cysteine[c] <=> L-cysteine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lglutamine_c_r",
+      "name": "Transport of L-glutamine between cytosol and ER",
+      "description": "Bidirectional transport of L-glutamine",
+      "equation": "L-glutamine[c] <=> L-glutamine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lglutamate_c_r",
+      "name": "Transport of L-glutamate between cytosol and ER",
+      "description": "Bidirectional transport of L-glutamate",
+      "equation": "L-glutamate[c] <=> L-glutamate[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lglycine_c_r",
+      "name": "Transport of L-glycine between cytosol and ER",
+      "description": "Bidirectional transport of L-glycine",
+      "equation": "L-glycine[c] <=> L-glycine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lhistidine_c_r",
+      "name": "Transport of L-histidine between cytosol and ER",
+      "description": "Bidirectional transport of L-histidine",
+      "equation": "L-histidine[c] <=> L-histidine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lisoleucine_c_r",
+      "name": "Transport of L-isoleucine between cytosol and ER",
+      "description": "Bidirectional transport of L-isoleucine",
+      "equation": "L-isoleucine[c] <=> L-isoleucine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lleucine_c_r",
+      "name": "Transport of L-leucine between cytosol and ER",
+      "description": "Bidirectional transport of L-leucine",
+      "equation": "L-leucine[c] <=> L-leucine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Llysine_c_r",
+      "name": "Transport of L-lysine between cytosol and ER",
+      "description": "Bidirectional transport of L-lysine",
+      "equation": "L-lysine[c] <=> L-lysine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lmethionine_c_r",
+      "name": "Transport of L-methionine between cytosol and ER",
+      "description": "Bidirectional transport of L-methionine",
+      "equation": "L-methionine[c] <=> L-methionine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lphenylalanine_c_r",
+      "name": "Transport of L-phenylalanine between cytosol and ER",
+      "description": "Bidirectional transport of L-phenylalanine",
+      "equation": "L-phenylalanine[c] <=> L-phenylalanine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lproline_c_r",
+      "name": "Transport of L-proline between cytosol and ER",
+      "description": "Bidirectional transport of L-proline",
+      "equation": "L-proline[c] <=> L-proline[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lserine_c_r",
+      "name": "Transport of L-serine between cytosol and ER",
+      "description": "Bidirectional transport of L-serine",
+      "equation": "L-serine[c] <=> L-serine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lthreonine_c_r",
+      "name": "Transport of L-threonine between cytosol and ER",
+      "description": "Bidirectional transport of L-threonine",
+      "equation": "L-threonine[c] <=> L-threonine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Ltryptophan_c_r",
+      "name": "Transport of L-tryptophan between cytosol and ER",
+      "description": "Bidirectional transport of L-tryptophan",
+      "equation": "L-tryptophan[c] <=> L-tryptophan[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Ltyrosine_c_r",
+      "name": "Transport of L-tyrosine between cytosol and ER",
+      "description": "Bidirectional transport of L-tyrosine",
+      "equation": "L-tyrosine[c] <=> L-tyrosine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lvaline_c_r",
+      "name": "Transport of L-valine between cytosol and ER",
+      "description": "Bidirectional transport of L-valine",
+      "equation": "L-valine[c] <=> L-valine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_ATP_ER",
+      "name": "Transport of ATP between cytosol and ER",
+      "equation": "ATP[c] <=> ATP[r]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_H2O_ER",
+      "name": "Transport of H2O between cytosol and ER",
+      "equation": "H2O[c] <=> H2O[r]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_UDP_GalNAc_Golgi",
+      "name": "Transport of UDP-N-acetyl-D-galactosamine between cytosol and Golgi",
+      "equation": "UDP-N-acetyl-D-galactosamine[c] <=> UDP-N-acetyl-D-galactosamine[g]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_UDP_GlcA_Golgi",
+      "name": "Transport of UDP-glucuronate between cytosol and Golgi",
+      "equation": "UDP-glucuronate[c] <=> UDP-glucuronate[g]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_PAPS_Golgi",
+      "name": "Transport of PAPS between cytosol and Golgi",
+      "equation": "PAPS[c] <=> PAPS[g]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_H2O_Golgi",
+      "name": "Transport of H2O between cytosol and Golgi",
+      "equation": "H2O[c] <=> H2O[g]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_H_E",
+      "name": "Transport of H+ between extracellular and cytosol",
+      "equation": "H+[e] <=> H+[c]",
+      "subsystem": "Ion transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_H2O_E",
+      "name": "Transport of H2O between extracellular and cytosol",
+      "equation": "H2O[e] <=> H2O[c]",
+      "subsystem": "Solvent transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "R_Synth_Serglycin_Core",
+      "name": "Synthesis of Serglycin core protein",
+      "description": "Protein synthesis of 158-residue Serglycin core protein in ER",
+      "equation": "0.007 L-alanine[r] + 0.006 L-arginine[r] + 0.006 L-asparagine[r] + 0.01 L-aspartate[r] + 0.003 L-cysteine[r] + 0.006 L-glutamine[r] + 0.012 L-glutamate[r] + 0.015 L-glycine[r] + 0.003 L-histidine[r] + 0.003 L-isoleucine[r] + 0.02 L-leucine[r] + 0.006 L-lysine[r] + 0.004 L-methionine[r] + 0.006 L-phenylalanine[r] + 0.009 L-proline[r] + 0.015 L-serine[r] + 0.004 L-threonine[r] + 0.002 L-tryptophan[r] + 0.003 L-tyrosine[r] + 0.008 L-valine[r] + 0.628 ATP[r] + 0.471 H2O[r] --> 0.001 Serglycin_Core_Protein[r] + 0.628 ADP[r] + 0.628 phosphate[r] + 0.628 H+[r]",
+      "subsystem": "Protein synthesis",
+      "ec": "6.1.1.-",
+      "gpr": "",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "T_Serglycin_Core_ER_Golgi",
+      "name": "Transport of Serglycin core protein from ER to Golgi",
+      "equation": "Serglycin_Core_Protein[r] --> Serglycin_Core_Protein[g]",
+      "subsystem": "Intracellular transport",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "R_Serglycin_CS_Elongation",
+      "name": "Chondroitin sulfate elongation on Serglycin",
+      "description": "Addition of 100 disaccharides to form unsulfated CS chain",
+      "equation": "Serglycin_Core_Protein[g] + 100 UDP-N-acetyl-D-galactosamine[g] + 100 UDP-glucuronate[g] --> Serglycin_CS_Chain_100_Unsulfated[g] + 200 UDP[g]",
+      "subsystem": "Chondroitin sulfate biosynthesis",
+      "ec": "2.4.1.-",
+      "gpr": "ENSG00000147408 or ENSG00000144057",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "R_Serglycin_CS_Sulfation_A_B",
+      "name": "Chondroitin sulfate-A/B sulfation on Serglycin",
+      "description": "CS-A/DS sulfation pattern (mixed)",
+      "equation": "Serglycin_CS_Chain_100_Unsulfated[g] + 100 PAPS[g] --> Fully_Assembled_Serglycin_CSA_B[g] + 100 PAP[g]",
+      "subsystem": "Chondroitin sulfate biosynthesis",
+      "ec": "2.8.2.-",
+      "gpr": "ENSG00000196377",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "T_Waste_UDP_out",
+      "name": "Transport of UDP from Golgi to cytosol",
+      "equation": "UDP[g] <=> UDP[c]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Waste_PAP_out",
+      "name": "Transport of PAP from Golgi to cytosol",
+      "equation": "PAP[g] <=> PAP[c]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "R_Serglycin_CSA_B_Packaging",
+      "name": "Packaging of Serglycin-CS in vesicle",
+      "description": "Vesicular packaging for secretion",
+      "equation": "Fully_Assembled_Serglycin_CSA_B[g] --> Packaged_Serglycin_CSA_B[v]",
+      "subsystem": "Vesicular transport",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "R_Serglycin_CSA_B_Vesicle_Activation",
+      "name": "Vesicle activation for Serglycin-CS transport",
+      "description": "ATP/GTP-dependent vesicle activation",
+      "equation": "Packaged_Serglycin_CSA_B[v] + ATP[c] + GTP[c] --> Activated_Serglycin_CSA_B_Cargo[v] + ADP[c] + phosphate[c] + GDP[c] + phosphate[c]",
+      "subsystem": "Vesicular transport",
+      "ec": "3.6.1.-",
+      "gpr": "",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "R_Serglycin_CSA_Secretion",
+      "name": "Secretion of Serglycin-CSA to glycocalyx",
+      "description": "Vesicle fusion and secretion to pericellular space",
+      "equation": "Activated_Serglycin_CSA_B_Cargo[v] --> Functional_Serglycin_CSA[gl]",
+      "subsystem": "Secretion",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "R_Serglycin_CSB_Secretion",
+      "name": "Secretion of Serglycin-CSB to glycocalyx",
+      "description": "Vesicle fusion and secretion to pericellular space",
+      "equation": "Activated_Serglycin_CSA_B_Cargo[v] --> Functional_Serglycin_CSB[gl]",
+      "subsystem": "Secretion",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "R_Serglycin_Shedding_A",
+      "name": "Enzymatic shedding of Serglycin-CSA",
+      "description": "Proteolytic and glycolytic cleavage of CS-A chains",
+      "equation": "Functional_Serglycin_CSA[gl] + 11 H2O[e] --> Truncated_Serglycin_Core_A[gl] + 12 Shed_CS_Fragment_A[e] + 11 H+[e]",
+      "subsystem": "Glycocalyx degradation",
+      "ec": "3.2.1.-",
+      "gpr": "ENSG00000159346",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "R_Serglycin_Shedding_B",
+      "name": "Enzymatic shedding of Serglycin-CSB",
+      "description": "Proteolytic and glycolytic cleavage of CS-B/DS chains",
+      "equation": "Functional_Serglycin_CSB[gl] + 11 H2O[e] --> Truncated_Serglycin_Core_B[gl] + 12 Shed_CS_Fragment_B[e] + 11 H+[e]",
+      "subsystem": "Glycocalyx degradation",
+      "ec": "3.2.1.-",
+      "gpr": "ENSG00000159346",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "DM_Truncated_Serglycin_A",
+      "name": "Demand for truncated Serglycin core after CS-A cleavage",
+      "equation": "Truncated_Serglycin_Core_A[gl] -->",
+      "subsystem": "Demand",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000628"
+    },
+    {
+      "id": "DM_Truncated_Serglycin_B",
+      "name": "Demand for truncated Serglycin core after CS-B cleavage",
+      "equation": "Truncated_Serglycin_Core_B[gl] -->",
+      "subsystem": "Demand",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000628"
+    },
+    {
+      "id": "DM_Shed_CS_Fragment_A",
+      "name": "Demand for shed CS-A fragment",
+      "equation": "Shed_CS_Fragment_A[e] -->",
+      "subsystem": "Demand",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000628"
+    },
+    {
+      "id": "DM_Shed_CS_Fragment_B",
+      "name": "Demand for shed CS-B fragment",
+      "equation": "Shed_CS_Fragment_B[e] -->",
+      "subsystem": "Demand",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000628"
+    }
+  ]
+}

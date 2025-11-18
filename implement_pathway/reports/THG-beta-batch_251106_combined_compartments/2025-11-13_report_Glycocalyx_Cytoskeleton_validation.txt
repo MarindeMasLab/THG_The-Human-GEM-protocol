@@ -1,0 +1,76 @@
+================================================================================
+GLYCOCALYX_CYTOSKELETON PATHWAY VALIDATION REPORT
+================================================================================
+Date: 2025-11-13 16:18:12
+Pathway: Glycocalyx_Cytoskeleton
+Model: ../models/THG-beta-batch_251106_combined_compartments_with_glycocalyx_cytoskeleton.json
+Config: config/config_glycocalyx_cytoskeleton.json
+
+================================================================================
+SUMMARY
+================================================================================
+Total validations: 9
+Passed: 7 (77.8%)
+Failed: 2 (22.2%)
+
+STATUS: ✗ 2 VALIDATION(S) FAILED
+Review detailed results below.
+
+================================================================================
+DETAILED VALIDATION RESULTS
+================================================================================
+
+1. Quick Validation
+   Status: ✓ PASSED
+   Description: Model structure + FBA optimization
+   Details: Checks model loads correctly, FBA is optimal, and basic constraints
+
+2. Unit Tests
+   Status: ✓ PASSED
+   Description: Metabolite matching functionality
+   Details: Tests metabolite identification from config targets
+
+3. Reproducibility Tests
+   Status: ✓ PASSED
+   Description: 6 tests × 5 runs for consistency
+   Details: Ensures model loading, FBA, and pathway data are deterministic
+
+4. Integration Tests
+   Status: ✓ PASSED
+   Description: 8 pipeline tests
+   Details: Tests complete workflow: loading, matching, FBA, reactions, transport
+
+5. Mass Balance Check
+   Status: ✗ FAILED
+   Description: Elemental balance of pathway reactions
+   Details: Verifies C, H, N, O, P, S balance for all pathway reactions
+
+6. Network Topology
+   Status: ✓ PASSED
+   Description: Pathway connectivity analysis
+   Details: Checks for orphaned metabolites and dead-end reactions
+
+7. Database Consistency
+   Status: ✓ PASSED
+   Description: Metabolite annotation coverage
+   Details: Validates metabolite ID database completeness and cross-references
+
+8. Synthesis Balance
+   Status: ✗ FAILED
+   Description: Protein/polymer synthesis validation
+   Details: Checks mass balance of synthesis reactions (e.g., R_Synth_*)
+
+9. Demand Reaction Functionality
+   Status: ✓ PASSED
+   Description: Flux capability of demand reactions
+   Details: Tests if demand reactions (DM_*) can carry flux using FVA
+
+================================================================================
+RECOMMENDATIONS
+================================================================================
+• Mass Balance: Check reaction formulas in config file
+  Run: python3 validate.py 5 --config <config> --model <model>
+
+For detailed output, re-run individual validation options.
+
+================================================================================

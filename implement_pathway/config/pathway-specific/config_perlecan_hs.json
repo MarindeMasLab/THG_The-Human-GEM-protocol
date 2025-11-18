@@ -1,0 +1,533 @@
+{
+  "pathway_name": "Perlecan_HS",
+  "model": {
+    "base": "models/THG-beta-batch_251106_connected_minptr_combined_compartments.json",
+    "output": "models/THG-beta-batch_251106_connected_minptr_combined_compartments_with_perlecan_hs.json"
+  },
+  "visualizations": {
+    "output_directory": "figures",
+    "d3js": "perlecan_hs_network_d3.html",
+    "plotly": "perlecan_hs_network_plotly.html",
+    "graphviz_base": "perlecan_hs_network"
+  },
+  "compartments": [
+    {"name": "cytosol", "abbreviation": "c"},
+    {"name": "endoplasmic reticulum", "abbreviation": "r"},
+    {"name": "golgi apparatus", "abbreviation": "g"},
+    {"name": "vesicle", "abbreviation": "v"},
+    {"name": "glycocalyx", "abbreviation": "gl"},
+    {"name": "extracellular", "abbreviation": "e"}
+  ],
+  "metabolites": {
+    "database_file": "data/metabolite_id_database.json",
+    "targets": [
+      "ATP",
+      "ADP",
+      "GTP",
+      "GDP",
+      "UDP",
+      "UDP-N-acetyl-alpha-D-glucosamine",
+      "UDP-glucuronate",
+      "PAPS",
+      "PAP",
+      "phosphate",
+      "H2O",
+      "H+",
+      "L-alanine",
+      "L-arginine",
+      "L-asparagine",
+      "L-aspartate",
+      "L-cysteine",
+      "L-glutamine",
+      "L-glutamate",
+      "L-glycine",
+      "L-histidine",
+      "L-isoleucine",
+      "L-leucine",
+      "L-lysine",
+      "L-methionine",
+      "L-phenylalanine",
+      "L-proline",
+      "L-serine",
+      "L-threonine",
+      "L-tryptophan",
+      "L-tyrosine",
+      "L-valine"
+    ],
+    "Perlecan_HS_specific": {
+      "Perlecan_Core_Protein": {
+        "name": "Perlecan core protein",
+        "formula": "C21950H34166N5850O6695S132",
+        "compartment": "r",
+        "charge": -110,
+        "annotation": {
+          "uniprot": "P98160",
+          "hgnc": "HSPG2",
+          "ensembl": "ENSG00000142798"
+        },
+        "sbo": "SBO:0000247"
+      },
+      "HS_Chain_100_on_Perlecan_Unsulfated": {
+        "name": "Heparan sulfate chain (100 disaccharides) on Perlecan (unsulfated)",
+        "formula": "C1400H2000N100O1100S0",
+        "compartment": "g",
+        "charge": -200,
+        "annotation": {"chebi": "CHEBI:28815"},
+        "sbo": "SBO:0000247"
+      },
+      "Fully_Assembled_HS_Proteoglycan_on_Perlecan": {
+        "name": "Fully assembled Perlecan-HS proteoglycan in Golgi (sulfated)",
+        "formula": "C23350H36166N5950O7795S232",
+        "compartment": "g",
+        "charge": -510,
+        "annotation": {"chebi": "CHEBI:28815"},
+        "sbo": "SBO:0000247"
+      },
+      "Packaged_HS_on_Perlecan": {
+        "name": "Packaged Perlecan-HS in vesicle",
+        "formula": "C23350H36166N5950O7795S232",
+        "compartment": "v",
+        "charge": -510,
+        "sbo": "SBO:0000247"
+      },
+      "Activated_HS_on_Perlecan_Cargo": {
+        "name": "Activated Perlecan-HS cargo in vesicle",
+        "formula": "C23350H36166N5950O7795S232",
+        "compartment": "v",
+        "charge": -510,
+        "sbo": "SBO:0000247"
+      },
+      "Functional_Perlecan_HS": {
+        "name": "Functional Perlecan with HS in glycocalyx",
+        "formula": "C23350H36166N5950O7795S232",
+        "compartment": "gl",
+        "charge": -510,
+        "annotation": {"chebi": "CHEBI:28815"},
+        "sbo": "SBO:0000247"
+      },
+      "Truncated_Perlecan_Core": {
+        "name": "Truncated Perlecan core after HS cleavage",
+        "formula": "C21950H34166N5850O6695S132",
+        "compartment": "gl",
+        "charge": -310,
+        "sbo": "SBO:0000247"
+      },
+      "Shed_HS_Fragment": {
+        "name": "Shed heparan sulfate fragment (10 disaccharides)",
+        "formula": "C140H200N10O140S10",
+        "compartment": "e",
+        "charge": -30,
+        "annotation": {"chebi": "CHEBI:28815"},
+        "sbo": "SBO:0000247"
+      }
+    }
+  },
+  "reactions": [
+    {
+      "id": "T_Lalanine_c_r",
+      "name": "Transport of L-alanine between cytosol and ER",
+      "description": "Bidirectional transport of L-alanine",
+      "equation": "L-alanine[c] <=> L-alanine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Larginine_c_r",
+      "name": "Transport of L-arginine between cytosol and ER",
+      "description": "Bidirectional transport of L-arginine",
+      "equation": "L-arginine[c] <=> L-arginine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lasparagine_c_r",
+      "name": "Transport of L-asparagine between cytosol and ER",
+      "description": "Bidirectional transport of L-asparagine",
+      "equation": "L-asparagine[c] <=> L-asparagine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Laspartate_c_r",
+      "name": "Transport of L-aspartate between cytosol and ER",
+      "description": "Bidirectional transport of L-aspartate",
+      "equation": "L-aspartate[c] <=> L-aspartate[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lcysteine_c_r",
+      "name": "Transport of L-cysteine between cytosol and ER",
+      "description": "Bidirectional transport of L-cysteine",
+      "equation": "L-cysteine[c] <=> L-cysteine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lglutamine_c_r",
+      "name": "Transport of L-glutamine between cytosol and ER",
+      "description": "Bidirectional transport of L-glutamine",
+      "equation": "L-glutamine[c] <=> L-glutamine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lglutamate_c_r",
+      "name": "Transport of L-glutamate between cytosol and ER",
+      "description": "Bidirectional transport of L-glutamate",
+      "equation": "L-glutamate[c] <=> L-glutamate[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lglycine_c_r",
+      "name": "Transport of L-glycine between cytosol and ER",
+      "description": "Bidirectional transport of L-glycine",
+      "equation": "L-glycine[c] <=> L-glycine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lhistidine_c_r",
+      "name": "Transport of L-histidine between cytosol and ER",
+      "description": "Bidirectional transport of L-histidine",
+      "equation": "L-histidine[c] <=> L-histidine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lisoleucine_c_r",
+      "name": "Transport of L-isoleucine between cytosol and ER",
+      "description": "Bidirectional transport of L-isoleucine",
+      "equation": "L-isoleucine[c] <=> L-isoleucine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lleucine_c_r",
+      "name": "Transport of L-leucine between cytosol and ER",
+      "description": "Bidirectional transport of L-leucine",
+      "equation": "L-leucine[c] <=> L-leucine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Llysine_c_r",
+      "name": "Transport of L-lysine between cytosol and ER",
+      "description": "Bidirectional transport of L-lysine",
+      "equation": "L-lysine[c] <=> L-lysine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lmethionine_c_r",
+      "name": "Transport of L-methionine between cytosol and ER",
+      "description": "Bidirectional transport of L-methionine",
+      "equation": "L-methionine[c] <=> L-methionine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lphenylalanine_c_r",
+      "name": "Transport of L-phenylalanine between cytosol and ER",
+      "description": "Bidirectional transport of L-phenylalanine",
+      "equation": "L-phenylalanine[c] <=> L-phenylalanine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lproline_c_r",
+      "name": "Transport of L-proline between cytosol and ER",
+      "description": "Bidirectional transport of L-proline",
+      "equation": "L-proline[c] <=> L-proline[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lserine_c_r",
+      "name": "Transport of L-serine between cytosol and ER",
+      "description": "Bidirectional transport of L-serine",
+      "equation": "L-serine[c] <=> L-serine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lthreonine_c_r",
+      "name": "Transport of L-threonine between cytosol and ER",
+      "description": "Bidirectional transport of L-threonine",
+      "equation": "L-threonine[c] <=> L-threonine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Ltryptophan_c_r",
+      "name": "Transport of L-tryptophan between cytosol and ER",
+      "description": "Bidirectional transport of L-tryptophan",
+      "equation": "L-tryptophan[c] <=> L-tryptophan[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Ltyrosine_c_r",
+      "name": "Transport of L-tyrosine between cytosol and ER",
+      "description": "Bidirectional transport of L-tyrosine",
+      "equation": "L-tyrosine[c] <=> L-tyrosine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lvaline_c_r",
+      "name": "Transport of L-valine between cytosol and ER",
+      "description": "Bidirectional transport of L-valine",
+      "equation": "L-valine[c] <=> L-valine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_ATP_ER",
+      "name": "Transport of ATP between cytosol and ER",
+      "equation": "ATP[c] <=> ATP[r]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_H2O_ER",
+      "name": "Transport of H2O between cytosol and ER",
+      "equation": "H2O[c] <=> H2O[r]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_UDP_GlcNAc_Golgi",
+      "name": "Transport of UDP-N-acetyl-alpha-D-glucosamine between cytosol and Golgi",
+      "equation": "UDP-N-acetyl-alpha-D-glucosamine[c] <=> UDP-N-acetyl-alpha-D-glucosamine[g]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_UDP_GlcA_Golgi",
+      "name": "Transport of UDP-glucuronate between cytosol and Golgi",
+      "equation": "UDP-glucuronate[c] <=> UDP-glucuronate[g]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_PAPS_Golgi",
+      "name": "Transport of PAPS between cytosol and Golgi",
+      "equation": "PAPS[c] <=> PAPS[g]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_H2O_Golgi",
+      "name": "Transport of H2O between cytosol and Golgi",
+      "equation": "H2O[c] <=> H2O[g]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_H_GL",
+      "name": "Transport of H+ between extracellular and glycocalyx",
+      "equation": "H+[e] <=> H+[gl]",
+      "subsystem": "Ion transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_H2O_GL",
+      "name": "Transport of H2O between extracellular and glycocalyx",
+      "equation": "H2O[e] <=> H2O[gl]",
+      "subsystem": "Solvent transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "R_Synth_Perlecan_Core",
+      "name": "Synthesis of Perlecan core protein",
+      "description": "Protein synthesis of 4390-residue Perlecan core protein in ER",
+      "equation": "0.333 L-alanine[r] + 0.206 L-arginine[r] + 0.147 L-asparagine[r] + 0.25 L-aspartate[r] + 0.132 L-cysteine[r] + 0.172 L-glutamine[r] + 0.392 L-glutamate[r] + 0.456 L-glycine[r] + 0.106 L-histidine[r] + 0.139 L-isoleucine[r] + 0.354 L-leucine[r] + 0.109 L-lysine[r] + 0.04 L-methionine[r] + 0.123 L-phenylalanine[r] + 0.327 L-proline[r] + 0.386 L-serine[r] + 0.268 L-threonine[r] + 0.031 L-tryptophan[r] + 0.084 L-tyrosine[r] + 0.335 L-valine[r] + 17.556 ATP[r] + 13.167 H2O[r] --> 0.001 Perlecan_Core_Protein[r] + 17.556 ADP[r] + 17.556 phosphate[r] + 17.556 H+[r]",
+      "subsystem": "Protein synthesis",
+      "ec": "6.1.1.-",
+      "gpr": "",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "T_Core_Perlecan_ER_Golgi",
+      "name": "Transport of Perlecan core protein from ER to Golgi",
+      "equation": "Perlecan_Core_Protein[r] --> Perlecan_Core_Protein[g]",
+      "subsystem": "Intracellular transport",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "R_HS_Elongation_on_Perlecan",
+      "name": "Heparan sulfate elongation on Perlecan",
+      "description": "Addition of 100 disaccharides to form unsulfated HS chain",
+      "equation": "Perlecan_Core_Protein[g] + 100 UDP-N-acetyl-alpha-D-glucosamine[g] + 100 UDP-glucuronate[g] --> HS_Chain_100_on_Perlecan_Unsulfated[g] + 200 UDP[g]",
+      "subsystem": "Heparan sulfate biosynthesis",
+      "ec": "2.4.1.-",
+      "gpr": "ENSG00000115204 or ENSG00000148826 or ENSG00000103044",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "R_HS_Sulfation_on_Perlecan",
+      "name": "Heparan sulfate sulfation on Perlecan",
+      "description": "Sulfation of 100 disaccharides on HS chain",
+      "equation": "HS_Chain_100_on_Perlecan_Unsulfated[g] + 100 PAPS[g] --> Fully_Assembled_HS_Proteoglycan_on_Perlecan[g] + 100 PAP[g]",
+      "subsystem": "Heparan sulfate biosynthesis",
+      "ec": "2.8.2.-",
+      "gpr": "ENSG00000137288 or ENSG00000153936",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "T_Waste_UDP_out",
+      "name": "Transport of UDP from Golgi to cytosol",
+      "equation": "UDP[g] <=> UDP[c]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Waste_PAP_out",
+      "name": "Transport of PAP from Golgi to cytosol",
+      "equation": "PAP[g] <=> PAP[c]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "R_HS_on_Perlecan_Packaging",
+      "name": "Packaging of Perlecan-HS in vesicle",
+      "description": "Vesicular packaging for secretion",
+      "equation": "Fully_Assembled_HS_Proteoglycan_on_Perlecan[g] --> Packaged_HS_on_Perlecan[v]",
+      "subsystem": "Vesicular transport",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "R_HS_on_Perlecan_Vesicle_Activation",
+      "name": "Vesicle activation for Perlecan-HS transport",
+      "description": "ATP/GTP-dependent vesicle activation",
+      "equation": "Packaged_HS_on_Perlecan[v] + ATP[c] + GTP[c] --> Activated_HS_on_Perlecan_Cargo[v] + ADP[c] + phosphate[c] + GDP[c] + phosphate[c]",
+      "subsystem": "Vesicular transport",
+      "ec": "3.6.1.-",
+      "gpr": "",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "R_HS_on_Perlecan_Secretion",
+      "name": "Secretion of Perlecan-HS to glycocalyx",
+      "description": "Vesicle fusion and secretion to pericellular space",
+      "equation": "Activated_HS_on_Perlecan_Cargo[v] --> Functional_Perlecan_HS[gl]",
+      "subsystem": "Secretion",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "R_Perlecan_HS_Degradation",
+      "name": "Heparanase degradation of Perlecan-HS",
+      "description": "Heparanase-mediated cleavage of HS chains from Perlecan",
+      "equation": "Functional_Perlecan_HS[gl] + 9 H2O[gl] --> Truncated_Perlecan_Core[gl] + 10 Shed_HS_Fragment[gl] + 9 H+[gl]",
+      "subsystem": "Glycocalyx degradation",
+      "ec": "3.2.1.166",
+      "gpr": "ENSG00000173083",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "T_Shed_HS_Fragment_Diffusion",
+      "name": "Diffusion of shed HS fragments to extracellular space",
+      "equation": "Shed_HS_Fragment[gl] --> Shed_HS_Fragment[e]",
+      "subsystem": "Diffusion",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "DM_Truncated_Perlecan",
+      "name": "Demand for truncated Perlecan core (turnover)",
+      "equation": "Truncated_Perlecan_Core[gl] -->",
+      "subsystem": "Demand",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000628"
+    },
+    {
+      "id": "DM_Shed_HS_Fragment",
+      "name": "Demand for shed HS fragment",
+      "equation": "Shed_HS_Fragment[e] -->",
+      "subsystem": "Demand",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000628"
+    }
+  ]
+}

@@ -9,3 +9,10 @@ THG-beta1.1_251031 and THG-beta1.1.1_251031 - outputs of metabolite_reac_identif
                                             with Human1_19 and the old database
 
  (ref. modelHuman-GEM_2022-06-21.xml)
+
+THG-beta-batch_251106 - output of build_model (new version with batching) on Human1_19
+
+THG-beta-batch_251106_connected_minptr_combined_compartments.json - THG-beta-batch_251106 with added PTRs to connect unconncected compartments/components. 3 rounds of minimizing amount of PTRs has been applied. Cyotskeleton and cell membrane components have been merged into cytosplasm and cell membrane respectively.
+
+THG-beta-expanded_251117 - THG-beta-batch_251106_connected_minptr_combined_compartments.json model with added cytoskeleton and glycocalix using implement_pathway
+

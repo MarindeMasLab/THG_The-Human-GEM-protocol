@@ -1,0 +1,615 @@
+{
+  "pathway_name": "Syndecan2_HS",
+  "model": {
+    "base": "models/THG-beta-batch_251106_connected_minptr_combined_compartments.json",
+    "output": "models/THG-beta-batch_251106_connected_minptr_combined_compartments_with_syndecan2_hs.json"
+  },
+  "visualizations": {
+    "output_directory": "figures",
+    "d3js": "Syndecan2_HS_network_d3.html",
+    "plotly": "Syndecan2_HS_network_plotly.html",
+    "graphviz_base": "Syndecan2_HS_network"
+  },
+  "compartments": [
+    {"name": "cytosol", "abbreviation": "c"},
+    {"name": "endoplasmic reticulum", "abbreviation": "r"},
+    {"name": "golgi apparatus", "abbreviation": "g"},
+    {"name": "vesicle", "abbreviation": "v"},
+    {"name": "cell membrane", "abbreviation": "a"},
+    {"name": "glycocalyx", "abbreviation": "gl"},
+    {"name": "extracellular", "abbreviation": "e"}
+  ],
+  "metabolites": {
+    "database_file": "data/metabolite_id_database.json",
+    "targets": [
+      "ATP",
+      "ADP",
+      "GTP",
+      "GDP",
+      "UDP",
+      "UDP-N-acetyl-alpha-D-glucosamine",
+      "UDP-glucuronate",
+      "PAPS",
+      "PAP",
+      "phosphate",
+      "sulfate",
+      "H2O",
+      "H+",
+      "L-alanine",
+      "L-arginine",
+      "L-asparagine",
+      "L-aspartate",
+      "L-cysteine",
+      "L-glutamine",
+      "L-glutamate",
+      "L-glycine",
+      "L-histidine",
+      "L-isoleucine",
+      "L-leucine",
+      "L-lysine",
+      "L-methionine",
+      "L-phenylalanine",
+      "L-proline",
+      "L-serine",
+      "L-threonine",
+      "L-tryptophan",
+      "L-tyrosine",
+      "L-valine"
+    ],
+    "Syndecan2_HS_specific": {
+      "Syndecan2_Core_Protein": {
+        "name": "Syndecan-2 core protein",
+        "formula": "C1250H1950N340O400S18",
+        "compartment": "r",
+        "charge": -12,
+        "annotation": {
+          "uniprot": "P34741",
+          "hgnc": "SDC2",
+          "ensembl": "ENSG00000147883"
+        },
+        "sbo": "SBO:0000247"
+      },
+      "HS_Chain_100_on_SDC2_Unsulfated": {
+        "name": "Heparan sulfate chain (100 disaccharides) on Syndecan-2",
+        "formula": "C1400H2000N100O1100S0",
+        "compartment": "g",
+        "charge": -200,
+        "annotation": {"chebi": "CHEBI:28815"},
+        "sbo": "SBO:0000247"
+      },
+      "Fully_Assembled_HS_Proteoglycan_on_SDC2": {
+        "name": "Fully assembled HS proteoglycan on Syndecan-2 (sulfated)",
+        "formula": "C1400H2000N100O1400S100",
+        "compartment": "g",
+        "charge": -300,
+        "sbo": "SBO:0000247"
+      },
+      "Packaged_HS_on_SDC2": {
+        "name": "Packaged HS-Syndecan-2 proteoglycan in vesicle",
+        "formula": "C1400H2000N100O1400S100",
+        "compartment": "v",
+        "charge": -300,
+        "sbo": "SBO:0000247"
+      },
+      "Activated_HS_on_SDC2_Cargo": {
+        "name": "Activated HS-Syndecan-2 vesicle cargo",
+        "formula": "C1400H2000N100O1400S100",
+        "compartment": "v",
+        "charge": -300,
+        "sbo": "SBO:0000247"
+      },
+      "Full_Syndecan2_HS_Anchored": {
+        "name": "Full Syndecan-2 with HS anchored in membrane",
+        "formula": "C1400H2000N100O1400S100",
+        "compartment": "a",
+        "charge": -300,
+        "sbo": "SBO:0000247"
+      },
+      "Syndecan2_Anchor": {
+        "name": "Syndecan-2 transmembrane anchor",
+        "formula": "C180H280N40O70S4",
+        "compartment": "a",
+        "charge": -6,
+        "annotation": {"uniprot": "P34741"},
+        "sbo": "SBO:0000247"
+      },
+      "Functional_HS_Ectodomain_on_SDC2": {
+        "name": "Functional HS ectodomain on Syndecan-2",
+        "formula": "C1400H2000N100O1400S100",
+        "compartment": "gl",
+        "charge": -300,
+        "sbo": "SBO:0000247"
+      },
+      "Edited_HS_Ectodomain_on_SDC2": {
+        "name": "Sulfatase-edited HS ectodomain on Syndecan-2",
+        "formula": "C1400H2010N100O1390S90",
+        "compartment": "gl",
+        "charge": -290,
+        "sbo": "SBO:0000247"
+      },
+      "Truncated_HS_Ectodomain_on_SDC2": {
+        "name": "Truncated HS ectodomain on Syndecan-2",
+        "formula": "C1260H1810N90O1260S90",
+        "compartment": "gl",
+        "charge": -270,
+        "sbo": "SBO:0000247"
+      },
+      "Syndecan2_Stub": {
+        "name": "Syndecan-2 stub",
+        "formula": "C150H230N40O70S3",
+        "compartment": "a",
+        "charge": -8,
+        "sbo": "SBO:0000247"
+      },
+      "Shed_Syndecan2_HS_Ectodomain": {
+        "name": "Shed ectodomain of Syndecan-2",
+        "formula": "C1250H1750N60O1330S97",
+        "compartment": "e",
+        "charge": -292,
+        "sbo": "SBO:0000247"
+      },
+      "Shed_HS_Fragment": {
+        "name": "Shed heparan sulfate fragment",
+        "formula": "C140H200N10O140S10",
+        "compartment": "e",
+        "charge": -30,
+        "annotation": {"chebi": "CHEBI:28815"},
+        "sbo": "SBO:0000247"
+      }
+    }
+  },
+  "reactions": [
+    {
+      "id": "T_Lalanine_c_r",
+      "name": "Transport of L-alanine between cytosol and ER",
+      "equation": "L-alanine[c] <=> L-alanine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Larginine_c_r",
+      "name": "Transport of L-arginine between cytosol and ER",
+      "equation": "L-arginine[c] <=> L-arginine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lasparagine_c_r",
+      "name": "Transport of L-asparagine between cytosol and ER",
+      "equation": "L-asparagine[c] <=> L-asparagine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Laspartate_c_r",
+      "name": "Transport of L-aspartate between cytosol and ER",
+      "equation": "L-aspartate[c] <=> L-aspartate[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lcysteine_c_r",
+      "name": "Transport of L-cysteine between cytosol and ER",
+      "equation": "L-cysteine[c] <=> L-cysteine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lglutamine_c_r",
+      "name": "Transport of L-glutamine between cytosol and ER",
+      "equation": "L-glutamine[c] <=> L-glutamine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lglutamate_c_r",
+      "name": "Transport of L-glutamate between cytosol and ER",
+      "equation": "L-glutamate[c] <=> L-glutamate[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lglycine_c_r",
+      "name": "Transport of L-glycine between cytosol and ER",
+      "equation": "L-glycine[c] <=> L-glycine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lhistidine_c_r",
+      "name": "Transport of L-histidine between cytosol and ER",
+      "equation": "L-histidine[c] <=> L-histidine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lisoleucine_c_r",
+      "name": "Transport of L-isoleucine between cytosol and ER",
+      "equation": "L-isoleucine[c] <=> L-isoleucine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lleucine_c_r",
+      "name": "Transport of L-leucine between cytosol and ER",
+      "equation": "L-leucine[c] <=> L-leucine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Llysine_c_r",
+      "name": "Transport of L-lysine between cytosol and ER",
+      "equation": "L-lysine[c] <=> L-lysine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lmethionine_c_r",
+      "name": "Transport of L-methionine between cytosol and ER",
+      "equation": "L-methionine[c] <=> L-methionine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lphenylalanine_c_r",
+      "name": "Transport of L-phenylalanine between cytosol and ER",
+      "equation": "L-phenylalanine[c] <=> L-phenylalanine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lproline_c_r",
+      "name": "Transport of L-proline between cytosol and ER",
+      "equation": "L-proline[c] <=> L-proline[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lserine_c_r",
+      "name": "Transport of L-serine between cytosol and ER",
+      "equation": "L-serine[c] <=> L-serine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lthreonine_c_r",
+      "name": "Transport of L-threonine between cytosol and ER",
+      "equation": "L-threonine[c] <=> L-threonine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Ltryptophan_c_r",
+      "name": "Transport of L-tryptophan between cytosol and ER",
+      "equation": "L-tryptophan[c] <=> L-tryptophan[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Ltyrosine_c_r",
+      "name": "Transport of L-tyrosine between cytosol and ER",
+      "equation": "L-tyrosine[c] <=> L-tyrosine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lvaline_c_r",
+      "name": "Transport of L-valine between cytosol and ER",
+      "equation": "L-valine[c] <=> L-valine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "R_Synth_SDC2_Core",
+      "name": "Synthesis of Syndecan-2 core protein",
+      "description": "Polymerization of 201 amino acids into Syndecan-2 core protein (stoichiometry scaled by 1/1000)",
+      "equation": "0.017000 L-alanine[r] + 0.010000 L-arginine[r] + 0.005000 L-asparagine[r] + 0.015000 L-aspartate[r] + 0.002000 L-cysteine[r] + 0.004000 L-glutamine[r] + 0.016000 L-glutamate[r] + 0.011000 L-glycine[r] + 0.004000 L-histidine[r] + 0.010000 L-isoleucine[r] + 0.021000 L-leucine[r] + 0.011000 L-lysine[r] + 0.004000 L-methionine[r] + 0.004000 L-phenylalanine[r] + 0.010000 L-proline[r] + 0.018000 L-serine[r] + 0.014000 L-threonine[r] + 0.001000 L-tryptophan[r] + 0.006000 L-tyrosine[r] + 0.012000 L-valine[r] + 0.800000 ATP[r] + 0.600000 H2O[r] --> 0.001000 Syndecan2_Core_Protein[r] + 0.800000 ADP[r] + 0.800000 phosphate[r] + 0.800000 H+[r]",
+      "ec": "6.1.-.-",
+      "gpr": "ENSG00000147883",
+      "subsystem": "Syndecan-2 HS synthesis",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "T_ATP_r_c",
+      "name": "Transport of ATP between ER and cytosol",
+      "equation": "ATP[c] <=> ATP[r]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_H2O_r_c",
+      "name": "Transport of H2O between ER and cytosol",
+      "equation": "H2O[c] <=> H2O[r]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_UDP_GlcNAc_c_g",
+      "name": "Transport of UDP-GlcNAc between cytosol and Golgi",
+      "equation": "UDP-N-acetyl-alpha-D-glucosamine[c] <=> UDP-N-acetyl-alpha-D-glucosamine[g]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_UDP_glucuronate_c_g",
+      "name": "Transport of UDP-glucuronate between cytosol and Golgi",
+      "equation": "UDP-glucuronate[c] <=> UDP-glucuronate[g]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_PAPS_c_g",
+      "name": "Transport of PAPS between cytosol and Golgi",
+      "equation": "PAPS[c] <=> PAPS[g]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_H2O_c_g",
+      "name": "Transport of H2O between cytosol and Golgi",
+      "equation": "H2O[c] <=> H2O[g]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Sulfate_e_gl",
+      "name": "Transport of sulfate between extracellular and glycocalyx",
+      "equation": "sulfate[e] <=> sulfate[gl]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_H_e_gl",
+      "name": "Proton exchange between extracellular and glycocalyx",
+      "equation": "H+[e] <=> H+[gl]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_H2O_e_gl",
+      "name": "Water exchange between extracellular and glycocalyx",
+      "equation": "H2O[e] <=> H2O[gl]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Core_SDC2_r_g",
+      "name": "Transport of nascent Syndecan-2 core protein ER -> Golgi",
+      "description": "ER to Golgi transport of nascent core protein",
+      "equation": "Syndecan2_Core_Protein[r] --> Syndecan2_Core_Protein[g]",
+      "subsystem": "Protein trafficking",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "R_HS_Elongation_on_SDC2",
+      "name": "Heparan sulfate elongation on Syndecan-2",
+      "description": "Addition of disaccharide units from UDP-GlcNAc and UDP-glucuronate in Golgi",
+      "equation": "Syndecan2_Core_Protein[g] + 100 UDP-N-acetyl-alpha-D-glucosamine[g] + 100 UDP-glucuronate[g] --> HS_Chain_100_on_SDC2_Unsulfated[g] + 200 UDP[g]",
+      "ec": "2.4.1.-",
+      "gpr": "ENSG00000181029 or ENSG00000163918",
+      "subsystem": "Heparan sulfate biosynthesis",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "R_HS_Sulfation_on_SDC2",
+      "name": "Heparan sulfate sulfation on Syndecan-2",
+      "description": "Sulfation of HS chains on Syndecan-2 using PAPS",
+      "equation": "HS_Chain_100_on_SDC2_Unsulfated[g] + 100 PAPS[g] --> Fully_Assembled_HS_Proteoglycan_on_SDC2[g] + 100 PAP[g]",
+      "ec": "2.8.2.-",
+      "gpr": "ENSG00000136720 or ENSG00000153936",
+      "subsystem": "Heparan sulfate biosynthesis",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "T_Waste_UDP_out",
+      "name": "Export UDP from Golgi to cytosol",
+      "equation": "UDP[g] --> UDP[c]",
+      "subsystem": "Waste export",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Waste_PAP_out",
+      "name": "Export PAP from Golgi to cytosol",
+      "equation": "PAP[g] --> PAP[c]",
+      "subsystem": "Waste export",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "R_HS_on_SDC2_Packaging",
+      "name": "Packaging of HS-Syndecan-2 into Golgi vesicle",
+      "equation": "Fully_Assembled_HS_Proteoglycan_on_SDC2[g] --> Packaged_HS_on_SDC2[v]",
+      "subsystem": "Vesicular transport",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "R_HS_on_SDC2_Vesicle_Activation",
+      "name": "Vesicle activation for HS-Syndecan-2 transport",
+      "description": "ATP/GTP-dependent activation of secretory vesicle cargo",
+      "equation": "Packaged_HS_on_SDC2[v] + ATP[c] + GTP[c] --> Activated_HS_on_SDC2_Cargo[v] + ADP[c] + GDP[c] + 2 phosphate[c]",
+      "ec": "3.6.5.2",
+      "gpr": "ENSG00000122218",
+      "subsystem": "Vesicular transport",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "R_HS_on_SDC2_Delivery",
+      "name": "Delivery of HS-Syndecan-2 cargo to membrane",
+      "equation": "Activated_HS_on_SDC2_Cargo[v] --> Full_Syndecan2_HS_Anchored[a]",
+      "subsystem": "Membrane trafficking",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "R_HS_on_SDC2_Unfurling",
+      "name": "Unfurling of HS ectodomain into glycocalyx",
+      "equation": "Full_Syndecan2_HS_Anchored[a] --> Syndecan2_Anchor[a] + Functional_HS_Ectodomain_on_SDC2[gl]",
+      "subsystem": "Membrane trafficking",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "R_HS_on_SDC2_Sulfatase_Editing",
+      "name": "Sulfatase editing of HS chain on Syndecan-2",
+      "equation": "Functional_HS_Ectodomain_on_SDC2[gl] + H2O[gl] --> Edited_HS_Ectodomain_on_SDC2[gl] + sulfate[gl] + H+[gl]",
+      "ec": "3.1.6.-",
+      "gpr": "ENSG00000196562",
+      "subsystem": "Glycocalyx remodeling",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "R_HS_on_SDC2_Proteolytic_Shedding",
+      "name": "Proteolytic shedding of Syndecan-2 ectodomain",
+      "equation": "Syndecan2_Anchor[a] + Functional_HS_Ectodomain_on_SDC2[gl] --> Syndecan2_Stub[a] + Shed_Syndecan2_HS_Ectodomain[e]",
+      "ec": "3.4.24.-",
+      "gpr": "ENSG00000137745",
+      "subsystem": "Ectodomain shedding",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "R_HS_on_SDC2_Heparanase_Cleavage",
+      "name": "Heparanase cleavage of HS on Syndecan-2",
+      "equation": "Functional_HS_Ectodomain_on_SDC2[gl] + 9 H2O[gl] --> Truncated_HS_Ectodomain_on_SDC2[gl] + 10 Shed_HS_Fragment[e] + 9 H+[gl]",
+      "ec": "3.2.1.166",
+      "gpr": "ENSG00000173083",
+      "subsystem": "HS degradation",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "DM_Anchor_SDC2",
+      "name": "Demand for Syndecan-2 anchor (turnover)",
+      "equation": "Syndecan2_Anchor[a] --> ",
+      "subsystem": "Turnover",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000628"
+    },
+    {
+      "id": "DM_Edited_Ectodomain_HS_on_SDC2",
+      "name": "Demand for edited HS ectodomain on Syndecan-2",
+      "equation": "Edited_HS_Ectodomain_on_SDC2[gl] --> ",
+      "subsystem": "Turnover",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000628"
+    },
+    {
+      "id": "DM_Truncated_Ectodomain_HS_on_SDC2",
+      "name": "Demand for truncated HS ectodomain on Syndecan-2",
+      "equation": "Truncated_HS_Ectodomain_on_SDC2[gl] --> ",
+      "subsystem": "Turnover",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000628"
+    },
+    {
+      "id": "DM_Stub_SDC2",
+      "name": "Demand for Syndecan-2 stub (core remnant)",
+      "equation": "Syndecan2_Stub[a] --> ",
+      "subsystem": "Turnover",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000628"
+    },
+    {
+      "id": "DM_Shed_Ectodomain_HS_on_SDC2",
+      "name": "Demand for shed HS ectodomain of Syndecan-2",
+      "equation": "Shed_Syndecan2_HS_Ectodomain[e] --> ",
+      "subsystem": "Turnover",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000628"
+    },
+    {
+      "id": "DM_Shed_HS_Fragment",
+      "name": "Demand for shed HS fragment (shared)",
+      "equation": "Shed_HS_Fragment[e] --> ",
+      "subsystem": "Turnover",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000628"
+    }
+  ]
+}
+
