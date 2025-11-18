@@ -2,7 +2,7 @@
   "pathway_name": "Glycocalyx_Proteoglycans",
   "model": {
     "base": "models/THG-beta-batch_251106_connected_minptr_combined_compartments.json",
-    "output": "models/THG-beta-batch_251106_connected_minptr_combined_compartments_with_glycocalyx_pg.json"
+    "output": "models/THG-beta-batch-expanded-y_251117.json"
   },
   "visualizations": {
     "output_directory": "figures",

@@ -1,8 +1,8 @@
 {
   "pathway_name": "Glycocalyx_Cytoskeleton",
   "model": {
-    "base": "models/base/THG-beta-batch_251106_canonical_compartments.json",
-    "output": "models/THG-beta-batch_251106_canonical_compartments_with_glycocalyx_cytoskeleton.json"
+    "base": "models/base/THG-beta-batch_251106_connected_minptr_combined_compartments.json",
+    "output": "models/THG-beta-expanded_251117.json"
   },
   "visualizations": {
     "output_directory": "figures",
