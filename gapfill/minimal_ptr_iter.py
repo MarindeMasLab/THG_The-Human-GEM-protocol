@@ -474,37 +474,31 @@ if __name__ == "__main__":
 
     model_name = "THG-beta-batch_251106"
 
-    # Load the connected model from connect_components.py output
-    connected_model_path = f"models/{model_name}_connected.xml"
+    # Load the model directly from models/{model_name}.json (preferred), or
+    # from models/{model_name}.xml and convert to JSON if only SBML is available.
+    model_json = f"models/{model_name}.json"
+    model_xml = f"models/{model_name}.xml"
 
-    if os.path.exists(connected_model_path):
-        print(f"Loading connected model from {connected_model_path}")
-        model = read_sbml_model(connected_model_path)
-        # Save as JSON for parallel processing
-        model_path = f"models/{model_name}_connected.json"
-        cobra.io.save_json_model(model, model_path)
-    else:
+    if os.path.exists(model_json):
+        print(f"Loading model JSON from {model_json}")
+        model = load_json_model(model_json)
+        model_path = model_json
+    elif os.path.exists(model_xml):
         print(
-            f"Connected model {connected_model_path} not found. Falling back to original model."
+            f"Loading SBML model from {model_xml} and converting to JSON at {model_json}"
         )
-        # Fallback to original model
-        model_path = f"models/{model_name}.json"
-        if os.path.exists(model_path):
-            model = load_json_model(model_path)
-        else:
-            print(f"Model file {model_path} not found. Exiting.")
-            raise SystemExit(1)
+        model = read_sbml_model(model_xml)
+        cobra.io.save_json_model(model, model_json)
+        model_path = model_json
+    else:
+        print(f"Model file {model_json} or {model_xml} not found. Exiting.")
+        raise SystemExit(1)
 
-    # Load candidate reactions from connect_components.py output
+    # Load candidate reactions from connect_components.py output (required)
     candidate_csv = f"models/{model_name}_created_reactions.csv"
     if not os.path.exists(candidate_csv):
-        print(
-            f"Candidate file {candidate_csv} not found. Falling back to scripts directory."
-        )
-        candidate_csv = f"scripts/created_transport_reactions_{model_name}.csv"
-        if not os.path.exists(candidate_csv):
-            print(f"Candidate file {candidate_csv} not found. Exiting.")
-            raise SystemExit(1)
+        print(f"Candidate file {candidate_csv} not found. Exiting.")
+        raise SystemExit(1)
 
     # Load initial candidate reactions
     current_candidates = set()
@@ -542,7 +536,7 @@ if __name__ == "__main__":
                 batch_size=None,
                 tol=1e-9,
                 model_path=model_path,
-                save_fluxes_path=f"flux_matrix_{model_name}_connected_iter{iteration}.npy",
+                save_fluxes_path=f"flux_matrix_{model_name}_iter{iteration}.npy",
             )
         )
 
@@ -551,9 +545,7 @@ if __name__ == "__main__":
         for rid in sorted(required_transporters):
             print(rid)
 
-        out_csv = (
-            f"minimal_transporters_pfba_{model_name}_connected_iter{iteration}.csv"
-        )
+        out_csv = f"minimal_transporters_pfba_{model_name}_iter{iteration}.csv"
         with open(out_csv, "w", newline="") as cf:
             writer = csv.writer(cf)
             writer.writerow(["candidate_reaction", "active_in_any_solution"])
