@@ -2208,7 +2208,7 @@
       "equation": "Syndecan1_Anchor[a] + Functional_HS_ectodomain_Syndecan1[gl] --> Syndecan1_Stub[a] + Shed_Ectodomain_SDC1[e]",
       "subsystem": "Ectodomain shedding",
       "ec": "3.4.24.-",
-      "gpr": "ENSG00000137745",
+      "gpr": "ENSG00000137745 or ENSG00000151694",
       "lower_bound": 0.0,
       "upper_bound": 1000.0,
       "sbo": "SBO:0000176"
@@ -3157,7 +3157,7 @@
       "equation": "0.173000 L-alanine[r] + 0.104000 L-arginine[r] + 0.080000 L-asparagine[r] + 0.143000 L-aspartate[r] + 0.022000 L-cysteine[r] + 0.099000 L-glutamine[r] + 0.211000 L-glutamate[r] + 0.193000 L-glycine[r] + 0.041000 L-histidine[r] + 0.083000 L-isoleucine[r] + 0.228000 L-leucine[r] + 0.082000 L-lysine[r] + 0.022000 L-methionine[r] + 0.071000 L-phenylalanine[r] + 0.135000 L-proline[r] + 0.189000 L-serine[r] + 0.141000 L-threonine[r] + 0.012000 L-tryptophan[r] + 0.045000 L-tyrosine[r] + 0.148000 L-valine[r] + 9.284000 ATP[r] + 6.963000 H2O[r] --> 0.001 NG2_Core_Protein[r] + 9.284000 ADP[r] + 9.284000 phosphate[r] + 9.284000 H+[r]",
       "subsystem": "NG2 synthesis",
       "ec": "6.1.-.-",
-      "gpr": "ENSG000001XXXXXX",
+      "gpr": "ENSG00000174938",
       "lower_bound": 0.0,
       "upper_bound": 1000.0,
       "sbo": "SBO:0000176"
@@ -3648,7 +3648,7 @@
       "equation": "0.333 L-alanine[r] + 0.206 L-arginine[r] + 0.147 L-asparagine[r] + 0.25 L-aspartate[r] + 0.132 L-cysteine[r] + 0.172 L-glutamine[r] + 0.392 L-glutamate[r] + 0.456 L-glycine[r] + 0.106 L-histidine[r] + 0.139 L-isoleucine[r] + 0.354 L-leucine[r] + 0.109 L-lysine[r] + 0.04 L-methionine[r] + 0.123 L-phenylalanine[r] + 0.327 L-proline[r] + 0.386 L-serine[r] + 0.268 L-threonine[r] + 0.031 L-tryptophan[r] + 0.084 L-tyrosine[r] + 0.335 L-valine[r] + 17.556 ATP[r] + 13.167 H2O[r] --> 0.001 Perlecan_Core_Protein[r] + 17.556 ADP[r] + 17.556 phosphate[r] + 17.556 H+[r]",
       "subsystem": "Protein synthesis",
       "ec": "6.1.1.-",
-      "gpr": "",
+      "gpr": "ENSG00000142798",
       "lower_bound": 0.0,
       "upper_bound": 1000.0,
       "sbo": "SBO:0000176"
@@ -3782,7 +3782,7 @@
       "equation": "0.187 L-alanine[r] + 0.115 L-arginine[r] + 0.13 L-asparagine[r] + 0.253 L-aspartate[r] + 0.075 L-cysteine[r] + 0.13 L-glutamine[r] + 0.372 L-glutamate[r] + 0.219 L-glycine[r] + 0.078 L-histidine[r] + 0.136 L-isoleucine[r] + 0.242 L-leucine[r] + 0.155 L-lysine[r] + 0.037 L-methionine[r] + 0.109 L-phenylalanine[r] + 0.224 L-proline[r] + 0.286 L-serine[r] + 0.196 L-threonine[r] + 0.041 L-tryptophan[r] + 0.088 L-tyrosine[r] + 0.16 L-valine[r] + 13.568 ATP[r] + 10.176 H2O[r] --> 0.001 Versican_Core_Protein[r] + 13.568 ADP[r] + 13.568 phosphate[r] + 13.568 H+[r]",
       "subsystem": "Protein synthesis",
       "ec": "6.1.1.-",
-      "gpr": "",
+      "gpr": "ENSG00000038427",
       "lower_bound": 0.0,
       "upper_bound": 1000.0,
       "sbo": "SBO:0000176"
@@ -4037,7 +4037,7 @@
       "equation": "0.011 L-alanine[r] + 0.008 L-arginine[r] + 0.008 L-asparagine[r] + 0.025 L-aspartate[r] + 0.004 L-cysteine[r] + 0.006 L-glutamine[r] + 0.023 L-glutamate[r] + 0.02 L-glycine[r] + 0.007 L-histidine[r] + 0.013 L-isoleucine[r] + 0.041 L-leucine[r] + 0.015 L-lysine[r] + 0.005 L-methionine[r] + 0.009 L-phenylalanine[r] + 0.021 L-proline[r] + 0.018 L-serine[r] + 0.011 L-threonine[r] + 0.004 L-tryptophan[r] + 0.01 L-tyrosine[r] + 0.021 L-valine[r] + 1.468 ATP[r] + 1.101 H2O[r] --> 0.001 Biglycan_Core_Protein[r] + 1.468 ADP[r] + 1.468 phosphate[r] + 1.468 H+[r]",
       "subsystem": "Protein synthesis",
       "ec": "6.1.1.-",
-      "gpr": "",
+      "gpr": "ENSG00000182492",
       "lower_bound": 0.0,
       "upper_bound": 1000.0,
       "sbo": "SBO:0000176"
