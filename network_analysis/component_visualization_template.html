@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Small Components Visualization</title>
+<style>
+body { font-family: Arial, sans-serif; margin: 0; padding: 0; display: flex; height: 100vh; }
+.sidebar { width: 260px; background-color: #f7f7f7; padding: 12px; box-sizing: border-box; overflow-y: auto; border-right: 1px solid #e0e0e0 }
+.main-content { flex: 1; padding: 12px; box-sizing: border-box; overflow: hidden }
+.tab-button { display: block; width: 100%; background-color: #eee; border: none; padding: 10px 12px; text-align: left; cursor: pointer; margin-bottom: 6px; border-radius: 4px; }
+.tab-button:hover { background-color: #e0e0e0 }
+.tab-button.active { background-color: #1976d2; color: white }
+.tabcontent { display: none; height: calc(100vh - 70px); }
+.tabcontent.active { display: block }
+.network-container { width: 100%; height: calc(100vh - 170px); border: 1px solid #ddd; border-radius: 4px }
+h2 { margin-top: 0 }
+.small-note { font-size: 12px; color: #666 }
+.toggle-row { margin-bottom: 10px; }
+</style>
+<script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+</head>
+<body>
+<div class="sidebar">
+  <h3>Components</h3>
+  <div class="small-note">Click a component to view its network (lazy load)</div>
+  {{COMPONENT_BUTTONS}}
+</div>
+<div class="main-content">
+  <h2>Small Components Visualization</h2>
+  <div class="toggle-row">
+    <label><input type="radio" name="labelmode" value="id" checked> Metabolite IDs</label>
+    <label style="margin-left:20px"><input type="radio" name="labelmode" value="name"> Metabolite Names</label>
+  </div>
+  {{COMPONENT_DIVS}}
+</div>
+
+<script>
+var networkConfigs = {{NETWORK_CONFIGS}};
+var startIdx = {{START_IDX}};
+
+var networkInstances = {};
+var currentLabelMode = 'id';
+
+function getNodeLabel(node, mode) {
+  if (mode === 'name' && node.label_name) return node.label_name;
+  return node.label_id;
+}
+
+function getNodeTitle(node, mode) {
+  if (mode === 'name' && node.title_name) return node.title_name;
+  return node.title_id;
+}
+
+function updateNetworkLabels(network, nodes, mode) {
+  var updates = [];
+  nodes.forEach(function(node) {
+    updates.push({id: node.id, label: getNodeLabel(node, mode), title: getNodeTitle(node, mode)});
+  });
+  network.body.data.nodes.update(updates);
+}
+
+function initializeNetworkByName(tabName) {
+  var compIndex = parseInt(tabName.replace('Component','')) - startIdx;
+  if (compIndex < 0 || compIndex >= networkConfigs.length) return;
+  var networkId = 'network' + (compIndex + startIdx);
+  if (networkInstances[networkId]) return;
+  var container = document.getElementById(networkId);
+  if (!container) return;
+  var nodes = networkConfigs[compIndex].nodes;
+  var data = {
+    nodes: new vis.DataSet(nodes.map(function(n){
+      return {id: n.id, label: getNodeLabel(n, currentLabelMode), title: getNodeTitle(n, currentLabelMode), color: n.color, shape: n.shape, size: n.size};
+    })),
+    edges: new vis.DataSet(networkConfigs[compIndex].edges)
+  };
+  var options = {
+    physics: {
+      enabled: true,
+      stabilization: { enabled: true, iterations: 100, updateInterval: 25 },
+      barnesHut: { gravitationalConstant: -1200, centralGravity: 0.12, springLength: 90, springConstant: 0.02, damping: 0.15 }
+    },
+    layout: { improvedLayout: false },
+    nodes: { shape: 'dot', size: 14, font: { size: 14 } },
+    edges: { arrows: { to: { enabled: false } }, smooth: true },
+    interaction: { hover: true }
+  };
+  try {
+    var network = new vis.Network(container, data, options);
+    networkInstances[networkId] = network;
+    network._originalNodes = nodes;
+    try { network.stabilize(); } catch (e) { /* ignore */ }
+  } catch (e) {
+    console.error('Failed to create network for', networkId, e);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  var buttons = document.getElementsByClassName('tab-button');
+  for (var i = 0; i < buttons.length; i++) {
+    (function(btn){
+      btn.addEventListener('click', function(){
+        var target = btn.getAttribute('data-target');
+        if (!target) return;
+        var contents = document.getElementsByClassName('tabcontent');
+        for (var j=0;j<contents.length;j++) contents[j].classList.remove('active');
+        for (var k=0;k<buttons.length;k++) buttons[k].classList.remove('active');
+        var cont = document.getElementById(target);
+        if (cont) cont.classList.add('active');
+        btn.classList.add('active');
+        var compIndex = parseInt(target.replace('Component','')) - startIdx;
+        var activeNetworkId = 'network' + (compIndex + startIdx);
+        Object.keys(networkInstances).forEach(function(nid){
+          if (nid !== activeNetworkId) {
+            try {
+              var oldNet = networkInstances[nid];
+              if (oldNet) {
+                try { oldNet.destroy(); } catch(e) { /* ignore */ }
+                try { var el = document.getElementById(nid); if (el) el.innerHTML = ''; } catch(e) {}
+                delete networkInstances[nid];
+              }
+            } catch(e) {
+              console.warn('Error destroying network', nid, e);
+            }
+          }
+        });
+        initializeNetworkByName(target);
+      });
+    })(buttons[i]);
+  }
+  if (buttons.length>0) buttons[0].click();
+  
+  // Toggle label mode
+  var radios = document.getElementsByName('labelmode');
+  for (var i=0;i<radios.length;i++) {
+    radios[i].addEventListener('change', function(){
+      currentLabelMode = this.value;
+      Object.keys(networkInstances).forEach(function(nid){
+        var net = networkInstances[nid];
+        if (net && net._originalNodes) {
+          updateNetworkLabels(net, net._originalNodes, currentLabelMode);
+        }
+      });
+    });
+  }
+});
+</script>
+</body>
+</html>
