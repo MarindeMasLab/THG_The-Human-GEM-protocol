@@ -1,7 +1,18 @@
 # -*- coding: utf-8 -*-
 
 from cobra.io import read_sbml_model
-from lib2to3.pgen2.token import GREATER
+# `lib2to3` was removed in Python 3.12; prefer stdlib `token` as a fallback.
+try:
+    # Preferred import for older code that used lib2to3 tokens
+    from lib2to3.pgen2.token import GREATER  # type: ignore
+except Exception:
+    try:
+        # Fallback to the stdlib `token` module which provides the same constants
+        from token import GREATER
+    except Exception:
+        # If neither is available, set to None and let users handle missing constant
+        GREATER = None
+
 from cmath import isnan
 import sys
 import numpy as np
@@ -46,7 +57,7 @@ def MissingAtom(eq):
         for x in list(ii.items())
         if x[0] in ["Fe", "X", "R", "Na", "K", "Ca", "F"] and len(x[1]) == 1
     ]
-    if k and len(re.split("\+|->", eq)) > 2 and len(re.split("->", eq)[1]) > 2:
+    if k and len(re.split(r"\+|->", eq)) > 2 and len(re.split(r"->", eq)[1]) > 2:
         for x in k:
             if ii[x][0] < 0:
                 eq = re.sub(" ->", " + " + x + " ->", eq)
@@ -254,7 +265,9 @@ def inv(A):
     r = 1
     for i in range(size(A[0])):
         for j in range(size(A[1])):
-            cof = scipy.delete(scipy.delete(A, i, 0), j, 1)
+            # SciPy no longer exposes a top-level `delete` wrapper in recent
+            # versions; use NumPy's `delete` which provides the same behavior.
+            cof = np.delete(np.delete(A, i, axis=0), j, axis=1)
             MC[i, j] = np.linalg.det(cof) * r
             if abs(MC[i, j]) < 0.001:
                 MC[i, j] = 0.0
@@ -616,8 +629,8 @@ def RxnParam2Eq(Reaction, MetList, MetEquiv):
             P = P[3:].replace(" +  + ", " + ")
             eq0 = S + " -> " + P
             eq = eq0
-        if re.findall("\)n", eq):  # check if it is a general formula
-            eq = re.sub("\)n", "", re.sub("\(", "", re.sub("\)n[A-Za-z0-9]+", "", eq)))
+            if re.findall(r"\)n", eq):  # check if it is a general formula
+                eq = re.sub(r"\)n", "", re.sub(r"\(", "", re.sub(r"\)n[A-Za-z0-9]+", "", eq)))
     else:
         eq = ""
     return eq, mb_test
@@ -642,7 +655,7 @@ def AddMissingAtom(eq):
         for x in list(ii.items())
         if x[0] in ["Fe", "X", "R", "Na", "K", "Ca", "F"] and len(x[1]) == 1
     ]
-    if k and len(re.split("\+|->", eq)) > 2 and len(re.split("->", eq)[1]) > 2:
+    if k and len(re.split(r"\+|->", eq)) > 2 and len(re.split(r"->", eq)[1]) > 2:
         for x in k:
             if ii[x][0] < 0:
                 eq = re.sub(" ->", " + " + x + " ->", eq)
@@ -743,13 +756,32 @@ def MB_Core(eq, AddH, H2O, RxnID):
         I = ""
         TestI = 2
     if k and not BadKTest and TestI == 0:
-        N = [int(eval(str(k[Ys[s]]))) for s in sorted(Ys)]
-        g = N[0]
-        for a1, a2 in zip(N[0::2], N[1::2]):
-            g = math.gcd(g, a2)
-        N = [x / g for x in N]
-        SubsStch = N[0:LS]
-        ProdStch = N[LS : len(N)]
+        try:
+            N = []
+            for s in sorted(Ys):
+                # Prefer direct lookup; fall back to string-key lookup to handle
+                # possible bytes/str mismatches from sympy.solve implementations.
+                val = k.get(Ys[s], None)
+                if val is None:
+                    val = k.get(str(Ys[s]), None)
+                if val is None:
+                    # unable to retrieve a solution for this variable
+                    raise KeyError(s)
+                # Convert sympy numbers (Rational/Float) to Python int safely
+                N.append(int(eval(str(val))))
+            if not N:
+                SubsStch = ""
+                ProdStch = ""
+            else:
+                g = N[0]
+                for a1, a2 in zip(N[0::2], N[1::2]):
+                    g = math.gcd(g, a2)
+                N = [x / g for x in N]
+                SubsStch = N[0:LS]
+                ProdStch = N[LS : len(N)]
+        except Exception:
+            SubsStch = ""
+            ProdStch = ""
     elif k and not BadKTest and TestI == 1:
         I = str(I).replace("{", "").replace("}", "").replace("'", "")
         A = list(k.values()) + [
@@ -1005,7 +1037,7 @@ def mass_balance(eq, RxnID):
     eq_init = eq
     MB = ("", "")
     AddH, AddH2O = "", ""
-    if len(re.split("\+|->", eq)) < 20:
+    if len(re.split(r"\+|->", eq)) < 20:
         eq = AddMissingAtom(eq)  # Add atoms in case it is required (Ca,Na,Fe,R,X,K)
         i = 0
         ListOfFunc = [MB_Core, MB_REM, CountAtom, MB_LP]

@@ -1,0 +1,45 @@
+======================================================================
+PATHWAY IMPLEMENTATION REPORT
+======================================================================
+
+Execution Date: 2025-11-21 15:21:17
+Completion Date: 2025-11-21 15:21:42
+Duration: 25.58 seconds
+
+----------------------------------------------------------------------
+INPUT/OUTPUT FILES
+----------------------------------------------------------------------
+Input model:  /home/igor/Documents/THG_The-Human-GEM-protocol/models/base/THG-beta-batch_251106_canonical_compartments.json
+Output model: /home/igor/Documents/THG_The-Human-GEM-protocol/models/THG-beta-batch_251106_canonical_compartments_with_glycocalyx_cytoskeleton_contractile.json
+ID database:  /home/igor/Documents/THG_The-Human-GEM-protocol/implement_pathway/data/metabolite_id_database.json
+
+----------------------------------------------------------------------
+EXECUTION STEPS
+----------------------------------------------------------------------
+
+Step 1: Analyze model annotations
+  Status: skipped
+
+Step 2: Build metabolite ID database
+  Status: completed
+  Metabolites in ID database: 32
+
+Step 3: Implement pathways
+  Status: completed
+  Original metabolites: 15993
+  Original reactions:   21336
+  Final metabolites:    16241
+  Final reactions:      21674
+  New metabolites:      225
+  New reactions:        338
+
+----------------------------------------------------------------------
+SUMMARY
+----------------------------------------------------------------------
+Pathways added: Pathways defined in config/config_glycocalyx_cytoskeleton_contractile.json
+Total metabolites: 16241 (+225)
+Total reactions:   21674 (+338)
+
+======================================================================
+Implementation completed successfully!
+======================================================================
