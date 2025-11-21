@@ -221,7 +221,7 @@ class gene(object):
     def Ensg(self):  # MetaCyc
         try:
             iiii2 = re.search(
-                "gene=([A-Z0-9]+)",
+                r"gene=([A-Z0-9]+)",
                 str(
                     urllib.request.urlopen(
                         "https://www.genome.jp/dbget-bin/www_bget?hsa+" + self.gene
@@ -230,7 +230,7 @@ class gene(object):
             )  # .group(1)
             if not iiii2:
                 iiii2 = re.search(
-                    "(ENSG[0-9]+)",
+                    r"(ENSG[0-9]+)",
                     str(
                         urllib.request.urlopen(
                             "https://www.ensembl.org/Homo_sapiens/Gene/Summary?g="
@@ -247,7 +247,7 @@ class gene(object):
     def Entrez(self):  # MetaCyc
         try:
             EntrezGene = re.findall(
-                self.gene + "_HUMAN[\S\s].*?\n", open(self.db).read()
+                self.gene + r"_HUMAN[\S\s].*?\n", open(self.db).read()
             )[0].split("\t")[4]
             return EntrezGene
         except Exception:
@@ -256,7 +256,7 @@ class gene(object):
     def Uniprot(self):  # Uniprot
         try:
             UniProtGene = re.findall(
-                self.gene + "_HUMAN[\S\s].*?\n", open(self.db).read()
+                self.gene + r"_HUMAN[\S\s].*?\n", open(self.db).read()
             )[0].split("\t")[0]
             return UniProtGene
         except Exception:

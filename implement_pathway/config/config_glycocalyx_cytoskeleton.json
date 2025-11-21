@@ -47,6 +47,7 @@
   "metabolites": {
     "database_file": "data/metabolite_id_database.json",
     "targets": [
+      "Ca2+",
       "ATP",
       "ADP",
       "GTP",
