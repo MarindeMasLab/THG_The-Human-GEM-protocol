@@ -17,8 +17,45 @@ import urllib.request, urllib.parse, urllib.error
 import requests
 import pickle
 import logging
+from types import MethodType
 
 # from Class import gpr
+
+LOGGER = logging.getLogger(__name__)
+
+
+def _rxn_gpr2_accessor(self, compartment=None):
+    """Module-level GPR2 accessor to avoid lambda pickle issues.
+    
+    Returns the GPR data dictionary or a specific compartment's GPR.
+    This function is bound to reaction instances via MethodType to ensure it can be
+    pickled without capturing local variables.
+    
+    Parameters
+    ----------
+    self : reaction
+        The reaction object instance
+    compartment : str, optional
+        If provided, returns the GPR for this specific compartment.
+        If None, returns the entire GPR dictionary.
+    
+    Returns
+    -------
+    dict or str
+        If compartment is None: returns the full GPR data dictionary
+        If compartment is specified: returns the GPR string for that compartment
+    """
+    try:
+        if hasattr(self, '_gpr2_data'):
+            if compartment is None:
+                # Return entire dictionary (used when called as GPR2()[compartment])
+                return self._gpr2_data
+            else:
+                # Return specific compartment (direct call with parameter)
+                return self._gpr2_data.get(compartment, "")
+        return {} if compartment is None else ""
+    except Exception:
+        return {} if compartment is None else ""
 
 
 def mar_number(kegg_id):
@@ -447,7 +484,7 @@ def DefRxn(Rxn, MetEquiv):
         # 		RxnProduct =  ['<speciesReference species="'+x[0]+'" stoichiometry="'+str(x[1])+'" constant="true"/>' for x in P]
         RxnProduct = [
             '          <speciesReference species="'
-            + re.sub("_.+", "_" + LocVar.get(re.search("_(.+)", x[0]).group(1)), x[0])
+                + re.sub(r"_.+", "_" + LocVar.get(re.search(r"_(.+)", x[0]).group(1)), x[0])
             + '" stoichiometry="'
             + str(x[1])
             + '" constant="true"/>\n'
@@ -465,11 +502,11 @@ def DefRxn(Rxn, MetEquiv):
         # print(303, Rxn.GPR )
         RxnGPRIdent = Rxn.GPR
         if RxnGPRIdent[0].replace("[", "").replace("]", ""):
-            # 			RxnGPR = ['<modifierSpeciesReference species="E_'+x+'"/>' for x in re.findall('\[([A-Za-z0-9*]+)\]', Rxn.GPR[1])]
+            # 			RxnGPR = ['<modifierSpeciesReference species="E_'+x+'"/>' for x in re.findall(r'\[([A-Za-z0-9*]+)\]', Rxn.GPR[1])]
             RxnGPR = [
                 '<modifierSpeciesReference species="' + x + '"/>'
                 for x in re.findall(
-                    "([A-Za-z0-9\-]+)", Rxn.GPR[1].replace("and", "").replace("or", "")
+                    r"([A-Za-z0-9\-]+)", Rxn.GPR[1].replace("and", "").replace("or", "")
                 )
             ]
             # print(RxnGPR)
@@ -622,13 +659,13 @@ def DefMod(Gene):
                 '<rdf:li rdf:resource="https://identifiers.org/ensembl/'
                 + str(x)
                 + '"/>'
-                for x in list(set(re.findall("ENST[0-9]+", z)))
+                for x in list(set(re.findall(r"ENST[0-9]+", z)))
             ]
             y2 = [
                 '<rdf:li rdf:resource="https://identifiers.org/ensembl/'
                 + str(x)
                 + '"/>'
-                for x in list(set(re.findall("ENSP[0-9]+", z)))
+                for x in list(set(re.findall(r"ENSP[0-9]+", z)))
             ]
         except Exception:  # URLError: <urlopen error [Errno 60] Operation timed out>
             y, y2 = "", ""
@@ -727,41 +764,78 @@ def rxnSubcel(
     try:
         rxn_cl = []
         comp_cl = []
-        for cl in Rxn.Subcel[0]:
-            if cl:
-                RxnID_CL = Rxn.ID + "_" + cl
-                if not RxnID_CL in RxnIdent_CL:
-                    RxnIdent_CL.append(RxnID_CL)
-                    rxn_cl.append(RxnID_CL)
-                    Compartment_CL.append(cl)
-                    RxnList_CL[RxnID_CL] = copy.deepcopy(Rxn)
-                    RxnList_CL[RxnID_CL].ID = RxnID_CL
-                    RxnList_CL[RxnID_CL].GPR2 = lambda cl=cl: Rxn.Subcel[0][cl]
-                    RxnList_CL[RxnID_CL].Subcel = cl
-                    # Call the accessor methods to obtain substrate/product lists
-                    RxnCmp_CL = [x[2] for x in RxnList_CL[RxnID_CL].Substrate()] + [
-                        x[2] for x in RxnList_CL[RxnID_CL].Product()
-                    ]
-                    c = 0
-                    while c < len(RxnCmp_CL):
-                        CompID_CL = RxnCmp_CL[c] + "_" + cl
-                        if not CompID_CL in MetIdent_CL:
-                            MetIdent_CL.append(CompID_CL)
-                            comp_cl.append(CompID_CL)
-                            if RxnCmp_CL[c] in MetEquiv:
-                                MetList_CL[CompID_CL] = copy.deepcopy(
-                                    MetList[MetEquiv[RxnCmp_CL[c]]]
-                                )
-                            else:
-                                MetList_CL[CompID_CL] = copy.deepcopy(
-                                    MetList[RxnCmp_CL[c]]
-                                )
-                            # Updates the ID1 associated attribute
-                            MetList_CL[CompID_CL].ID1 = (
-                                MetList_CL[CompID_CL].ID1 + "_" + cl
+        
+        # Check if Subcel has compartment information
+        # Rxn.Subcel is a list of 2 dicts: [{compartment: sgpr}, {compartment: gpr}]
+        # If no GPR data, Subcel will be [{}, {}], so Subcel[0] will be empty dict
+        compartments = []
+        if Rxn.Subcel and isinstance(Rxn.Subcel, list) and len(Rxn.Subcel) > 0:
+            if isinstance(Rxn.Subcel[0], dict) and Rxn.Subcel[0]:
+                # Has compartment info from GPR
+                compartments = list(Rxn.Subcel[0].keys())
+                LOGGER.debug(f"Reaction {Rxn.ID} - Subcel[0] keys: {compartments}")
+        
+        # If no compartments from GPR, default to cytosol
+        if not compartments:
+            compartments = ["cytosol"]
+            LOGGER.info(f"Reaction {Rxn.ID} has no GPR compartment info, defaulting to cytosol")
+        
+        for cl in compartments:
+            # Default to cytosol if compartment is unknown/empty
+            if not cl:
+                cl = "cytosol"
+            
+            RxnID_CL = Rxn.ID + "_" + cl
+            LOGGER.debug(f"Reaction {Rxn.ID} - Attempting to create {RxnID_CL}, already exists: {RxnID_CL in RxnIdent_CL}")
+            if not RxnID_CL in RxnIdent_CL:
+                RxnIdent_CL.append(RxnID_CL)
+                rxn_cl.append(RxnID_CL)
+                Compartment_CL.append(cl)
+                RxnList_CL[RxnID_CL] = copy.deepcopy(Rxn)
+                RxnList_CL[RxnID_CL].ID = RxnID_CL
+                # Store GPR data in instance attribute (avoids lambda closure)
+                # Handle empty Subcel gracefully (reactions without GPR)
+                if Rxn.Subcel and isinstance(Rxn.Subcel, list) and len(Rxn.Subcel) > 0:
+                    RxnList_CL[RxnID_CL]._gpr2_data = Rxn.Subcel[0]
+                else:
+                    RxnList_CL[RxnID_CL]._gpr2_data = {}
+                # Bind stable module-level function instead of lambda
+                RxnList_CL[RxnID_CL].GPR2 = MethodType(
+                    _rxn_gpr2_accessor, RxnList_CL[RxnID_CL]
+                )
+                RxnList_CL[RxnID_CL].Subcel = cl
+                # Call the accessor methods to obtain substrate/product lists
+                RxnCmp_CL = [x[2] for x in RxnList_CL[RxnID_CL].Substrate()] + [
+                    x[2] for x in RxnList_CL[RxnID_CL].Product()
+                ]
+                c = 0
+                while c < len(RxnCmp_CL):
+                    CompID_CL = RxnCmp_CL[c] + "_" + cl
+                    if not CompID_CL in MetIdent_CL:
+                        MetIdent_CL.append(CompID_CL)
+                        comp_cl.append(CompID_CL)
+                        # Check if metabolite exists in MetEquiv or MetList
+                        if RxnCmp_CL[c] in MetEquiv:
+                            MetList_CL[CompID_CL] = copy.deepcopy(
+                                MetList[MetEquiv[RxnCmp_CL[c]]]
                             )
-                            MetList_CL[CompID_CL].Subcel = cl
-                        c = c + 1
+                        elif RxnCmp_CL[c] in MetList:
+                            MetList_CL[CompID_CL] = copy.deepcopy(
+                                MetList[RxnCmp_CL[c]]
+                            )
+                        else:
+                            # Metabolite not in MetList (e.g., added during balancing like H+)
+                            # Skip this metabolite - it will be added later
+                            LOGGER.warning(f"Metabolite {RxnCmp_CL[c]} not found in MetList, skipping compartmentalization")
+                            c = c + 1
+                            continue
+                        # Updates the ID1 associated attribute
+                        MetList_CL[CompID_CL].ID1 = (
+                            MetList_CL[CompID_CL].ID1 + "_" + cl
+                        )
+                        MetList_CL[CompID_CL].Subcel = cl
+                    c = c + 1
+        LOGGER.debug(f"Reaction {Rxn.ID} - Created {len(rxn_cl)} reaction copies in compartments: {rxn_cl}")
         return Compartment_CL, rxn_cl, comp_cl
     except Exception as e:
         # Log full traceback for easier debugging

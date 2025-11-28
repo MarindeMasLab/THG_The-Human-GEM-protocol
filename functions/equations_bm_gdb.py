@@ -1,7 +1,18 @@
 # -*- coding: utf-8 -*-
 
 from cobra.io import read_sbml_model
-from lib2to3.pgen2.token import GREATER
+# `lib2to3` was removed in Python 3.12; prefer stdlib `token` as a fallback.
+try:
+    # Preferred import for older code that used lib2to3 tokens
+    from lib2to3.pgen2.token import GREATER  # type: ignore
+except Exception:
+    try:
+        # Fallback to the stdlib `token` module which provides the same constants
+        from token import GREATER
+    except Exception:
+        # If neither is available, set to None and let users handle missing constant
+        GREATER = None
+
 from cmath import isnan
 import sys
 import numpy as np
@@ -46,7 +57,7 @@ def MissingAtom(eq):
         for x in list(ii.items())
         if x[0] in ["Fe", "X", "R", "Na", "K", "Ca", "F"] and len(x[1]) == 1
     ]
-    if k and len(re.split("\+|->", eq)) > 2 and len(re.split("->", eq)[1]) > 2:
+    if k and len(re.split(r"\+|->", eq)) > 2 and len(re.split(r"->", eq)[1]) > 2:
         for x in k:
             if ii[x][0] < 0:
                 eq = re.sub(" ->", " + " + x + " ->", eq)
@@ -254,7 +265,9 @@ def inv(A):
     r = 1
     for i in range(size(A[0])):
         for j in range(size(A[1])):
-            cof = scipy.delete(scipy.delete(A, i, 0), j, 1)
+            # SciPy no longer exposes a top-level `delete` wrapper in recent
+            # versions; use NumPy's `delete` which provides the same behavior.
+            cof = np.delete(np.delete(A, i, axis=0), j, axis=1)
             MC[i, j] = np.linalg.det(cof) * r
             if abs(MC[i, j]) < 0.001:
                 MC[i, j] = 0.0
@@ -277,11 +290,11 @@ def maximumGCD(A, I, K):
     # Initialize a dp table of size N*2
     dp = [0 for x in range(N * N)]
     for j in range(0, N):
-        Jth = int(eval(str(A[j]).replace("'", "").replace(I, "K")))
+        Jth = int(str(A[j]).replace("'", "").replace(I, str(K)))
         # Traverse the array A[] over indices [1, N - 1]
         for i in range(j + 1, N):
             # Store the previous state results
-            Ith = int(eval(str(A[i]).replace("'", "").replace(I, "K")))
+            Ith = int(str(A[i]).replace("'", "").replace(I, str(K)))
             # Store maximum GCD result
             # for each current state
             dp[j * N + i] = math.gcd(Jth, Ith)
@@ -385,48 +398,72 @@ def WrapRxnSubsProdParam(Reaction, MetList, MetEquiv):
     if gly_test == 1:
         for s in range(0, len(Substrate)):
             if Substrate[s][2] in MetEquiv:
-                DS[MetList[MetEquiv[Substrate[s][2]]].Formula2] = [
+                equiv_id = MetEquiv[Substrate[s][2]]
+                if equiv_id not in MetList:
+                    raise KeyError(f"Metabolite ID '{equiv_id}' from MetEquiv not found in MetList for substrate '{Substrate[s][2]}'")
+                DS[MetList[equiv_id].Formula2] = [
                     1,
-                    MetList[MetEquiv[Substrate[s][2]]].ID1,
+                    MetList[equiv_id].ID1,
                 ]  # Formula1
             else:
-                DS[MetList[Substrate[s][2]].Formula2] = [
+                met_id = Substrate[s][2]
+                if met_id not in MetList:
+                    raise KeyError(f"Metabolite ID '{met_id}' not found in MetList for substrate")
+                DS[MetList[met_id].Formula2] = [
                     1,
-                    MetList[Substrate[s][2]].ID1,
+                    MetList[met_id].ID1,
                 ]  # Formula1
         for p in range(0, len(Product)):
             if Product[p][2] in MetEquiv:
-                DP[MetList[MetEquiv[Product[p][2]]].Formula2] = [
+                equiv_id = MetEquiv[Product[p][2]]
+                if equiv_id not in MetList:
+                    raise KeyError(f"Metabolite ID '{equiv_id}' from MetEquiv not found in MetList for product '{Product[p][2]}'")
+                DP[MetList[equiv_id].Formula2] = [
                     1,
-                    MetList[MetEquiv[Product[p][2]]].ID1,
+                    MetList[equiv_id].ID1,
                 ]  # Formula1
             else:
-                DP[MetList[Product[p][2]].Formula2] = [
+                met_id = Product[p][2]
+                if met_id not in MetList:
+                    raise KeyError(f"Metabolite ID '{met_id}' not found in MetList for product")
+                DP[MetList[met_id].Formula2] = [
                     1,
-                    MetList[Product[p][2]].ID1,
+                    MetList[met_id].ID1,
                 ]  # Formula1
     else:
         for s in range(0, len(Substrate)):
             if Substrate[s][2] in MetEquiv:
-                DS[MetList[MetEquiv[Substrate[s][2]]].Formula1] = [
+                equiv_id = MetEquiv[Substrate[s][2]]
+                if equiv_id not in MetList:
+                    raise KeyError(f"Metabolite ID '{equiv_id}' from MetEquiv not found in MetList for substrate '{Substrate[s][2]}'")
+                DS[MetList[equiv_id].Formula1] = [
                     1,
-                    MetList[MetEquiv[Substrate[s][2]]].ID1,
+                    MetList[equiv_id].ID1,
                 ]  # Formula1
             else:
-                DS[MetList[Substrate[s][2]].Formula1] = [
+                met_id = Substrate[s][2]
+                if met_id not in MetList:
+                    raise KeyError(f"Metabolite ID '{met_id}' not found in MetList for substrate")
+                DS[MetList[met_id].Formula1] = [
                     1,
-                    MetList[Substrate[s][2]].ID1,
+                    MetList[met_id].ID1,
                 ]  # Formula1
         for p in range(0, len(Product)):
             if Product[p][2] in MetEquiv:
-                DP[MetList[MetEquiv[Product[p][2]]].Formula1] = [
+                equiv_id = MetEquiv[Product[p][2]]
+                if equiv_id not in MetList:
+                    raise KeyError(f"Metabolite ID '{equiv_id}' from MetEquiv not found in MetList for product '{Product[p][2]}'")
+                DP[MetList[equiv_id].Formula1] = [
                     1,
-                    MetList[MetEquiv[Product[p][2]]].ID1,
+                    MetList[equiv_id].ID1,
                 ]  # Formula1
             else:
-                DP[MetList[Product[p][2]].Formula1] = [
+                met_id = Product[p][2]
+                if met_id not in MetList:
+                    raise KeyError(f"Metabolite ID '{met_id}' not found in MetList for product")
+                DP[MetList[met_id].Formula1] = [
                     1,
-                    MetList[Product[p][2]].ID1,
+                    MetList[met_id].ID1,
                 ]  # Formula1
     return DS, DP
 
@@ -548,16 +585,22 @@ def RxnParam2Eq(Reaction, MetList, MetEquiv):
             while s < len(Substrate):
                 SStch = str(Substrate[s][0])
                 if Substrate[s][2] in MetEquiv:
+                    equiv_id = MetEquiv[Substrate[s][2]]
+                    if equiv_id not in MetList:
+                        raise KeyError(f"Metabolite ID '{equiv_id}' from MetEquiv not found in MetList for substrate '{Substrate[s][2]}'")
                     S = (
                         S
                         + " + "
                         + SStch
                         + " "
-                        + MetList[MetEquiv[Substrate[s][2]]].Formula2
+                        + MetList[equiv_id].Formula2
                     )  # Formula2
                 else:
+                    met_id = Substrate[s][2]
+                    if met_id not in MetList:
+                        raise KeyError(f"Metabolite ID '{met_id}' not found in MetList for substrate")
                     S = (
-                        S + " + " + SStch + " " + MetList[Substrate[s][2]].Formula2
+                        S + " + " + SStch + " " + MetList[met_id].Formula2
                     )  # Formula2
                 s = s + 1
             S = S[3:].replace(" +  + ", " + ")
@@ -566,16 +609,22 @@ def RxnParam2Eq(Reaction, MetList, MetEquiv):
             while p < len(Product):
                 PStch = str(Product[p][0])
                 if Product[p][2] in MetEquiv:
+                    equiv_id = MetEquiv[Product[p][2]]
+                    if equiv_id not in MetList:
+                        raise KeyError(f"Metabolite ID '{equiv_id}' from MetEquiv not found in MetList for product '{Product[p][2]}'")
                     P = (
                         P
                         + " + "
                         + PStch
                         + " "
-                        + MetList[MetEquiv[Product[p][2]]].Formula2
+                        + MetList[equiv_id].Formula2
                     )  # Formula2
                 else:
+                    met_id = Product[p][2]
+                    if met_id not in MetList:
+                        raise KeyError(f"Metabolite ID '{met_id}' not found in MetList for product")
                     P = (
-                        P + " + " + PStch + " " + MetList[Product[p][2]].Formula2
+                        P + " + " + PStch + " " + MetList[met_id].Formula2
                     )  # Formula2
                 p = p + 1
             P = P[3:].replace(" +  + ", " + ")
@@ -587,15 +636,21 @@ def RxnParam2Eq(Reaction, MetList, MetEquiv):
             while s < len(Substrate):
                 SStch = str(Substrate[s][0])
                 if Substrate[s][2] in MetEquiv:
+                    equiv_id = MetEquiv[Substrate[s][2]]
+                    if equiv_id not in MetList:
+                        raise KeyError(f"Metabolite ID '{equiv_id}' from MetEquiv not found in MetList for substrate '{Substrate[s][2]}'")
                     S = (
                         S
                         + " + "
                         + SStch
                         + " "
-                        + MetList[MetEquiv[Substrate[s][2]]].Formula1
+                        + MetList[equiv_id].Formula1
                     )
                 else:
-                    S = S + " + " + SStch + " " + MetList[Substrate[s][2]].Formula1
+                    met_id = Substrate[s][2]
+                    if met_id not in MetList:
+                        raise KeyError(f"Metabolite ID '{met_id}' not found in MetList for substrate")
+                    S = S + " + " + SStch + " " + MetList[met_id].Formula1
                 s = s + 1
             S = S[3:].replace(" +  + ", " + ")
             p = 0
@@ -603,21 +658,27 @@ def RxnParam2Eq(Reaction, MetList, MetEquiv):
             while p < len(Product):
                 PStch = str(Product[p][0])
                 if Product[p][2] in MetEquiv:
+                    equiv_id = MetEquiv[Product[p][2]]
+                    if equiv_id not in MetList:
+                        raise KeyError(f"Metabolite ID '{equiv_id}' from MetEquiv not found in MetList for product '{Product[p][2]}'")
                     P = (
                         P
                         + " + "
                         + PStch
                         + " "
-                        + MetList[MetEquiv[Product[p][2]]].Formula1
+                        + MetList[equiv_id].Formula1
                     )
                 else:
-                    P = P + " + " + PStch + " " + MetList[Product[p][2]].Formula1
+                    met_id = Product[p][2]
+                    if met_id not in MetList:
+                        raise KeyError(f"Metabolite ID '{met_id}' not found in MetList for product")
+                    P = P + " + " + PStch + " " + MetList[met_id].Formula1
                 p = p + 1
             P = P[3:].replace(" +  + ", " + ")
             eq0 = S + " -> " + P
             eq = eq0
-        if re.findall("\)n", eq):  # check if it is a general formula
-            eq = re.sub("\)n", "", re.sub("\(", "", re.sub("\)n[A-Za-z0-9]+", "", eq)))
+            if re.findall(r"\)n", eq):  # check if it is a general formula
+                eq = re.sub(r"\)n", "", re.sub(r"\(", "", re.sub(r"\)n[A-Za-z0-9]+", "", eq)))
     else:
         eq = ""
     return eq, mb_test
@@ -642,7 +703,7 @@ def AddMissingAtom(eq):
         for x in list(ii.items())
         if x[0] in ["Fe", "X", "R", "Na", "K", "Ca", "F"] and len(x[1]) == 1
     ]
-    if k and len(re.split("\+|->", eq)) > 2 and len(re.split("->", eq)[1]) > 2:
+    if k and len(re.split(r"\+|->", eq)) > 2 and len(re.split(r"->", eq)[1]) > 2:
         for x in k:
             if ii[x][0] < 0:
                 eq = re.sub(" ->", " + " + x + " ->", eq)
@@ -730,8 +791,8 @@ def MB_Core(eq, AddH, H2O, RxnID):
                 d = [c[0], c[1] * m * i]
                 Ss[e][:0], Es[:0] = [d], [[e, d]]
         i = -1
-    Ys = dict((s, eval('sympy.Symbol("' + s + '")')) for s in Os if s not in Ls)
-    Qs = [eval("+".join("%d*%s" % (c[1], c[0]) for c in Ss[s]), {}, Ys) for s in Ss] + [
+    Ys = dict((s, sympy.Symbol(s)) for s in Os if s not in Ls)
+    Qs = [sympy.sympify("+".join("%d*%s" % (c[1], c[0]) for c in Ss[s]), locals=Ys) for s in Ss] + [
         Ys["a"] - a
     ]
     k = solve(Qs, *Ys)
@@ -743,37 +804,63 @@ def MB_Core(eq, AddH, H2O, RxnID):
         I = ""
         TestI = 2
     if k and not BadKTest and TestI == 0:
-        N = [int(eval(str(k[Ys[s]]))) for s in sorted(Ys)]
-        g = N[0]
-        for a1, a2 in zip(N[0::2], N[1::2]):
-            g = math.gcd(g, a2)
-        N = [x / g for x in N]
-        SubsStch = N[0:LS]
-        ProdStch = N[LS : len(N)]
+        try:
+            N = []
+            for s in sorted(Ys):
+                # Prefer direct lookup; fall back to string-key lookup to handle
+                # possible bytes/str mismatches from sympy.solve implementations.
+                val = k.get(Ys[s], None)
+                if val is None:
+                    val = k.get(str(Ys[s]), None)
+                if val is None:
+                    # unable to retrieve a solution for this variable
+                    raise KeyError(s)
+                # Convert sympy numbers (Rational/Float) to Python int safely
+                N.append(int(val))
+            if not N:
+                SubsStch = ""
+                ProdStch = ""
+            else:
+                g = N[0]
+                for a1, a2 in zip(N[0::2], N[1::2]):
+                    g = math.gcd(g, a2)
+                N = [x / g for x in N]
+                SubsStch = N[0:LS]
+                ProdStch = N[LS : len(N)]
+        except Exception:
+            SubsStch = ""
+            ProdStch = ""
     elif k and not BadKTest and TestI == 1:
         I = str(I).replace("{", "").replace("}", "").replace("'", "")
         A = list(k.values()) + [
             I
         ]  # List of variables' values. Here the independent variable is in the last position
-        a = str(
-            eval(
-                str(
-                    list(
-                        filter(
-                            lambda p: not I in p,
-                            str(A).replace("[", "").replace("]", "").split(","),
-                        )
-                    )
-                )
-                .replace("'", "")
-                .replace(" ", "")
-            )
-        )
+        # Filter out terms containing I, convert to numeric values
+        a_list = []
+        for item in A:
+            item_str = str(item)
+            if I not in item_str:
+                try:
+                    a_list.append(float(item_str))
+                except (ValueError, TypeError):
+                    pass
         V = 1  # Variation
-        Kref = int(min(np.matrix(a).A[0]))
-        Solution = np.array(
-            np.matrix(eval(str(A).replace("'", "").replace(I, str(Kref))))
-        ).ravel()
+        Kref = int(min(a_list)) if a_list else 1
+        # Substitute I with Kref value in all expressions
+        A_substituted = []
+        for item in A:
+            if isinstance(item, str) and item == I:
+                A_substituted.append(Kref)
+            else:
+                # For sympy expressions, substitute the independent variable
+                try:
+                    if hasattr(item, 'subs'):
+                        A_substituted.append(float(item.subs(I, Kref)))
+                    else:
+                        A_substituted.append(float(item))
+                except (ValueError, TypeError, AttributeError):
+                    A_substituted.append(Kref)
+        Solution = np.array(A_substituted).ravel()
         TestSol = sum(
             [1 for x in Solution if x <= 0]
         )  # Check for possible negative values
@@ -842,9 +929,9 @@ def MB_REM(eq, AddH, H2O, RxnID):
                     Ss[e][:0], Es[:0] = [d], [[e, d]]
                     ii[e].append(d[1])
             i = -1
-        Ys = dict((s, eval('sympy.Symbol("' + s + '")')) for s in Os if s not in Ls)
+        Ys = dict((s, sympy.Symbol(s)) for s in Os if s not in Ls)
         Qs = [
-            eval("+".join("%d*%s" % (c[1], c[0]) for c in Ss[s]), {}, Ys) for s in Ss
+            sympy.sympify("+".join("%d*%s" % (c[1], c[0]) for c in Ss[s]), locals=Ys) for s in Ss
         ] + [Ys["a"] - a]
         k = solve(Qs, *Ys)
         ## Explore the space of soultions in order to find the solution with the overall smallest stoichimetric coefficients: new part
@@ -861,38 +948,55 @@ def MB_REM(eq, AddH, H2O, RxnID):
             A = list(k.values()) + [
                 I
             ]  # List of variables' values. Here the independent variable is in the last position
-            a = str(
-                eval(
-                    str(
-                        list(
-                            filter(
-                                lambda p: not I in p,
-                                str(A).replace("[", "").replace("]", "").split(","),
-                            )
-                        )
-                    )
-                    .replace("'", "")
-                    .replace(" ", "")
-                )
-            )
+            # Filter out terms containing I, convert to numeric values
+            a_list = []
+            for item in A:
+                item_str = str(item)
+                if I not in item_str:
+                    try:
+                        a_list.append(float(item_str))
+                    except (ValueError, TypeError):
+                        pass
             Kref = int(
-                min(np.matrix(a).A[0])
+                min(a_list) if a_list else 1
             )  # +V # Value of the independent term. In order to minimize the iteration task Kref has the value of the highest non-dependent 			variable and is -1 to enable a minimum iteration
             V = Kref / 1000  # Variation
             if V < 1:
                 V = 1
             flag = 0
-            TestZeroh = np.array(
-                np.matrix(eval(str(A).replace("'", "").replace(I, str(Kref))))
-            ).ravel()
+            # Substitute I with Kref value
+            A_sub_h = []
+            for item in A:
+                if isinstance(item, str) and item == I:
+                    A_sub_h.append(Kref)
+                else:
+                    try:
+                        if hasattr(item, 'subs'):
+                            A_sub_h.append(float(item.subs(I, Kref)))
+                        else:
+                            A_sub_h.append(float(item))
+                    except (ValueError, TypeError, AttributeError):
+                        A_sub_h.append(Kref)
+            TestZeroh = np.array(A_sub_h).ravel()
             TestZeroh = sum([0 if i <= 0 else 1 for i in TestZeroh.tolist()]) / len(
                 TestZeroh
             )  # Check if some value is <=0
             if TestZeroh < 1:
                 TestZeroh = 0
-            TestZerol = np.array(
-                np.matrix(eval(str(A).replace("'", "").replace(I, str(1))))
-            ).ravel()
+            # Substitute I with 1
+            A_sub_l = []
+            for item in A:
+                if isinstance(item, str) and item == I:
+                    A_sub_l.append(1)
+                else:
+                    try:
+                        if hasattr(item, 'subs'):
+                            A_sub_l.append(float(item.subs(I, 1)))
+                        else:
+                            A_sub_l.append(float(item))
+                    except (ValueError, TypeError, AttributeError):
+                        A_sub_l.append(1)
+            TestZerol = np.array(A_sub_l).ravel()
             TestZerol = sum([0 if i <= 0 else 1 for i in TestZerol.tolist()]) / len(
                 TestZerol
             )  # Check if some value is <=0
@@ -900,9 +1004,20 @@ def MB_REM(eq, AddH, H2O, RxnID):
                 TestZerol = 0
             while flag == 0 and (TestZeroh + TestZerol) >= 1:
                 K = int(Kref)
-                TestZero = np.array(
-                    np.matrix(eval(str(A).replace("'", "").replace(I, str(K))))
-                ).ravel()
+                # Substitute I with K value
+                A_sub_k = []
+                for item in A:
+                    if isinstance(item, str) and item == I:
+                        A_sub_k.append(K)
+                    else:
+                        try:
+                            if hasattr(item, 'subs'):
+                                A_sub_k.append(float(item.subs(I, K)))
+                            else:
+                                A_sub_k.append(float(item))
+                        except (ValueError, TypeError, AttributeError):
+                            A_sub_k.append(K)
+                TestZero = np.array(A_sub_k).ravel()
                 TestZero = sum([0 if i <= 0 else 1 for i in TestZero.tolist()]) / len(
                     TestZero
                 )  # Check if some value is <=0
@@ -919,9 +1034,20 @@ def MB_REM(eq, AddH, H2O, RxnID):
                 SubsStch = ""
                 ProdStch = ""
             else:
-                Solution = np.array(
-                    np.matrix(eval(str(A).replace("'", "").replace(I, str(Kref))))
-                ).ravel()
+                # Substitute I with Kref value
+                A_final = []
+                for item in A:
+                    if isinstance(item, str) and item == I:
+                        A_final.append(Kref)
+                    else:
+                        try:
+                            if hasattr(item, 'subs'):
+                                A_final.append(float(item.subs(I, Kref)))
+                            else:
+                                A_final.append(float(item))
+                        except (ValueError, TypeError, AttributeError):
+                            A_final.append(Kref)
+                Solution = np.array(A_final).ravel()
                 TestSol = sum(
                     [1 for x in Solution if x <= 0]
                 )  # Check for possible negative values
@@ -1005,7 +1131,7 @@ def mass_balance(eq, RxnID):
     eq_init = eq
     MB = ("", "")
     AddH, AddH2O = "", ""
-    if len(re.split("\+|->", eq)) < 20:
+    if len(re.split(r"\+|->", eq)) < 20:
         eq = AddMissingAtom(eq)  # Add atoms in case it is required (Ca,Na,Fe,R,X,K)
         i = 0
         ListOfFunc = [MB_Core, MB_REM, CountAtom, MB_LP]

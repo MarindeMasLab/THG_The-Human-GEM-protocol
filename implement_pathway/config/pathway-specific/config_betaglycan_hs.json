@@ -1,0 +1,641 @@
+{
+  "pathway_name": "Betaglycan_HS",
+  "model": {
+    "base": "models/THG-beta-batch_251106_connected_minptr_combined_compartments.json",
+    "output": "models/THG-beta-batch_251106_connected_minptr_combined_compartments_with_betaglycan_hs.json"
+  },
+  "visualizations": {
+    "output_directory": "figures",
+    "d3js": "betaglycan_hs_network_d3.html",
+    "plotly": "betaglycan_hs_network_plotly.html",
+    "graphviz_base": "betaglycan_hs_network"
+  },
+  "compartments": [
+    {"name": "cytosol", "abbreviation": "c"},
+    {"name": "endoplasmic reticulum", "abbreviation": "r"},
+    {"name": "golgi apparatus", "abbreviation": "g"},
+    {"name": "vesicle", "abbreviation": "v"},
+    {"name": "cell membrane", "abbreviation": "a"},
+    {"name": "glycocalyx", "abbreviation": "gl"},
+    {"name": "extracellular", "abbreviation": "e"}
+  ],
+  "metabolites": {
+    "database_file": "data/metabolite_id_database.json",
+    "targets": [
+      "ATP",
+      "ADP",
+      "GTP",
+      "GDP",
+      "UDP",
+      "UDP-N-acetyl-alpha-D-glucosamine",
+      "UDP-glucuronate",
+      "PAPS",
+      "PAP",
+      "phosphate",
+      "sulfate",
+      "H2O",
+      "H+",
+      "L-alanine",
+      "L-arginine",
+      "L-asparagine",
+      "L-aspartate",
+      "L-cysteine",
+      "L-glutamine",
+      "L-glutamate",
+      "L-glycine",
+      "L-histidine",
+      "L-isoleucine",
+      "L-leucine",
+      "L-lysine",
+      "L-methionine",
+      "L-phenylalanine",
+      "L-proline",
+      "L-serine",
+      "L-threonine",
+      "L-tryptophan",
+      "L-tyrosine",
+      "L-valine"
+    ],
+    "Betaglycan_HS_specific": {
+      "Betaglycan_Core_Protein": {
+        "name": "Betaglycan core protein (TGF-β RIII)",
+        "formula": "C4242H6592N1152O1296S28",
+        "compartment": "r",
+        "charge": -30,
+        "annotation": {
+          "uniprot": "P37173",
+          "hgnc": "TGFBR3",
+          "ensembl": "ENSG00000069702"
+        },
+        "sbo": "SBO:0000247"
+      },
+      "HS_Chain_100_on_Betaglycan_Unsulfated": {
+        "name": "Heparan sulfate chain (100 disaccharides) on Betaglycan (unsulfated)",
+        "formula": "C1400H2000N100O1100S0",
+        "compartment": "g",
+        "charge": -200,
+        "annotation": {"chebi": "CHEBI:28815"},
+        "sbo": "SBO:0000247"
+      },
+      "Fully_Assembled_HS_Proteoglycan_on_Betaglycan": {
+        "name": "Fully assembled Betaglycan-HS proteoglycan in Golgi (sulfated)",
+        "formula": "C5642H8592N1252O2696S128",
+        "compartment": "g",
+        "charge": -430,
+        "annotation": {"chebi": "CHEBI:28815"},
+        "sbo": "SBO:0000247"
+      },
+      "Packaged_HS_on_Betaglycan": {
+        "name": "Packaged Betaglycan-HS in vesicle",
+        "formula": "C5642H8592N1252O2696S128",
+        "compartment": "v",
+        "charge": -430,
+        "sbo": "SBO:0000247"
+      },
+      "Activated_HS_on_Betaglycan_Cargo": {
+        "name": "Activated Betaglycan-HS cargo in vesicle",
+        "formula": "C5642H8592N1252O2696S128",
+        "compartment": "v",
+        "charge": -430,
+        "sbo": "SBO:0000247"
+      },
+      "Full_Betaglycan_HS_Anchored": {
+        "name": "Full Betaglycan with HS anchored in membrane",
+        "formula": "C5642H8592N1252O2696S128",
+        "compartment": "a",
+        "charge": -430,
+        "sbo": "SBO:0000247"
+      },
+      "Betaglycan_Anchor": {
+        "name": "Betaglycan transmembrane anchor",
+        "formula": "C300H450N75O120S8",
+        "compartment": "a",
+        "charge": -8,
+        "annotation": {"uniprot": "P37173"},
+        "sbo": "SBO:0000247"
+      },
+      "Functional_HS_Ectodomain_on_Betaglycan": {
+        "name": "Functional HS ectodomain on Betaglycan in glycocalyx",
+        "formula": "C5342H8142N1177O2576S120",
+        "compartment": "gl",
+        "charge": -422,
+        "annotation": {"chebi": "CHEBI:28815"},
+        "sbo": "SBO:0000247"
+      },
+      "Edited_HS_Ectodomain_on_Betaglycan": {
+        "name": "Sulfatase-edited HS ectodomain on Betaglycan",
+        "formula": "C5342H8152N1177O2566S110",
+        "compartment": "gl",
+        "charge": -412,
+        "sbo": "SBO:0000247"
+      },
+      "Truncated_HS_Ectodomain_on_Betaglycan": {
+        "name": "Truncated HS ectodomain on Betaglycan after heparanase",
+        "formula": "C5202H7942N1087O2436S110",
+        "compartment": "gl",
+        "charge": -392,
+        "sbo": "SBO:0000247"
+      },
+      "Betaglycan_Stub": {
+        "name": "Betaglycan stub after proteolytic shedding",
+        "formula": "C250H400N65O110S6",
+        "compartment": "a",
+        "charge": -10,
+        "sbo": "SBO:0000247"
+      },
+      "Shed_Betaglycan_HS_Ectodomain": {
+        "name": "Shed Betaglycan ectodomain with HS chains",
+        "formula": "C5092H7742N1112O2466S114",
+        "compartment": "e",
+        "charge": -412,
+        "sbo": "SBO:0000247"
+      },
+      "Shed_HS_Fragment": {
+        "name": "Shed heparan sulfate fragment (10 disaccharides)",
+        "formula": "C140H200N10O140S10",
+        "compartment": "e",
+        "charge": -30,
+        "annotation": {"chebi": "CHEBI:28815"},
+        "sbo": "SBO:0000247"
+      }
+    }
+  },
+  "reactions": [
+    {
+      "id": "T_Lalanine_c_r",
+      "name": "Transport of L-alanine between cytosol and ER",
+      "description": "Bidirectional transport of L-alanine",
+      "equation": "L-alanine[c] <=> L-alanine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Larginine_c_r",
+      "name": "Transport of L-arginine between cytosol and ER",
+      "description": "Bidirectional transport of L-arginine",
+      "equation": "L-arginine[c] <=> L-arginine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lasparagine_c_r",
+      "name": "Transport of L-asparagine between cytosol and ER",
+      "description": "Bidirectional transport of L-asparagine",
+      "equation": "L-asparagine[c] <=> L-asparagine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Laspartate_c_r",
+      "name": "Transport of L-aspartate between cytosol and ER",
+      "description": "Bidirectional transport of L-aspartate",
+      "equation": "L-aspartate[c] <=> L-aspartate[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lcysteine_c_r",
+      "name": "Transport of L-cysteine between cytosol and ER",
+      "description": "Bidirectional transport of L-cysteine",
+      "equation": "L-cysteine[c] <=> L-cysteine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lglutamine_c_r",
+      "name": "Transport of L-glutamine between cytosol and ER",
+      "description": "Bidirectional transport of L-glutamine",
+      "equation": "L-glutamine[c] <=> L-glutamine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lglutamate_c_r",
+      "name": "Transport of L-glutamate between cytosol and ER",
+      "description": "Bidirectional transport of L-glutamate",
+      "equation": "L-glutamate[c] <=> L-glutamate[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lglycine_c_r",
+      "name": "Transport of L-glycine between cytosol and ER",
+      "description": "Bidirectional transport of L-glycine",
+      "equation": "L-glycine[c] <=> L-glycine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lhistidine_c_r",
+      "name": "Transport of L-histidine between cytosol and ER",
+      "description": "Bidirectional transport of L-histidine",
+      "equation": "L-histidine[c] <=> L-histidine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lisoleucine_c_r",
+      "name": "Transport of L-isoleucine between cytosol and ER",
+      "description": "Bidirectional transport of L-isoleucine",
+      "equation": "L-isoleucine[c] <=> L-isoleucine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lleucine_c_r",
+      "name": "Transport of L-leucine between cytosol and ER",
+      "description": "Bidirectional transport of L-leucine",
+      "equation": "L-leucine[c] <=> L-leucine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Llysine_c_r",
+      "name": "Transport of L-lysine between cytosol and ER",
+      "description": "Bidirectional transport of L-lysine",
+      "equation": "L-lysine[c] <=> L-lysine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lmethionine_c_r",
+      "name": "Transport of L-methionine between cytosol and ER",
+      "description": "Bidirectional transport of L-methionine",
+      "equation": "L-methionine[c] <=> L-methionine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lphenylalanine_c_r",
+      "name": "Transport of L-phenylalanine between cytosol and ER",
+      "description": "Bidirectional transport of L-phenylalanine",
+      "equation": "L-phenylalanine[c] <=> L-phenylalanine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lproline_c_r",
+      "name": "Transport of L-proline between cytosol and ER",
+      "description": "Bidirectional transport of L-proline",
+      "equation": "L-proline[c] <=> L-proline[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lserine_c_r",
+      "name": "Transport of L-serine between cytosol and ER",
+      "description": "Bidirectional transport of L-serine",
+      "equation": "L-serine[c] <=> L-serine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lthreonine_c_r",
+      "name": "Transport of L-threonine between cytosol and ER",
+      "description": "Bidirectional transport of L-threonine",
+      "equation": "L-threonine[c] <=> L-threonine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Ltryptophan_c_r",
+      "name": "Transport of L-tryptophan between cytosol and ER",
+      "description": "Bidirectional transport of L-tryptophan",
+      "equation": "L-tryptophan[c] <=> L-tryptophan[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Ltyrosine_c_r",
+      "name": "Transport of L-tyrosine between cytosol and ER",
+      "description": "Bidirectional transport of L-tyrosine",
+      "equation": "L-tyrosine[c] <=> L-tyrosine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lvaline_c_r",
+      "name": "Transport of L-valine between cytosol and ER",
+      "description": "Bidirectional transport of L-valine",
+      "equation": "L-valine[c] <=> L-valine[r]",
+      "subsystem": "Amino acid transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_ATP_ER",
+      "name": "Transport of ATP between cytosol and ER",
+      "equation": "ATP[c] <=> ATP[r]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_H2O_ER",
+      "name": "Transport of H2O between cytosol and ER",
+      "equation": "H2O[c] <=> H2O[r]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_UDP_GlcNAc_Golgi",
+      "name": "Transport of UDP-N-acetyl-alpha-D-glucosamine between cytosol and Golgi",
+      "equation": "UDP-N-acetyl-alpha-D-glucosamine[c] <=> UDP-N-acetyl-alpha-D-glucosamine[g]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_UDP_GlcA_Golgi",
+      "name": "Transport of UDP-glucuronate between cytosol and Golgi",
+      "equation": "UDP-glucuronate[c] <=> UDP-glucuronate[g]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_PAPS_Golgi",
+      "name": "Transport of PAPS between cytosol and Golgi",
+      "equation": "PAPS[c] <=> PAPS[g]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_H2O_Golgi",
+      "name": "Transport of H2O between cytosol and Golgi",
+      "equation": "H2O[c] <=> H2O[g]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Sulfate_GL",
+      "name": "Transport of sulfate between extracellular and glycocalyx",
+      "equation": "sulfate[e] <=> sulfate[gl]",
+      "subsystem": "Ion transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_H_GL",
+      "name": "Transport of H+ between extracellular and glycocalyx",
+      "equation": "H+[e] <=> H+[gl]",
+      "subsystem": "Ion transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_H2O_GL",
+      "name": "Transport of H2O between extracellular and glycocalyx",
+      "equation": "H2O[e] <=> H2O[gl]",
+      "subsystem": "Solvent transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "R_Synth_Betaglycan_Core",
+      "name": "Synthesis of Betaglycan core protein",
+      "description": "Protein synthesis of 849-residue Betaglycan core protein in ER",
+      "equation": "0.053 L-alanine[r] + 0.044 L-arginine[r] + 0.037 L-asparagine[r] + 0.053 L-aspartate[r] + 0.028 L-cysteine[r] + 0.031 L-glutamine[r] + 0.061 L-glutamate[r] + 0.069 L-glycine[r] + 0.02 L-histidine[r] + 0.041 L-isoleucine[r] + 0.085 L-leucine[r] + 0.037 L-lysine[r] + 0.016 L-methionine[r] + 0.028 L-phenylalanine[r] + 0.057 L-proline[r] + 0.063 L-serine[r] + 0.046 L-threonine[r] + 0.011 L-tryptophan[r] + 0.022 L-tyrosine[r] + 0.077 L-valine[r] + 3.392 ATP[r] + 2.544 H2O[r] --> 0.001 Betaglycan_Core_Protein[r] + 3.392 ADP[r] + 3.392 phosphate[r] + 3.392 H+[r]",
+      "subsystem": "Protein synthesis",
+      "ec": "6.1.1.-",
+      "gpr": "",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "T_Core_Betaglycan_ER_Golgi",
+      "name": "Transport of Betaglycan core protein from ER to Golgi",
+      "equation": "Betaglycan_Core_Protein[r] --> Betaglycan_Core_Protein[g]",
+      "subsystem": "Intracellular transport",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "R_HS_Elongation_on_Betaglycan",
+      "name": "Heparan sulfate elongation on Betaglycan",
+      "description": "Addition of 100 disaccharides to form unsulfated HS chain",
+      "equation": "Betaglycan_Core_Protein[g] + 100 UDP-N-acetyl-alpha-D-glucosamine[g] + 100 UDP-glucuronate[g] --> HS_Chain_100_on_Betaglycan_Unsulfated[g] + 200 UDP[g]",
+      "subsystem": "Heparan sulfate biosynthesis",
+      "ec": "2.4.1.-",
+      "gpr": "ENSG00000115204 or ENSG00000148826 or ENSG00000103044",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "R_HS_Sulfation_on_Betaglycan",
+      "name": "Heparan sulfate sulfation on Betaglycan",
+      "description": "Sulfation of 100 disaccharides on HS chain",
+      "equation": "HS_Chain_100_on_Betaglycan_Unsulfated[g] + 100 PAPS[g] --> Fully_Assembled_HS_Proteoglycan_on_Betaglycan[g] + 100 PAP[g]",
+      "subsystem": "Heparan sulfate biosynthesis",
+      "ec": "2.8.2.-",
+      "gpr": "ENSG00000137288 or ENSG00000153936",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "T_Waste_UDP_out",
+      "name": "Transport of UDP from Golgi to cytosol",
+      "equation": "UDP[g] <=> UDP[c]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Waste_PAP_out",
+      "name": "Transport of PAP from Golgi to cytosol",
+      "equation": "PAP[g] <=> PAP[c]",
+      "subsystem": "Cofactor transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "R_HS_on_Betaglycan_Packaging",
+      "name": "Packaging of Betaglycan-HS in vesicle",
+      "description": "Vesicular packaging for transport to membrane",
+      "equation": "Fully_Assembled_HS_Proteoglycan_on_Betaglycan[g] --> Packaged_HS_on_Betaglycan[v]",
+      "subsystem": "Vesicular transport",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "R_HS_on_Betaglycan_Vesicle_Activation",
+      "name": "Vesicle activation for Betaglycan-HS transport",
+      "description": "ATP/GTP-dependent vesicle activation",
+      "equation": "Packaged_HS_on_Betaglycan[v] + ATP[c] + GTP[c] --> Activated_HS_on_Betaglycan_Cargo[v] + ADP[c] + phosphate[c] + GDP[c] + phosphate[c]",
+      "subsystem": "Vesicular transport",
+      "ec": "3.6.1.-",
+      "gpr": "",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "R_HS_on_Betaglycan_Delivery",
+      "name": "Delivery of Betaglycan-HS to cell membrane",
+      "description": "Vesicle fusion and insertion into membrane",
+      "equation": "Activated_HS_on_Betaglycan_Cargo[v] --> Full_Betaglycan_HS_Anchored[a]",
+      "subsystem": "Membrane insertion",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "R_HS_on_Betaglycan_Unfurling",
+      "name": "Unfurling of HS ectodomain into glycocalyx",
+      "description": "Ectodomain extension from membrane anchor",
+      "equation": "Full_Betaglycan_HS_Anchored[a] --> Betaglycan_Anchor[a] + Functional_HS_Ectodomain_on_Betaglycan[gl]",
+      "subsystem": "Glycocalyx assembly",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "R_HS_on_Betaglycan_Sulfatase_Editing",
+      "name": "Sulfatase editing of HS chain on Betaglycan",
+      "description": "Extracellular desulfation by sulfatases",
+      "equation": "Functional_HS_Ectodomain_on_Betaglycan[gl] + H2O[gl] --> Edited_HS_Ectodomain_on_Betaglycan[gl] + sulfate[gl] + H+[gl]",
+      "subsystem": "Glycocalyx modification",
+      "ec": "3.1.6.-",
+      "gpr": "ENSG00000112759 or ENSG00000196562",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "R_HS_on_Betaglycan_Proteolytic_Shedding",
+      "name": "Proteolytic shedding of Betaglycan ectodomain",
+      "description": "Metalloproteinase-mediated shedding",
+      "equation": "Betaglycan_Anchor[a] + Functional_HS_Ectodomain_on_Betaglycan[gl] --> Betaglycan_Stub[a] + Shed_Betaglycan_HS_Ectodomain[e]",
+      "subsystem": "Ectodomain shedding",
+      "ec": "3.4.24.-",
+      "gpr": "ENSG00000137673",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "R_HS_on_Betaglycan_Heparanase_Cleavage",
+      "name": "Heparanase cleavage of HS on Betaglycan",
+      "description": "Heparanase-mediated HS chain cleavage",
+      "equation": "Functional_HS_Ectodomain_on_Betaglycan[gl] + 9 H2O[gl] --> Truncated_HS_Ectodomain_on_Betaglycan[gl] + 10 Shed_HS_Fragment[e] + 9 H+[gl]",
+      "subsystem": "Glycocalyx degradation",
+      "ec": "3.2.1.166",
+      "gpr": "ENSG00000173083",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "DM_Anchor_Betaglycan",
+      "name": "Demand for Betaglycan anchor (turnover)",
+      "equation": "Betaglycan_Anchor[a] -->",
+      "subsystem": "Demand",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000628"
+    },
+    {
+      "id": "DM_Edited_Ectodomain_HS_on_Betaglycan",
+      "name": "Demand for edited HS ectodomain on Betaglycan",
+      "equation": "Edited_HS_Ectodomain_on_Betaglycan[gl] -->",
+      "subsystem": "Demand",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000628"
+    },
+    {
+      "id": "DM_Truncated_Ectodomain_HS_on_Betaglycan",
+      "name": "Demand for truncated HS ectodomain on Betaglycan",
+      "equation": "Truncated_HS_Ectodomain_on_Betaglycan[gl] -->",
+      "subsystem": "Demand",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000628"
+    },
+    {
+      "id": "DM_Stub_Betaglycan",
+      "name": "Demand for Betaglycan stub (turnover)",
+      "equation": "Betaglycan_Stub[a] -->",
+      "subsystem": "Demand",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000628"
+    },
+    {
+      "id": "DM_Shed_Ectodomain_HS_on_Betaglycan",
+      "name": "Demand for shed Betaglycan HS ectodomain",
+      "equation": "Shed_Betaglycan_HS_Ectodomain[e] -->",
+      "subsystem": "Demand",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000628"
+    },
+    {
+      "id": "DM_Shed_HS_Fragment",
+      "name": "Demand for shed HS fragment",
+      "equation": "Shed_HS_Fragment[e] -->",
+      "subsystem": "Demand",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000628"
+    }
+  ]
+}

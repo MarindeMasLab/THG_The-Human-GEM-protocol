@@ -1,12 +1,10 @@
 #!/usr/bin/python
 """
-TODO:
-Currently lambda functions are pickled for the checkpoint files. It raises an error
-for missing localc objects, therefore, a sanitization step is added after loading.
-This approach just patches the problem, but it should be changed so
-lambdas are not pickled at all.
-
 Generate metabolic model database from KEGG pathways.
+
+Note: Lambda functions have been completely removed from this code to avoid
+pickle serialization issues. Reaction methods use stable module-level functions
+bound via MethodType, and list concatenation uses operator.add instead of lambdas.
 
 Logging Levels:
 - DEBUG: Show all detailed information about reactions, compounds, mass balance, etc.
@@ -22,9 +20,11 @@ To change logging level, modify the level parameter in logging.basicConfig():
 """
 import copy
 import logging
+import operator
 import os
 import pickle
 import re
+import requests
 import urllib
 from functools import reduce
 from typing import Dict, List
@@ -54,6 +54,7 @@ from functions.pattern_generate_database import *
 from functions.function_bm_gdb import *
 from functions.equations_bm_gdb import *
 from functions.function_bm_gdb import batch_fetch_kegg_entries
+from functions.error_tracker import ErrorTracker
 from types import MethodType
 from functions.ensembl_client import fetch_ensembl_annotations
 
@@ -85,10 +86,14 @@ def _rxn_product(self):
 
 def sanitize_loaded_reactions(rxn_dict, name="reactions"):
     """Sanitize reaction objects loaded from disk.
-
-    Ensures each reaction has `subs`/`prods` attributes and that callable
-    accessors (`Substrate`, `Product`, `SetSubstrate`, `SetProduct`) are
-    bound to stable module-level methods instead of fragile lambdas.
+    
+    This function provides backward compatibility for checkpoint files created
+    before the lambda removal fix. It ensures each reaction has `subs`/`prods` 
+    attributes and that callable accessors (`Substrate`, `Product`, etc.) are
+    bound to stable module-level methods.
+    
+    Note: New checkpoints created with this fixed code won't need sanitization,
+    but this function remains for loading legacy checkpoint files.
     """
     if not isinstance(rxn_dict, dict):
         return
@@ -110,7 +115,6 @@ def sanitize_loaded_reactions(rxn_dict, name="reactions"):
                     e,
                 )
                 subs = getattr(rxn, "subs", None)
-
             try:
                 if hasattr(rxn, "Product") and callable(rxn.Product):
                     prods = rxn.Product()
@@ -124,10 +128,14 @@ def sanitize_loaded_reactions(rxn_dict, name="reactions"):
                     e,
                 )
                 prods = getattr(rxn, "prods", None)
-
-            # Ensure lists exist
-            subs = subs if subs is not None else []
-            prods = prods if prods is not None else []
+            # Ensure lists exist - convert None or empty string to empty list
+            # Empty string can occur when reaction initialization fails (e.g., invalid URL)
+            if subs is None or subs == "":
+                # Check if there's a subs attribute we should use instead
+                subs = getattr(rxn, "subs", [])
+            if prods is None or prods == "":
+                # Check if there's a prods attribute we should use instead
+                prods = getattr(rxn, "prods", [])
 
             # Store raw lists and bind stable methods
             try:
@@ -138,7 +146,6 @@ def sanitize_loaded_reactions(rxn_dict, name="reactions"):
                 LOGGER.debug(
                     "Could not set subs/prods on reaction %s", key, exc_info=True
                 )
-
             try:
                 rxn.Substrate = MethodType(_rxn_substrate, rxn)
                 rxn.Product = MethodType(_rxn_product, rxn)
@@ -165,7 +172,6 @@ def cobra_reconstruction(
     metabolite_list_general: Dict[List, CompoundType],
 ) -> cobra.Model:
     """Reconstruction of gathered information given by using cobrapy.
-
     Parameters
     ----------
     model_name: str
@@ -212,37 +218,103 @@ def cobra_reconstruction(
         LOGGER.debug("Sample reaction keys: %s", list(reaction_list.keys())[:10])
     except Exception:
         LOGGER.debug("Could not list reaction_list keys", exc_info=True)
-    # metabolites
-    LOGGER.info(f"Adding {len(metabolite_list)} metabolites to the model")
+    
+    # First, collect all metabolites actually used in reactions
+    LOGGER.info("Scanning reactions to find metabolites actually used")
+    metabolites_in_reactions = set()
+    for rxn_id, rxn in reaction_list.items():
+        try:
+            # Get reaction compartment from reaction ID (e.g., "R00703_cytosol" -> "cytosol")
+            rxn_compartment = rxn_id.split("_", 1)[1] if "_" in rxn_id else ""
+            
+            # Get metabolites from substrates and products
+            if hasattr(rxn, 'Substrate') and hasattr(rxn, 'Product'):
+                substrates = [subs[2] for subs in rxn.Substrate()]
+                products = [prod[2] for prod in rxn.Product()]
+            else:
+                # Fallback to subs/prods attributes
+                substrates = [subs[2] for subs in rxn.subs] if hasattr(rxn, 'subs') else []
+                products = [prod[2] for prod in rxn.prods] if hasattr(rxn, 'prods') else []
+            
+            # Build full metabolite IDs with compartment (to match metabolite_list keys)
+            for met_id in substrates + products:
+                full_met_id = f"{met_id}_{rxn_compartment}"
+                metabolites_in_reactions.add(full_met_id)
+        except Exception as e:
+            LOGGER.warning(f"Could not extract metabolites from reaction {rxn_id}: {e}")
+    
+    LOGGER.info(f"Found {len(metabolites_in_reactions)} metabolites used in {len(reaction_list)} reactions")
+    
+    LOGGER.info(f"Found {len(metabolites_in_reactions)} unique metabolite IDs referenced in reactions")
+    
+    # metabolites - only add those that are actually used in reactions
+    LOGGER.info(f"Creating metabolites from {len(metabolite_list)} total metabolite entries")
     # Create metabolites using explicit keyword arguments to avoid positional
     # argument ordering mistakes (name/formula/charge were previously swapped).
-    compounds = [
-        cobra.Metabolite(
-            id=compound.ID2 + "_" + location_dict.get(compound.Subcel.lower()),
-            name=compound.Name,
-            formula=compound.Formula1,
-            charge=(
-                float(compound.charge)
-                if compound.charge is not None
-                and str(compound.charge) not in ["", "None"]
-                else None
-            ),
-            compartment=location_dict.get(compound.Subcel.lower()),
-        )
-        for iden, compound in metabolite_list.items()
-    ]
+    # Use a dict to deduplicate by ID2+compartment to avoid duplicate metabolites
+    # when equivalent metabolites (e.g., D00003 and C00007) have the same ID2
+    # Only include metabolites that are referenced in reactions (prevent orphans)
+    unique_metabolites = {}
+    filtered_out = 0
+    for iden, compound in metabolite_list.items():
+        # Only add metabolites that are actually used in reactions
+        if iden not in metabolites_in_reactions:
+            filtered_out += 1
+            continue
+            
+        met_id = compound.ID2 + "_" + location_dict.get(compound.Subcel.lower())
+        if met_id not in unique_metabolites:
+            unique_metabolites[met_id] = cobra.Metabolite(
+                id=met_id,
+                name=compound.Name,
+                formula=compound.Formula1,
+                charge=(
+                    float(compound.charge)
+                    if compound.charge is not None
+                    and str(compound.charge) not in ["", "None"]
+                    else None
+                ),
+                compartment=location_dict.get(compound.Subcel.lower()),
+            )
+    compounds = list(unique_metabolites.values())
+    LOGGER.info(f"Created {len(compounds)} unique metabolites (filtered out {filtered_out} not used in reactions)")
+    
     model.add_metabolites(compounds)
-    LOGGER.info(f"Successfully added {len(model.metabolites)} metabolites")
+    LOGGER.info(f"Successfully added {len(model.metabolites)} metabolites to model")
+    
+    # Set compartment names (COBRA only sets IDs by default)
+    # location_dict maps: compartment_name -> compartment_id
+    # model.compartments should be: {compartment_id: compartment_name}
+    # Create reverse mapping: compartment_id -> compartment_name
+    compartment_id_to_name = {v: k for k, v in location_dict.items()}
+    
+    # IMPORTANT: model.compartments is a read-only property!
+    # We need to set the private _compartments attribute instead
+    model._compartments = compartment_id_to_name
+    
+    LOGGER.info(f"Set names for {len(model.compartments)} compartments")
+    
     # store mapping (met identifier -> met.id in model) for reaction section
     met_mapping = {}
-    # metabolite annotation
-    LOGGER.info(f"Annotating {len(metabolite_list)} metabolites")
+    # metabolite annotation - only annotate metabolites that are in the model
+    LOGGER.info(f"Annotating metabolites (only those used in reactions)")
+    annotated_count = 0
+    skipped_count = 0
     for iden, compound in tqdm(
         metabolite_list.items(), desc="Annotating metabolites", unit="met"
     ):
-        model_met = model.metabolites.get_by_id(
-            compound.ID2 + "_" + location_dict.get(compound.Subcel.lower())
-        )
+        # Skip metabolites not in reactions (already filtered out above)
+        if iden not in metabolites_in_reactions:
+            skipped_count += 1
+            continue
+        
+        met_id = compound.ID2 + "_" + location_dict.get(compound.Subcel.lower())
+        try:
+            model_met = model.metabolites.get_by_id(met_id)
+        except KeyError:
+            LOGGER.warning(f"Metabolite {met_id} not found in model (iden={iden})")
+            continue
+            
         met_mapping[iden] = model_met.id
         annotation = {
             "pubchem.compound": compound.PubChem,
@@ -263,6 +335,9 @@ def cobra_reconstruction(
 
         # only add non-empty annotation
         model_met.annotation = {k: v for k, v in annotation.items() if v}
+        annotated_count += 1
+    
+    LOGGER.info(f"Annotated {annotated_count} metabolites, skipped {skipped_count} not used in reactions")
 
     LOGGER.info("Processing glycan formulas")
     for x in tqdm(
@@ -278,22 +353,28 @@ def cobra_reconstruction(
                 x.formula = metabolite_list[xth_metabolite_id].Formula4
             except Exception as e:
                 import traceback
-
                 LOGGER.error(f"Error updating glycan formula for {x.id}: {e}")
                 LOGGER.error(traceback.format_exc())
                 continue
-
     LOGGER.info("Normalizing metabolite IDs using equivalency mapping")
     for x in tqdm(
         model.metabolites, desc="Normalizing metabolite IDs", unit="met"
     ):  # eliminate potential discrepancies between metabolite id and reaction compounds ids
         if x.id.split("_")[0] in metabolite_equivalent.keys():
-            x.id = (
-                metabolite_list_general[metabolite_equivalent[x.id.split("_")[0]]].ID1
+            equiv_id = metabolite_equivalent[x.id.split("_")[0]]
+            if equiv_id not in metabolite_list_general:
+                LOGGER.warning(f"Metabolite ID '{equiv_id}' from metabolite_equivalent not found in metabolite_list_general for '{x.id}'")
+                continue
+            new_id = (
+                metabolite_list_general[equiv_id].ID1
                 + "_"
                 + x.compartment.lower()
             )
-
+            # Skip renaming if target ID already exists (canonical ID already in model)
+            if new_id in model.metabolites:
+                LOGGER.debug(f"Skipping normalization of '{x.id}' to '{new_id}' - target already exists")
+                continue
+            x.id = new_id            
     def normalize_id(reac_id: str):
         iden, comp_desc = reac_id.split("_")
         comp = location_dict[comp_desc.lower()]
@@ -397,7 +478,14 @@ def cobra_reconstruction(
         reac.add_metabolites(metabolites)
         ec = rxn.EC()
         reac.annotation = {"kegg.reaction": kegg_id, "ec-code": ec[0] if ec else ""}
-        sgpr, gpr = rxn.GPR[0], rxn.GPR[1].replace("[", "").replace("]", "")
+        
+        # Handle reactions with empty or missing GPR data
+        if rxn.GPR and len(rxn.GPR) >= 2:
+            sgpr, gpr = rxn.GPR[0], rxn.GPR[1].replace("[", "").replace("]", "")
+        else:
+            sgpr, gpr = "", ""
+            LOGGER.debug(f"Reaction {kegg_id} has no GPR data")
+        
         if sgpr and sgpr != "[]":
             if "or" in gpr and "and" not in gpr:
                 # GPRs scrapped from Kegg are added with ORs and the genes
@@ -430,7 +518,7 @@ def cobra_reconstruction(
         # TODO(carrascomj): reaction ids coming from paths are not in compartments
         model.groups.get_by_id(group).add_members(
             reduce(
-                lambda x, y: x + y,
+                operator.add,
                 [model.reactions.query(member) for member in members.split()],
                 [],
             )
@@ -522,6 +610,180 @@ def cobra_reconstruction(
     return model
 
 
+def reaction_has_human_genes(rxn, time=20):
+    """Check if reaction has any human genes via KEGG EC lookup.
+    
+    Args:
+        rxn: Reaction object with EC() method
+        time: Timeout for HTTP requests
+        
+    Returns:
+        bool: True if at least one EC number has human genes, False otherwise
+    """
+    import requests
+    
+    ec_numbers = rxn.EC()
+    if not ec_numbers:
+        LOGGER.warning(f"Reaction {rxn.ID} has no EC numbers - including by default")
+        return True  # Include reactions without EC (may have manual annotations)
+    
+    # Deduplicate EC numbers
+    unique_ecs = set(ec_numbers)
+    LOGGER.debug(f"Checking {len(unique_ecs)} unique EC numbers for human genes: {unique_ecs}")
+    
+    for ec in unique_ecs:
+        try:
+            url = f"https://rest.kegg.jp/link/hsa/ec:{ec}"
+            response = requests.get(url, timeout=time)
+            
+            if response.status_code == 200 and response.text.strip():
+                # Found at least one human gene for this EC
+                gene_count = len(response.text.strip().split('\n'))
+                LOGGER.debug(f"EC {ec} has {gene_count} human genes")
+                return True
+            else:
+                LOGGER.debug(f"EC {ec} has no human genes")
+        except Exception as e:
+            LOGGER.warning(f"Error checking EC {ec} for human genes: {e}")
+            # On error, include reaction to be safe
+            return True
+    
+    LOGGER.info(f"Reaction {rxn.ID} excluded: no human genes found for any EC number")
+    return False
+
+
+def process_reaction_gpr(rxn, gpr_list, gpr_ident, session):
+    """Process GPR data for a reaction and return GPR/Subcel data.
+    
+    Returns:
+        tuple: (tmpGPR, tmpSC2, error_type) where:
+            - tmpSC2 is [dict, dict] with compartment info
+            - error_type is None (success), 'timeout', 'connection', or 'no_data'
+    """
+    tmpGPR = ()
+    tmpSC = ()
+    error_type = None
+    has_timeout_error = False
+    has_connection_error = False
+    
+    # Fetch GPR for each unique EC number (deduplicate to avoid redundant processing)
+    for ec in set(rxn.EC()):
+        if ec not in gpr_ident:
+            gpr_ident.append(ec)
+            try:
+                gpr_list[ec] = gpr(ec, session)
+            except (requests.exceptions.Timeout, TimeoutError) as e:
+                LOGGER.warning(f"Timeout querying GPR for EC {ec}: {e}")
+                has_timeout_error = True
+                continue
+            except (requests.exceptions.ConnectionError, requests.exceptions.RequestException) as e:
+                LOGGER.warning(f"Connection error querying GPR for EC {ec}: {e}")
+                has_connection_error = True
+                continue
+            except Exception as e:
+                LOGGER.warning(f"Unknown error querying GPR for EC {ec}: {e}")
+                continue
+        
+        try:
+            gpr_result = gpr_list[ec].GprSubcell()
+            # Check if we got a valid tuple result (not empty string)
+            if (
+                gpr_result
+                and isinstance(gpr_result, tuple)
+                and len(gpr_result) >= 4
+            ):
+                tmpGPR = tmpGPR + gpr_result[0:2]
+                tmpSC = tmpSC + gpr_result[2:4]
+        except (requests.exceptions.Timeout, TimeoutError) as e:
+            LOGGER.warning(f"Timeout processing GPR for EC {ec}: {e}")
+            has_timeout_error = True
+            continue
+        except (requests.exceptions.ConnectionError, requests.exceptions.RequestException) as e:
+            LOGGER.warning(f"Connection error processing GPR for EC {ec}: {e}")
+            has_connection_error = True
+            continue
+        except Exception as e:
+            LOGGER.warning(f"Could not process GPR for EC {ec}: {e}")
+            continue
+    
+    # Determine error type
+    if has_timeout_error:
+        error_type = 'timeout'
+    elif has_connection_error:
+        error_type = 'connection'
+    
+    # Reorganize S-GPRs and GPRs based on their specific location
+    tmpSC2 = [dict(), dict()]
+    
+    # Debug: Log tmpSC structure
+    LOGGER.debug(f"tmpSC has {len(tmpSC)} dicts")
+    for idx, sc_dict in enumerate(tmpSC):
+        if sc_dict:
+            LOGGER.debug(f"  tmpSC[{idx}]: {list(sc_dict.keys())}")
+    
+    reactio_compartment_list = list(
+        set(
+            [
+                x.strip()
+                for x in str([list(x.keys()) for x in tmpSC])
+                .replace("[", "")
+                .replace("]", "")
+                .replace("'", "")
+                .split(",")
+            ]
+        )
+    )
+    
+    for x in reactio_compartment_list:
+        xth_tmp_gpr = [y for y in tmpSC if x in y.keys()]
+        tmp_xth_sgpr = ""
+        tmp_xth_gpr = ""
+        for y in range(int(len(xth_tmp_gpr) / 2)):
+            if not re.findall(r"^\[\]$", xth_tmp_gpr[y + y][x]):
+                tmp_xth_sgpr += xth_tmp_gpr[y + y][x]
+            if not re.findall(r"^\[\]$", xth_tmp_gpr[y + y + 1][x]):
+                tmp_xth_gpr += xth_tmp_gpr[y + y + 1][x]
+        tmp_xth_sgpr = (
+            str(
+                set(
+                    tmp_xth_sgpr.replace("][", "] or [").split(
+                        " or "
+                    )
+                )
+            )
+            .replace("'", "")
+            .replace("{", "")
+            .replace("}", "")
+            .replace(",", " or")
+        )
+        tmp_xth_gpr = (
+            str(
+                set(
+                    tmp_xth_gpr.replace("][", "] or [").split(
+                        " or "
+                    )
+                )
+            )
+            .replace("'", "")
+            .replace("{", "")
+            .replace("}", "")
+            .replace(",", " or")
+        )
+        tmpSC2[0][x] = tmp_xth_sgpr
+        tmpSC2[1][x] = tmp_xth_gpr
+    
+    # Debug: log compartment information
+    if tmpSC2[0]:
+        LOGGER.debug(f"Compartments detected: {list(tmpSC2[0].keys())}")
+    else:
+        LOGGER.debug("No compartments detected in GPR data")
+        # If no compartments and no timeout/connection errors, it's just no data available
+        if error_type is None:
+            error_type = 'no_data'
+    
+    return tmpGPR, tmpSC2, error_type
+
+
 if __name__ == "__main__":
 
     # Load environment variables from .env file
@@ -568,6 +830,10 @@ if __name__ == "__main__":
         sys.path.append(project_root)
 
     ListOfPaths = os.path.join(project_root, "files", "human_kegg_pathways.txt")
+    # If PATHWAY_SUBSET is set, use that file instead (allows testing subset runs)
+    subset_file = os.environ.get("PATHWAY_SUBSET")
+    if subset_file:
+        ListOfPaths = subset_file
     ModelCompounds = os.path.join(project_root, "files", "extra_compounds.txt")
     ExtraFormula = os.path.join(project_root, "files", "extra_formula.txt")
     ModelReactions = ""
@@ -591,6 +857,10 @@ if __name__ == "__main__":
         project_root, "files", "special_compounds.txt"
     )  # File where we save the IDs of the compounds with a (group)n in their formula
     open(specialCompounds, "w").close()  # Erase or create the file
+
+    # Initialize error tracking system
+    error_tracker = ErrorTracker()
+    LOGGER.info("Initialized comprehensive error tracking system")
 
     # Dictionary with extra compounds that can be added to mass balance the metabolic reactions
     extra_compound = {
@@ -645,6 +915,11 @@ if __name__ == "__main__":
 
     ######### Checkpoint file for resuming progress ###########
     checkpoint_file = os.path.join(project_root, "files", "checkpoint_progress.pkl")
+    gene_cache_file = os.path.join(project_root, "files", "gene_location_cache.pkl")
+
+    # Try to load gene location cache
+    from functions.class_generate_database import gene as GeneClass
+    GeneClass.load_cache(gene_cache_file)
 
     # Try to load checkpoint if it exists
     start_pathway_index = 0
@@ -671,6 +946,13 @@ if __name__ == "__main__":
                 RxnIdent_CL = checkpoint_data.get("RxnIdent_CL", RxnIdent_CL)
                 MetIdent_CL = checkpoint_data.get("MetIdent_CL", MetIdent_CL)
                 Compartment_CL = checkpoint_data.get("Compartment_CL", Compartment_CL)
+                # Restore the set of reactions with failed location detection
+                failed_location_reactions = checkpoint_data.get("failed_location_reactions", set())
+                if failed_location_reactions:
+                    LOGGER.info(
+                        f"Restored {len(failed_location_reactions)} reactions with previously failed location detection: "
+                        f"{', '.join(sorted(failed_location_reactions))}"
+                    )
                 LOGGER.info(
                     f"Resuming from pathway index {start_pathway_index} (pathway {start_pathway_index + 1}/{len(Path) - 1})"
                 )
@@ -697,6 +979,12 @@ if __name__ == "__main__":
     processed_reactions = 0
     stop_processing = False
 
+    # Track failed reactions for retry
+    failed_reactions = []  # List of tuples: (RxnID, RxnURL, PathName, RxnTermDyn, error_msg)
+    
+    # Track reactions with failed location detection (should not be saved to checkpoint)
+    failed_location_reactions = set()  # Set of RxnIDs where location detection failed
+    
     ######### Pathways ###########
     i = start_pathway_index
     while i < len(Path) - 1:
@@ -738,6 +1026,15 @@ if __name__ == "__main__":
                         RxnList[RxnID] = reaction(
                             RxnURL, time, RxnID, PathName, RxnTermDyn
                         )
+
+                        # Check if reaction has human genes before processing
+                        if not reaction_has_human_genes(RxnList[RxnID], time):
+                            LOGGER.info(f"Skipping {RxnID}: no human genes found")
+                            # Remove from RxnIdent and RxnList
+                            RxnIdent.remove(RxnID)
+                            del RxnList[RxnID]
+                            j = j + 1
+                            continue
 
                         # Debug: Show initial reaction data from KEGG
                         LOGGER.debug(f"Reaction Name: {RxnList[RxnID].Name()}")
@@ -930,10 +1227,23 @@ if __name__ == "__main__":
                         LOGGER.debug(f"Mass balance test result for {RxnID}: {mb_test}")
                         LOGGER.debug(f"Reaction equation: {eq}")
                         LibIni = WrapRxnSubsProdParam(ithRxn, MetList, MetEquiv)
+                        IthRxnMB = None
                         if mb_test != 0:
-                            IthRxnMB = mass_balance(eq, RxnID)
-                            LOGGER.debug(f"Mass balance result: {IthRxnMB}")
-                            if IthRxnMB[
+                            try:
+                                IthRxnMB = mass_balance(eq, RxnID)
+                                LOGGER.debug(f"Mass balance result: {IthRxnMB}")
+                                error_tracker.add_success('mass_balance')
+                            except Exception as e:
+                                LOGGER.warning(f"Mass balance failed for reaction {RxnID}: {e}")
+                                error_tracker.add_error(
+                                    'mass_balance',
+                                    f"Mass balance failed: {str(e)}",
+                                    context={'reaction_id': RxnID, 'equation': eq},
+                                    level='warning'
+                                )
+                                IthRxnMB = None
+                                
+                        if IthRxnMB and IthRxnMB[
                                 4
                             ]:  # If new compounds have to be added to mass balance the reactions, then check if they need to be added to the network as compounds
                                 LOGGER.debug(
@@ -972,6 +1282,12 @@ if __name__ == "__main__":
                         else:  # if the reaction cannot be mass balanced all the stoichimetric coef are assumed to be like in the original reaction
                             LOGGER.warning(
                                 f"Reaction {RxnID} cannot be mass balanced - using original stoichiometry"
+                            )
+                            error_tracker.add_error(
+                                'mass_balance',
+                                f"Cannot mass balance reaction - using original stoichiometry",
+                                context={'reaction_id': RxnID, 'equation': eq},
+                                level='warning'
                             )
                             IthRxnMB = (
                                 [float(x[0]) for x in ithRxn.Substrate()],
@@ -1063,118 +1379,79 @@ if __name__ == "__main__":
                         RxnList[RxnID].SetProduct = MethodType(
                             _rxn_product, RxnList[RxnID]
                         )
-
-                        RxnList[RxnID].subs = S2
-                        RxnList[RxnID].prods = P2
+                        # Note: subs and prods were already set above (lines 1047-1048)
                         if not RxnID in PathNameRxn.get(PathName):
                             PathNameRxn[PathName] += RxnID + " "
 
                         ######### Define New GPR ###########
-                        tmpGPR = ()
-                        tmpSC = ()
-                        for x in RxnList[RxnID].EC():
-                            if x not in GPRIdent:
-                                GPRIdent.append(x)  # Optimized: use append
-                                GPRList[x] = gpr(x, session)
-                            try:
-                                gpr_result = GPRList[x].GprSubcell()
-                                # Check if we got a valid tuple result (not empty string)
-                                if (
-                                    gpr_result
-                                    and isinstance(gpr_result, tuple)
-                                    and len(gpr_result) >= 4
-                                ):
-                                    tmpGPR = tmpGPR + gpr_result[0:2]
-                                    tmpSC = tmpSC + gpr_result[2:4]
-                            except Exception as e:
-                                import traceback
-
-                                LOGGER.warning(f"Could not process GPR for EC {x}: {e}")
-                                LOGGER.warning(traceback.format_exc())
-                                continue
-                        # Reorganize S-GPRs and GPRs based on their specific location
-                        tmpSC2 = [dict(), dict()]
-                        reactio_compartment_list = list(
-                            set(
-                                [
-                                    x.strip()
-                                    for x in str([list(x.keys()) for x in tmpSC])
-                                    .replace("[", "")
-                                    .replace("]", "")
-                                    .replace("'", "")
-                                    .split(",")
-                                ]
-                            )
+                        tmpGPR, tmpSC2, error_type = process_reaction_gpr(
+                            RxnList[RxnID], GPRList, GPRIdent, session
                         )
-                        for x in reactio_compartment_list:
-                            xth_tmp_gpr = [y for y in tmpSC if x in y.keys()]
-                            tmp_xth_sgpr = ""
-                            tmp_xth_gpr = ""
-                            for y in range(int(len(xth_tmp_gpr) / 2)):
-                                if not re.findall("^\[\]$", xth_tmp_gpr[y + y][x]):
-                                    tmp_xth_sgpr += xth_tmp_gpr[y + y][x]
-                                if not re.findall("^\[\]$", xth_tmp_gpr[y + y + 1][x]):
-                                    tmp_xth_gpr += xth_tmp_gpr[y + y + 1][x]
-                            tmp_xth_sgpr = (
-                                str(
-                                    set(
-                                        tmp_xth_sgpr.replace("][", "] or [").split(
-                                            " or "
-                                        )
-                                    )
-                                )
-                                .replace("'", "")
-                                .replace("{", "")
-                                .replace("}", "")
-                                .replace(",", " or")
-                            )
-                            tmp_xth_gpr = (
-                                str(
-                                    set(
-                                        tmp_xth_gpr.replace("][", "] or [").split(
-                                            " or "
-                                        )
-                                    )
-                                )
-                                .replace("'", "")
-                                .replace("{", "")
-                                .replace("}", "")
-                                .replace(",", " or")
-                            )
-                            tmpSC2[0][x] = tmp_xth_sgpr
-                            tmpSC2[1][x] = tmp_xth_gpr
-
+                        
                         RxnList[RxnID].GPR = tmpGPR
                         RxnList[RxnID].Subcel = tmpSC2
 
-                        logging.debug(
-                            f"len metlist_CL before rxnSubcel: {len(MetList_CL)}"
-                        )
+                        # Determine if location detection failed and how to handle it
+                        # Following the 4 scenarios:
+                        # 1. No human genes → already handled (skipped earlier)
+                        # 2. Compartment found but not in Excel (restricted mode) → place in cytosol
+                        # 3. Human reaction but no EC/location in databases → place in cytosol
+                        # 4. Timeout/connection errors → add to retry queue, skip rxnSubcel
+                        
+                        should_skip_reaction = False
+                        location_detection_failed = False
+                        
+                        if error_type in ('timeout', 'connection'):
+                            # Case 4: Timeout or connection error → add to retry queue, skip processing
+                            failed_location_reactions.add(RxnID)
+                            should_skip_reaction = True
+                            LOGGER.warning(
+                                f"Reaction {RxnID} added to retry queue due to {error_type} error. "
+                                "Will NOT be compartmentalized until location data is available."
+                            )
+                        elif not tmpSC2 or (isinstance(tmpSC2, (list, tuple)) and len(tmpSC2) >= 1 and 
+                                          (not tmpSC2[0] or all(k == '' or not k for k in tmpSC2[0].keys()))):
+                            # Case 2 & 3: No location data but valid human genes → default to cytosol
+                            location_detection_failed = True
+                            LOGGER.info(
+                                f"No location data for reaction {RxnID} (error_type: {error_type}), will default to cytosol"
+                            )
 
-                        # TODO: rxnSubcel should also return MetList_CL - now it
-                        # updates it in place
-                        ######### Expand the annotations based on the cellular location ###########
-                        Compartment_CL, rxn_cl, comp_cl = rxnSubcel(
-                            RxnList[RxnID],
-                            RxnList_CL,
-                            MetList_CL,
-                            RxnIdent_CL,
-                            MetIdent_CL,
-                            Compartment_CL,
-                            RxnList,
-                            MetList,
-                            MetEquiv,
-                        )
-                        logging.debug(
-                            f"len metlist_CL after rxnSubcel: {len(MetList_CL)}"
-                        )
+                        # Only process through rxnSubcel if NOT in retry queue
+                        if not should_skip_reaction:
+                            logging.debug(
+                                f"len metlist_CL before rxnSubcel: {len(MetList_CL)}"
+                            )
 
-                        RxnIdent_CL.extend(
-                            rxn_cl
-                        )  # Optimized: use extend instead of concatenation
-                        MetIdent_CL.extend(
-                            comp_cl
-                        )  # Optimized: use extend instead of concatenation
+                            # TODO: rxnSubcel should also return MetList_CL - now it
+                            # updates it in place
+                            ######### Expand the annotations based on the cellular location ###########
+                            Compartment_CL, rxn_cl, comp_cl = rxnSubcel(
+                                RxnList[RxnID],
+                                RxnList_CL,
+                                MetList_CL,
+                                RxnIdent_CL,
+                                MetIdent_CL,
+                                Compartment_CL,
+                                RxnList,
+                                MetList,
+                                MetEquiv,
+                            )
+                            logging.debug(
+                                f"len metlist_CL after rxnSubcel: {len(MetList_CL)}"
+                            )
+
+                            RxnIdent_CL.extend(
+                                rxn_cl
+                            )  # Optimized: use extend instead of concatenation
+                            MetIdent_CL.extend(
+                                comp_cl
+                            )  # Optimized: use extend instead of concatenation
+                        else:
+                            # Reaction in retry queue - skip compartmentalization
+                            LOGGER.info(
+                                f"Skipping compartmentalization for reaction {RxnID} (in retry queue)"
+                            )
 
                         print(
                             "Reaction("
@@ -1206,12 +1483,34 @@ if __name__ == "__main__":
                             stop_processing = True
                             break
                 except Exception as e:
+                    # Extract RxnID safely
+                    rxn_id = 'unknown'
+                    rxn_url = None
+                    rxn_termdyn = None
+                    try:
+                        rxn_id = PathList[PathID].Reactions()[j][0][0]
+                        rxn_url = PathList[PathID].Reactions()[j][1]
+                        rxn_termdyn = PathList[PathID].Reactions()[j][0][1]
+                    except:
+                        pass
+                    
+                    error_msg = str(e)
                     LOGGER.error(
-                        f"Failed to process reaction {RxnID if 'RxnID' in locals() else 'unknown'}: {e}"
+                        f"Failed to process reaction {rxn_id} from pathway {PathName}: {error_msg}"
                     )
                     import traceback
-
                     LOGGER.error(traceback.format_exc())
+                    
+                    # Add to failed reactions list for retry
+                    failed_reactions.append({
+                        'RxnID': rxn_id,
+                        'RxnURL': rxn_url,
+                        'PathName': PathName,
+                        'RxnTermDyn': rxn_termdyn,
+                        'error': error_msg,
+                        'attempt': 1
+                    })
+                    LOGGER.info(f"Added {rxn_id} to retry queue (total failed: {len(failed_reactions)})")
                     continue
                 j = j + 1
         else:
@@ -1227,6 +1526,47 @@ if __name__ == "__main__":
 
         # Save checkpoint after each pathway
         try:
+            # Filter out reactions with failed location detection (timeout/connection errors)
+            # These are in the retry queue and will be reprocessed
+            RxnList_CL_filtered = {
+                rxn_key: rxn_obj 
+                for rxn_key, rxn_obj in RxnList_CL.items()
+                if not any(failed_rxn_id in rxn_key for failed_rxn_id in failed_location_reactions)
+            }
+            
+            # Also filter metabolites - only keep those used in filtered reactions
+            if failed_location_reactions:
+                metabolites_in_filtered_rxns = set()
+                for rxn_key, rxn_obj in RxnList_CL_filtered.items():
+                    if '_' in rxn_key:
+                        comp = '_'.join(rxn_key.split('_')[1:])
+                        # Extract substrates
+                        if hasattr(rxn_obj, 'subs') and rxn_obj.subs:
+                            for sub in rxn_obj.subs:
+                                if len(sub) >= 3:
+                                    met_id = f"{sub[2]}_{comp}"
+                                    metabolites_in_filtered_rxns.add(met_id)
+                        # Extract products
+                        if hasattr(rxn_obj, 'prods') and rxn_obj.prods:
+                            for prod in rxn_obj.prods:
+                                if len(prod) >= 3:
+                                    met_id = f"{prod[2]}_{comp}"
+                                    metabolites_in_filtered_rxns.add(met_id)
+                
+                MetList_CL_filtered = {
+                    met_key: met_obj
+                    for met_key, met_obj in MetList_CL.items()
+                    if met_key in metabolites_in_filtered_rxns
+                }
+                
+                LOGGER.info(
+                    f"Excluding {len(failed_location_reactions)} reactions (retry queue) and "
+                    f"{len(MetList_CL) - len(MetList_CL_filtered)} associated metabolites from checkpoint: "
+                    f"{', '.join(sorted(failed_location_reactions))}"
+                )
+            else:
+                MetList_CL_filtered = MetList_CL
+            
             checkpoint_data = {
                 "last_completed_pathway": i,
                 "PathList": PathList,
@@ -1240,14 +1580,19 @@ if __name__ == "__main__":
                 "RxnIdent": RxnIdent,
                 "MetIdent": MetIdent,
                 "GPRIdent": GPRIdent,
-                "RxnList_CL": RxnList_CL,
-                "MetList_CL": MetList_CL,
+                "RxnList_CL": RxnList_CL_filtered,  # Filtered reactions
+                "MetList_CL": MetList_CL_filtered,   # Filtered metabolites (no orphans!)
                 "RxnIdent_CL": RxnIdent_CL,
                 "MetIdent_CL": MetIdent_CL,
                 "Compartment_CL": Compartment_CL,
+                "failed_location_reactions": failed_location_reactions,  # Track for retry
             }
             with open(checkpoint_file, "wb") as f:
                 dill.dump(checkpoint_data, f)
+            
+            # Save gene location cache
+            GeneClass.save_cache(gene_cache_file)
+            
             LOGGER.debug(f"Checkpoint saved after pathway {i + 1}/{len(Path) - 1}")
         except Exception as e:
             LOGGER.warning(f"Failed to save checkpoint: {e}")
@@ -1262,6 +1607,221 @@ if __name__ == "__main__":
 
         i = i + 1
 
+    # Retry mechanism for failed reactions
+    if failed_reactions:
+        LOGGER.info("="*80)
+        LOGGER.info("RETRY PHASE: %d reactions failed during first pass", len(failed_reactions))
+        LOGGER.info("="*80)
+        
+        max_retry_attempts = 3
+        permanently_failed = []
+        retry_round = 1
+        
+        while failed_reactions and retry_round <= max_retry_attempts:
+            LOGGER.info("Retry round %d: Attempting to process %d failed reactions", 
+                       retry_round, len(failed_reactions))
+            
+            # Copy list for iteration, we'll modify the original
+            reactions_to_retry = failed_reactions[:]
+            failed_reactions.clear()
+            
+            for failed_rxn in reactions_to_retry:
+                rxn_id = failed_rxn['RxnID']
+                rxn_url = failed_rxn['RxnURL']
+                path_name = failed_rxn['PathName']
+                rxn_termdyn = failed_rxn['RxnTermDyn']
+                
+                LOGGER.info("Retrying reaction %s (attempt %d)", rxn_id, retry_round + 1)
+                
+                try:
+                    # Create reaction object with correct parameters
+                    RxnList[rxn_id] = reaction(rxn_url, time, rxn_id, path_name, rxn_termdyn)
+                    
+                    # Process reaction (similar to main loop logic)
+                    # Check compounds and add if missing
+                    RxnCmp = [x[2] for x in RxnList[rxn_id].Substrate()] + [
+                        x[2] for x in RxnList[rxn_id].Product()
+                    ]
+                    
+                    for cmp_id in RxnCmp:
+                        if cmp_id not in MetList and cmp_id not in extra_compound:
+                            cmp_url = "https://www.genome.jp/entry/" + cmp_id
+                            MetList[cmp_id] = compound(cmp_url, cmp_id, time, EF, specialCompounds)
+                    
+                    # Bind stable methods (avoiding lambda pickle issues)
+                    S2 = copy.deepcopy([x for x in RxnList[rxn_id].Substrate()])
+                    P2 = copy.deepcopy([x for x in RxnList[rxn_id].Product()])
+                    RxnList[rxn_id].subs = S2
+                    RxnList[rxn_id].prods = P2
+                    RxnList[rxn_id].Substrate = MethodType(_rxn_substrate, RxnList[rxn_id])
+                    RxnList[rxn_id].Product = MethodType(_rxn_product, RxnList[rxn_id])
+                    RxnList[rxn_id].SetSubstrate = MethodType(_rxn_substrate, RxnList[rxn_id])
+                    RxnList[rxn_id].SetProduct = MethodType(_rxn_product, RxnList[rxn_id])
+                    
+                    if path_name not in PathNameRxn:
+                        PathNameRxn[path_name] = ""
+                    if rxn_id not in PathNameRxn.get(path_name):
+                        PathNameRxn[path_name] += rxn_id + " "
+                    
+                    # Process GPR - this is critical for rxnSubcel to work!
+                    tmpGPR, tmpSC2, error_type = process_reaction_gpr(
+                        RxnList[rxn_id], GPRList, GPRIdent, session
+                    )
+                    
+                    # Assign GPR data to reaction (required for rxnSubcel)
+                    RxnList[rxn_id].GPR = tmpGPR
+                    RxnList[rxn_id].Subcel = tmpSC2
+                    
+                    # Check if still has timeout/connection errors
+                    if error_type in ('timeout', 'connection'):
+                        LOGGER.warning(
+                            f"Retry for reaction {rxn_id} still has {error_type} error, keeping in retry queue"
+                        )
+                        continue  # Skip this reaction, will retry again next time
+                    
+                    # Successfully retrieved location data - can now compartmentalize
+                    LOGGER.info(f"Retry successful for reaction {rxn_id}, compartmentalizing now")
+                    
+                    # Expand reaction to compartments
+                    Compartment_CL, rxn_cl, comp_cl = rxnSubcel(
+                        RxnList[rxn_id],
+                        RxnList_CL,
+                        MetList_CL,
+                        RxnIdent_CL,
+                        MetIdent_CL,
+                        Compartment_CL,
+                        RxnList,
+                        MetList,
+                        MetEquiv,
+                    )
+                    
+                    RxnIdent_CL.extend(rxn_cl)
+                    MetIdent_CL.extend(comp_cl)
+                    
+                    LOGGER.info("Successfully processed %s on retry", rxn_id)
+                    
+                except Exception as e:
+                    # Still failed, track for next retry or permanent failure
+                    error_msg = str(e)
+                    LOGGER.warning("Reaction %s failed again on retry round %d: %s", 
+                                 rxn_id, retry_round + 1, error_msg)
+                    
+                    failed_rxn['attempt'] = retry_round + 1
+                    failed_rxn['error'] = error_msg
+                    failed_reactions.append(failed_rxn)
+            
+            retry_round += 1
+        
+        # Any remaining failures are permanent
+        if failed_reactions:
+            permanently_failed = failed_reactions[:]
+            LOGGER.error("="*80)
+            LOGGER.error("PERMANENTLY FAILED REACTIONS: %d", len(permanently_failed))
+            LOGGER.error("="*80)
+            for failed_rxn in permanently_failed:
+                LOGGER.error("Reaction %s from pathway %s failed after %d attempts. Last error: %s",
+                           failed_rxn['RxnID'], failed_rxn['PathName'], 
+                           failed_rxn['attempt'], failed_rxn['error'])
+        else:
+            LOGGER.info("="*80)
+            LOGGER.info("All failed reactions successfully recovered during retry phase!")
+            LOGGER.info("="*80)
+
+    # Retry mechanism for reactions with location detection timeouts/connection errors
+    if failed_location_reactions:
+        LOGGER.info("="*80)
+        LOGGER.info("LOCATION RETRY PHASE: %d reactions had timeout/connection errors during gene location lookup", 
+                   len(failed_location_reactions))
+        LOGGER.info("Gene cache now contains ~%d genes - retrying with fuller cache for instant lookups", 
+                   GeneClass.get_cache_stats()['cache_size'])
+        LOGGER.info("="*80)
+        
+        retry_success = 0
+        retry_failed = 0
+        still_failed_location_reactions = set()
+        
+        # Convert set to list for iteration
+        reactions_to_retry = list(failed_location_reactions)
+        
+        for rxn_id in reactions_to_retry:
+            LOGGER.info("Retrying gene location lookup for reaction %s", rxn_id)
+            
+            try:
+                # Find the reaction object in RxnList
+                if rxn_id not in RxnList:
+                    LOGGER.warning("Reaction %s not found in RxnList, cannot retry", rxn_id)
+                    still_failed_location_reactions.add(rxn_id)
+                    retry_failed += 1
+                    continue
+                
+                rxn_obj = RxnList[rxn_id]
+                
+                # Re-attempt gene location lookup with fuller cache
+                tmpGPR, tmpSC2, error_type = process_reaction_gpr(
+                    rxn_obj, GPRList, GPRIdent, session
+                )
+                
+                # Update reaction with new data
+                rxn_obj.GPR = tmpGPR
+                rxn_obj.Subcel = tmpSC2
+                
+                # Check if still has timeout/connection errors
+                if error_type in ('timeout', 'connection'):
+                    LOGGER.warning(
+                        f"Retry for reaction {rxn_id} still has {error_type} error"
+                    )
+                    still_failed_location_reactions.add(rxn_id)
+                    retry_failed += 1
+                    continue
+                
+                # Successfully retrieved location data - can now compartmentalize
+                LOGGER.info(f"Gene location lookup successful for reaction {rxn_id}, compartmentalizing now")
+                
+                # Expand reaction to compartments using rxnSubcel
+                Compartment_CL, rxn_cl, comp_cl = rxnSubcel(
+                    rxn_obj,
+                    RxnList_CL,
+                    MetList_CL,
+                    RxnIdent_CL,
+                    MetIdent_CL,
+                    Compartment_CL,
+                    RxnList,
+                    MetList,
+                    MetEquiv,
+                )
+                
+                RxnIdent_CL.extend(rxn_cl)
+                MetIdent_CL.extend(comp_cl)
+                
+                LOGGER.info("Successfully compartmentalized reaction %s on retry", rxn_id)
+                retry_success += 1
+                
+            except Exception as e:
+                error_msg = str(e)
+                LOGGER.error("Reaction %s failed during location retry: %s", rxn_id, error_msg)
+                import traceback
+                LOGGER.error(traceback.format_exc())
+                still_failed_location_reactions.add(rxn_id)
+                retry_failed += 1
+        
+        # Update the failed_location_reactions set with only those that still failed
+        failed_location_reactions = still_failed_location_reactions
+        
+        # Log results
+        LOGGER.info("="*80)
+        LOGGER.info("LOCATION RETRY RESULTS:")
+        LOGGER.info(f"  Successfully recovered: {retry_success} reactions")
+        LOGGER.info(f"  Still failed: {retry_failed} reactions")
+        if failed_location_reactions:
+            LOGGER.info(f"  Permanently failed reactions: {', '.join(sorted(failed_location_reactions))}")
+        LOGGER.info("="*80)
+        
+        if retry_success > 0:
+            print(f"\nLocation retry recovered {retry_success} reactions with fuller gene cache!")
+        if failed_location_reactions:
+            print(f"\nWarning: {len(failed_location_reactions)} reactions still failed after retry:")
+            print(f"  {', '.join(sorted(failed_location_reactions))}")
+
     ######### Genes ###########
     GeneList = {}
     GeneIdent = []
@@ -1269,7 +1829,7 @@ if __name__ == "__main__":
     while g < len(GPRList):
         if GPRIdent[g] in GPRList.keys() and GPRList[GPRIdent[g]].GprSubcell():
             gene_matches = re.findall(
-                "([A-Za-z0-9\-]+)",
+                r"([A-Za-z0-9\-]+)",
                 GPRList[GPRIdent[g]]
                 .GprSubcell()[1]
                 .replace("and", "")
@@ -1385,6 +1945,59 @@ if __name__ == "__main__":
         MetList,
     )
     cobra.io.write_sbml_model(model, Output)
+    
+    # Log gene location cache statistics
+    cache_stats = GeneClass.get_cache_stats()
+    LOGGER.info("="*80)
+    LOGGER.info("Gene Location Cache Statistics:")
+    LOGGER.info(f"  Total cache lookups: {cache_stats['hits'] + cache_stats['misses']}")
+    LOGGER.info(f"  Cache hits: {cache_stats['hits']}")
+    LOGGER.info(f"  Cache misses: {cache_stats['misses']}")
+    LOGGER.info(f"  Database queries: {cache_stats['queries']}")
+    LOGGER.info(f"  Cache hit rate: {cache_stats['hit_rate']}")
+    LOGGER.info(f"  Unique genes cached: {cache_stats['cache_size']}")
+    LOGGER.info("="*80)
+    print("\nGene Location Cache Statistics:")
+    print(f"  Cache hit rate: {cache_stats['hit_rate']}")
+    print(f"  Unique genes cached: {cache_stats['cache_size']}")
+    print(f"  Database queries saved: {cache_stats['hits']}")
+    
+    # Generate and save comprehensive error report
+    LOGGER.info("="*80)
+    LOGGER.info("Generating comprehensive error report...")
+    print("\nGenerating error report...")
+    
+    # Save error report to file
+    error_report_file = os.path.join(project_root, "logs", "error_report.txt")
+    error_tracker.save_report(error_report_file, verbose=True)
+    
+    # Export JSON version for programmatic analysis
+    error_json_file = os.path.join(project_root, "logs", "error_report.json")
+    error_tracker.export_json(error_json_file)
+    
+    # Print summary to console
+    print("\n" + "="*80)
+    print("ERROR REPORT SUMMARY")
+    print("="*80)
+    summary = error_tracker.generate_summary(verbose=False)
+    # Print just the summary section (not full details)
+    summary_lines = summary.split('\n')
+    in_summary = False
+    for line in summary_lines:
+        if 'OVERALL STATISTICS' in line:
+            in_summary = True
+        if in_summary:
+            print(line)
+        if 'RECOMMENDATIONS' in line and in_summary:
+            # Print recommendations section too
+            for remaining_line in summary_lines[summary_lines.index(line):]:
+                print(remaining_line)
+            break
+    
+    print(f"\nFull error report saved to: {error_report_file}")
+    print(f"JSON error data saved to: {error_json_file}")
+    LOGGER.info(f"Error reports generated: {error_report_file}, {error_json_file}")
+    LOGGER.info("="*80)
 
     # # Remove checkpoint file after successful completion
     # if os.path.exists(checkpoint_file):

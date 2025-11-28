@@ -1,0 +1,34 @@
+================================================================================
+GLYCOCALYX_CYTOSKELETON PATHWAY VALIDATION REPORT
+================================================================================
+Date: 2025-11-13 16:42:45
+Pathway: Glycocalyx_Cytoskeleton
+Model: ../models/THG-beta-batch_251106_canonical_compartments_with_glycocalyx_cytoskeleton.json
+Config: config/config_glycocalyx_cytoskeleton.json
+
+================================================================================
+SUMMARY
+================================================================================
+Total validations: 1
+Passed: 0 (0.0%)
+Failed: 1 (100.0%)
+
+STATUS: ✗ 1 VALIDATION(S) FAILED
+Review detailed results below.
+
+================================================================================
+DETAILED VALIDATION RESULTS
+================================================================================
+
+1. Integration Tests
+   Status: ✗ FAILED
+   Description: 8 pipeline tests
+   Details: Tests complete workflow: loading, matching, FBA, reactions, transport
+
+================================================================================
+RECOMMENDATIONS
+================================================================================
+
+For detailed output, re-run individual validation options.
+
+================================================================================

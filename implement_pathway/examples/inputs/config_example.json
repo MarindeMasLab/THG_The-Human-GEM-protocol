@@ -1,0 +1,76 @@
+{
+  "pathway_name": "Example_Pathway",
+  "model": {
+    "base": "examples/inputs/endoA_250917_3.json",
+    "output": "examples/outputs/endoA_250917_3_with_Example_Pathway.json"
+  },
+  "visualizations": {
+    "output_directory": "examples/outputs/figures",
+    "d3js": "example_pathway_network_d3.html",
+    "plotly": "example_pathway_network_plotly.html",
+    "graphviz_base": "example_pathway_network"
+  },
+  "compartments": [
+    {
+      "name": "cytoskeleton",
+      "abbreviation": "ck"
+    }
+  ],
+  "metabolites": {
+    "database_file": "examples/outputs/data/metabolite_id_database.json",
+    "targets": [
+      "ATP",
+      "ADP",
+      "GTP",
+      "GDP",
+      "H2O",
+      "Phosphate",
+      "H+",
+      "L-alanine",
+      "L-arginine",
+      "L-glycine",
+      "L-serine"
+    ],
+    "cytoskeleton_specific": {
+      "example protein": {
+        "charge": -5,
+        "formula": "C100H150N30O40S2",
+        "uniprot": "P00000",
+        "sbo": "SBO:0000247"
+      }
+    }
+  },
+  "reactions": [
+    {
+      "id": "R_Example_Transport_ATP",
+      "name": "Transport of ATP from cytosol to cytoskeleton",
+      "description": "Bidirectional transport of ATP between cytosol and cytoskeleton",
+      "equation": "1 ATP[c] <=> 1 ATP[ck]",
+      "subsystem": "Example pathway transport",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "R_Example_Synthesis",
+      "name": "Synthesis of example protein",
+      "description": "Simple protein synthesis example",
+      "equation": "10 L-alanine[ck] + 5 L-arginine[ck] + 5 L-glycine[ck] + 5 L-serine[ck] + 100 ATP[ck] + 100 H2O[ck] --> 1 example protein[ck] + 100 ADP[ck] + 100 Phosphate[ck] + 100 H+[ck]",
+      "subsystem": "Example pathway synthesis",
+      "ec": "6.1.-.-",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "DM_Example_Protein",
+      "name": "Demand reaction for example protein",
+      "description": "Allows flux through example protein pathway",
+      "equation": "1 example protein[ck] -->",
+      "subsystem": "Example pathway demand",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000628"
+    }
+  ]
+}

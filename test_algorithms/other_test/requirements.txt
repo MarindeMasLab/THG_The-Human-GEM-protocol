@@ -1,0 +1,6 @@
+# Testing dependencies for THG model generation
+# Install with: pip install -r tests/requirements.txt
+
+pytest>=7.0.0
+pytest-cov>=4.0.0
+dill>=0.3.6

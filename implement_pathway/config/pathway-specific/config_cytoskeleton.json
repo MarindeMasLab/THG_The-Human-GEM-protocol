@@ -1,0 +1,844 @@
+{
+  "pathway_name": "Cytoskeleton",
+  "model": {
+    "base": "models/THG-beta-batch_251106_connected_minptr_combined_compartments.json",
+    "output": "models/THG-beta-batch_251106_connected_minptr_combined_compartments_with_cytoskeleton.json"
+  },
+  "visualizations": {
+    "output_directory": "figures",
+    "d3js": "cytoskeleton_network_d3.html",
+    "plotly": "cytoskeleton_network_plotly.html",
+    "graphviz_base": "cytoskeleton_network"
+  },
+  "compartments": [
+    {
+      "name": "cytoskeleton",
+      "abbreviation": "ck"
+    }
+  ],
+  "metabolites": {
+    "database_file": "data/metabolite_id_database.json",
+    "targets": [
+      "ATP",
+      "ADP",
+      "GTP",
+      "GDP",
+      "L-alanine",
+      "L-arginine",
+      "L-asparagine",
+      "L-aspartate",
+      "L-cysteine",
+      "L-glutamine",
+      "L-glutamate",
+      "L-glycine",
+      "L-histidine",
+      "L-isoleucine",
+      "L-leucine",
+      "L-lysine",
+      "L-methionine",
+      "L-phenylalanine",
+      "L-proline",
+      "L-serine",
+      "L-threonine",
+      "L-tryptophan",
+      "L-tyrosine",
+      "L-valine",
+      "phosphate",
+      "H2O",
+      "H+",
+      "UDP",
+      "UDP-N-acetyl-alpha-D-glucosamine",
+      "1-phosphatidyl-1D-myo-inositol-4-phosphate"
+    ],
+    "cytoskeleton_specific": {
+      "actin protein (bare)": {
+        "charge": -18,
+        "formula": "C1946H3018N528O610S32",
+        "bigg.metabolite": "",
+        "chebi": "",
+        "uniprot": "P60709",
+        "hmdb": "",
+        "inchi": "",
+        "inchikey": "",
+        "kegg.compound": "",
+        "metanetx.chemical": "",
+        "pubchem.compound": "",
+        "sbo": "SBO:0000247",
+        "vmhmetabolite": ""
+      },
+      "tubulin dimer (bare)": {
+        "charge": -63,
+        "formula": "C4617H7021N1226O1452S45",
+        "bigg.metabolite": "",
+        "chebi": "",
+        "uniprot": [
+          "P68363",
+          "P07437"
+        ],
+        "hmdb": "",
+        "inchi": "",
+        "inchikey": "",
+        "kegg.compound": "",
+        "metanetx.chemical": "",
+        "pubchem.compound": "",
+        "sbo": "SBO:0000247",
+        "vmhmetabolite": ""
+      },
+      "vimentin protein (bare)": {
+        "charge": -42,
+        "formula": "C2281H3548N630O775S14",
+        "bigg.metabolite": "",
+        "chebi": "",
+        "uniprot": "P08670",
+        "hmdb": "",
+        "inchi": "",
+        "inchikey": "",
+        "kegg.compound": "",
+        "metanetx.chemical": "",
+        "pubchem.compound": "",
+        "sbo": "SBO:0000247",
+        "vmhmetabolite": ""
+      },
+      "myosin light chain": {
+        "charge": -14,
+        "formula": "C771H1201N207O259S7",
+        "bigg.metabolite": "",
+        "chebi": "",
+        "uniprot": "P24844",
+        "hmdb": "",
+        "inchi": "",
+        "inchikey": "",
+        "kegg.compound": "",
+        "metanetx.chemical": "",
+        "pubchem.compound": "",
+        "sbo": "SBO:0000247",
+        "vmhmetabolite": ""
+      },
+      "myosin light chain (phosphorylated)": {
+        "charge": -16,
+        "formula": "C771H1200N207O262PS7",
+        "bigg.metabolite": "",
+        "chebi": "",
+        "uniprot": "P24844",
+        "hmdb": "",
+        "inchi": "",
+        "inchikey": "",
+        "kegg.compound": "",
+        "metanetx.chemical": "",
+        "pubchem.compound": "",
+        "sbo": "SBO:0000247",
+        "vmhmetabolite": ""
+      },
+      "vimentin-GlcNAc": {
+        "charge": -42,
+        "formula": "C2289H3561N631O780S14",
+        "bigg.metabolite": "",
+        "chebi": "",
+        "uniprot": "P08670",
+        "hmdb": "",
+        "inchi": "",
+        "inchikey": "",
+        "kegg.compound": "",
+        "metanetx.chemical": "",
+        "pubchem.compound": "",
+        "sbo": "SBO:0000247",
+        "vmhmetabolite": ""
+      },
+      "actin complex (modified)": {
+        "charge": -23,
+        "formula": "C1965H3045N529O634P3R2S32",
+        "bigg.metabolite": "",
+        "chebi": "",
+        "uniprot": "P60709",
+        "hmdb": "",
+        "inchi": "",
+        "inchikey": "",
+        "kegg.compound": "",
+        "metanetx.chemical": "",
+        "pubchem.compound": "",
+        "sbo": "SBO:0000247",
+        "vmhmetabolite": ""
+      },
+      "phosphatidylinositol 4,5-bisphosphate": {
+        "charge": -5,
+        "formula": "C11H14O19P3R2",
+        "bigg.metabolite": "",
+        "chebi": "CHEBI:18348",
+        "uniprot": "",
+        "hmdb": "",
+        "inchi": "",
+        "inchikey": "",
+        "kegg.compound": "",
+        "metanetx.chemical": "",
+        "pubchem.compound": "",
+        "sbo": "SBO:0000247",
+        "vmhmetabolite": ""
+      },
+      "L-alanine": {
+        "charge": 0,
+        "formula": "C3H7NO2",
+        "compartment": "ck"
+      },
+      "L-arginine": {
+        "charge": 1,
+        "formula": "C6H14N4O2",
+        "compartment": "ck"
+      },
+      "L-asparagine": {
+        "charge": 0,
+        "formula": "C4H8N2O3",
+        "compartment": "ck"
+      },
+      "L-aspartate": {
+        "charge": -1,
+        "formula": "C4H7NO4",
+        "compartment": "ck"
+      },
+      "L-cysteine": {
+        "charge": 0,
+        "formula": "C3H7NO2S",
+        "compartment": "ck"
+      },
+      "L-glutamine": {
+        "charge": 0,
+        "formula": "C5H10N2O3",
+        "compartment": "ck"
+      },
+      "L-glutamate": {
+        "charge": -1,
+        "formula": "C5H9NO4",
+        "compartment": "ck"
+      },
+      "L-histidine": {
+        "charge": 0,
+        "formula": "C6H9N3O2",
+        "compartment": "ck"
+      },
+      "L-isoleucine": {
+        "charge": 0,
+        "formula": "C6H13NO2",
+        "compartment": "ck"
+      },
+      "L-leucine": {
+        "charge": 0,
+        "formula": "C6H13NO2",
+        "compartment": "ck"
+      },
+      "L-lysine": {
+        "charge": 1,
+        "formula": "C6H14N2O2",
+        "compartment": "ck"
+      },
+      "L-methionine": {
+        "charge": 0,
+        "formula": "C5H11NO2S",
+        "compartment": "ck"
+      },
+      "L-phenylalanine": {
+        "charge": 0,
+        "formula": "C9H11NO2",
+        "compartment": "ck"
+      },
+      "L-proline": {
+        "charge": 0,
+        "formula": "C5H9NO2",
+        "compartment": "ck"
+      },
+      "L-serine": {
+        "charge": 0,
+        "formula": "C3H7NO3",
+        "compartment": "ck"
+      },
+      "L-threonine": {
+        "charge": 0,
+        "formula": "C4H9NO3",
+        "compartment": "ck"
+      },
+      "L-tryptophan": {
+        "charge": 0,
+        "formula": "C11H12N2O2",
+        "compartment": "ck"
+      },
+      "L-tyrosine": {
+        "charge": 0,
+        "formula": "C9H11NO3",
+        "compartment": "ck"
+      },
+      "L-valine": {
+        "charge": 0,
+        "formula": "C5H11NO2",
+        "compartment": "ck"
+      },
+      "UDP-N-acetyl-alpha-D-glucosamine": {
+        "charge": -2,
+        "formula": "C17H25N3O17P2",
+        "compartment": "ck",
+        "bigg.metabolite": "uacgam",
+        "chebi": "CHEBI:16264",
+        "kegg.compound": "C00043"
+      },
+      "1-phosphatidyl-1D-myo-inositol-4-phosphate": {
+        "charge": -3,
+        "formula": "C11H17O16PR2",
+        "compartment": "ck",
+        "bigg.metabolite": "pi4p_L",
+        "chebi": "CHEBI:17526",
+        "kegg.compound": "C04549"
+      }
+    }
+  },
+  "reactions": [
+    {
+      "id": "R_Synth_Actin",
+      "name": "Synthesis of actin protein in cytoskeleton",
+      "description": "Polymerization of 395 amino acids into actin protein with ATP consumption",
+      "equation": "0.022 L-alanine[ck] + 0.018 L-arginine[ck] + 0.015 L-asparagine[ck] + 0.03 L-aspartate[ck] + 0.016 L-cysteine[ck] + 0.024 L-glutamine[ck] + 0.026 L-glutamate[ck] + 0.028 glycine[ck] + 0.008 L-histidine[ck] + 0.029 L-isoleucine[ck] + 0.026 L-leucine[ck] + 0.02 L-lysine[ck] + 0.016 L-methionine[ck] + 0.015 L-phenylalanine[ck] + 0.017 L-proline[ck] + 0.021 L-serine[ck] + 0.027 L-threonine[ck] + 0.004 L-tryptophan[ck] + 0.015 L-tyrosine[ck] + 0.018 L-valine[ck] + 1.576 ATP[ck] + 1.182 H2O[ck] --> 0.001 actin protein (bare)[ck] + 1.576 ADP[ck] + 1.576 phosphate[ck] + 1.576 H+[ck]",
+      "subsystem": "Cytoskeleton synthesis",
+      "ec": "6.1.-.-",
+      "gpr": "ENSG00000075624",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "R_Synth_Tubulin",
+      "name": "Synthesis of tubulin dimer in cytoskeleton",
+      "description": "Polymerization of 936 amino acids into tubulin dimer with ATP consumption",
+      "equation": "0.061 L-alanine[ck] + 0.04 L-arginine[ck] + 0.037 L-asparagine[ck] + 0.062 L-aspartate[ck] + 0.023 L-cysteine[ck] + 0.035 L-glutamine[ck] + 0.083 L-glutamate[ck] + 0.074 glycine[ck] + 0.022 L-histidine[ck] + 0.046 L-isoleucine[ck] + 0.071 L-leucine[ck] + 0.042 L-lysine[ck] + 0.022 L-methionine[ck] + 0.042 L-phenylalanine[ck] + 0.046 L-proline[ck] + 0.062 L-serine[ck] + 0.055 L-threonine[ck] + 0.012 L-tryptophan[ck] + 0.036 L-tyrosine[ck] + 0.065 L-valine[ck] + 3.74 ATP[ck] + 2.805 H2O[ck] --> 0.001 tubulin dimer (bare)[ck] + 3.74 ADP[ck] + 3.74 phosphate[ck] + 3.74 H+[ck]",
+      "subsystem": "Cytoskeleton synthesis",
+      "ec": "6.1.-.-",
+      "gpr": "ENSG00000075785 or ENSG00000196230",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "R_Synth_Vimentin",
+      "name": "Synthesis of vimentin protein in cytoskeleton",
+      "description": "Polymerization of 466 amino acids into vimentin protein with ATP consumption",
+      "equation": "0.036 L-alanine[ck] + 0.025 L-arginine[ck] + 0.021 L-asparagine[ck] + 0.037 L-aspartate[ck] + 0.006 L-cysteine[ck] + 0.028 L-glutamine[ck] + 0.053 L-glutamate[ck] + 0.02 glycine[ck] + 0.007 L-histidine[ck] + 0.02 L-isoleucine[ck] + 0.044 L-leucine[ck] + 0.023 L-lysine[ck] + 0.008 L-methionine[ck] + 0.013 L-phenylalanine[ck] + 0.017 L-proline[ck] + 0.037 L-serine[ck] + 0.026 L-threonine[ck] + 0.003 L-tryptophan[ck] + 0.016 L-tyrosine[ck] + 0.026 L-valine[ck] + 1.86 ATP[ck] + 1.395 H2O[ck] --> 0.001 vimentin protein (bare)[ck] + 1.86 ADP[ck] + 1.86 phosphate[ck] + 1.86 H+[ck]",
+      "subsystem": "Cytoskeleton synthesis",
+      "ec": "6.1.-.-",
+      "gpr": "ENSG00000026025",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "R_Synth_MyosinLC",
+      "name": "Synthesis of myosin light chain in cytoskeleton",
+      "description": "Polymerization of 159 amino acids into myosin light chain with ATP consumption",
+      "equation": "0.015 L-alanine[ck] + 0.005 L-arginine[ck] + 0.009 L-asparagine[ck] + 0.014 L-aspartate[ck] + 0.001 L-cysteine[ck] + 0.006 L-glutamine[ck] + 0.019 L-glutamate[ck] + 0.01 glycine[ck] + 0.002 L-histidine[ck] + 0.008 L-isoleucine[ck] + 0.01 L-leucine[ck] + 0.014 L-lysine[ck] + 0.006 L-methionine[ck] + 0.008 L-phenylalanine[ck] + 0.006 L-proline[ck] + 0.007 L-serine[ck] + 0.008 L-threonine[ck] + 0.003 L-tyrosine[ck] + 0.008 L-valine[ck] + 0.632 ATP[ck] + 0.474 H2O[ck] --> 0.001 myosin light chain[ck] + 0.632 ADP[ck] + 0.632 phosphate[ck] + 0.632 H+[ck]",
+      "subsystem": "Cytoskeleton synthesis",
+      "ec": "6.1.-.-",
+      "gpr": "ENSG00000101017",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "R_PIP2_Synth",
+      "name": "Synthesis of PIP2 in cytoskeleton",
+      "description": "Phosphorylation of PI4P to produce PIP2",
+      "equation": "1 1-phosphatidyl-1D-myo-inositol-4-phosphate[ck] + 1 ATP[ck] --> 1 phosphatidylinositol 4,5-bisphosphate[ck] + 1 ADP[ck] + 1 H+[ck]",
+      "subsystem": "Cytoskeleton regulation",
+      "ec": "2.7.1.68",
+      "gpr": "ENSG00000150093",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "R_GTP_Regen_NDPK",
+      "name": "GTP regeneration by nucleoside diphosphate kinase",
+      "description": "Conversion of GDP to GTP using ATP",
+      "equation": "1 GDP[ck] + 1 ATP[ck] <=> 1 GTP[ck] + 1 ADP[ck]",
+      "subsystem": "Cytoskeleton regulation",
+      "ec": "2.7.4.6",
+      "gpr": "ENSG00000239672",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "R_Vim_Glyco",
+      "name": "O-GlcNAcylation of vimentin",
+      "description": "Addition of O-GlcNAc to vimentin protein",
+      "equation": "1 vimentin protein (bare)[ck] + 1 UDP-N-acetyl-alpha-D-glucosamine[ck] --> 1 vimentin-GlcNAc[ck] + 1 UDP[ck] + 1 H+[ck]",
+      "subsystem": "Cytoskeleton regulation",
+      "ec": "2.4.1.-",
+      "gpr": "ENSG00000115841",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "R_Actin_Mod",
+      "name": "Modification of actin with GlcNAc and PIP2",
+      "description": "Combined glycosylation and PIP2 binding of actin",
+      "equation": "1 actin protein (bare)[ck] + 1 UDP-N-acetyl-alpha-D-glucosamine[ck] + 1 phosphatidylinositol 4,5-bisphosphate[ck] --> 1 actin complex (modified)[ck] + 1 UDP[ck] + 1 H+[ck]",
+      "subsystem": "Cytoskeleton regulation",
+      "ec": "",
+      "gpr": "ENSG00000115841",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "R_Myosin_Contract",
+      "name": "Myosin light chain phosphorylation",
+      "description": "ATP-dependent phosphorylation of myosin light chain",
+      "equation": "1 myosin light chain[ck] + 1 ATP[ck] --> 1 myosin light chain (phosphorylated)[ck] + 1 ADP[ck] + 1 H+[ck]",
+      "subsystem": "Cytoskeleton dynamics",
+      "ec": "2.7.11.18",
+      "gpr": "ENSG00000065534",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "R_Myosin_Dephospho",
+      "name": "Myosin light chain dephosphorylation",
+      "description": "Hydrolytic dephosphorylation of myosin light chain",
+      "equation": "1 myosin light chain (phosphorylated)[ck] + 1 H2O[ck] --> 1 myosin light chain[ck] + 1 phosphate[ck]",
+      "subsystem": "Cytoskeleton dynamics",
+      "ec": "3.1.3.16",
+      "gpr": "ENSG00000107295",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "R_Actin_Remodel",
+      "name": "Actin filament remodeling",
+      "description": "ATP hydrolysis during actin filament dynamics",
+      "equation": "1 ATP[ck] + 1 H2O[ck] --> 1 ADP[ck] + 1 phosphate[ck] + 1 H+[ck]",
+      "subsystem": "Cytoskeleton dynamics",
+      "ec": "3.6.1.3",
+      "gpr": "",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "R_Tubulin_Remodel",
+      "name": "Microtubule remodeling",
+      "description": "GTP hydrolysis during microtubule dynamics",
+      "equation": "1 GTP[ck] + 1 H2O[ck] --> 1 GDP[ck] + 1 phosphate[ck] + 1 H+[ck]",
+      "subsystem": "Cytoskeleton dynamics",
+      "ec": "3.6.5.3",
+      "gpr": "",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000176"
+    },
+    {
+      "id": "DM_Actin_Complex",
+      "name": "Demand for actin complex (modified)",
+      "description": "Sink reaction representing cytoskeletal protein turnover",
+      "equation": "1 actin complex (modified)[ck] -->",
+      "subsystem": "Cytoskeleton turnover",
+      "ec": "",
+      "gpr": "",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000628"
+    },
+    {
+      "id": "DM_Tubulin",
+      "name": "Demand for tubulin dimer",
+      "description": "Sink reaction representing cytoskeletal protein turnover",
+      "equation": "1 tubulin dimer (bare)[ck] -->",
+      "subsystem": "Cytoskeleton turnover",
+      "ec": "",
+      "gpr": "",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000628"
+    },
+    {
+      "id": "DM_Vimentin_GlcNAc",
+      "name": "Demand for vimentin-GlcNAc",
+      "description": "Sink reaction representing cytoskeletal protein turnover",
+      "equation": "1 vimentin-GlcNAc[ck] -->",
+      "subsystem": "Cytoskeleton turnover",
+      "ec": "",
+      "gpr": "",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000628"
+    },
+    {
+      "id": "DM_MyosinLC",
+      "name": "Demand for myosin light chain",
+      "description": "Sink reaction representing cytoskeletal protein turnover",
+      "equation": "1 myosin light chain[ck] -->",
+      "subsystem": "Cytoskeleton turnover",
+      "ec": "",
+      "gpr": "",
+      "lower_bound": 0.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000628"
+    },
+    {
+      "id": "T_Lalanine_c_ck",
+      "name": "Transport of L-alanine between cytosol and cytoskeleton",
+      "description": "Bidirectional transport of L-alanine",
+      "equation": "1 L-alanine[c] <=> 1 L-alanine[ck]",
+      "subsystem": "Cytoskeleton transport",
+      "ec": "",
+      "gpr": "",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Larginine_c_ck",
+      "name": "Transport of L-arginine between cytosol and cytoskeleton",
+      "description": "Bidirectional transport of L-arginine",
+      "equation": "1 L-arginine[c] <=> 1 L-arginine[ck]",
+      "subsystem": "Cytoskeleton transport",
+      "ec": "",
+      "gpr": "",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lasparagine_c_ck",
+      "name": "Transport of L-asparagine between cytosol and cytoskeleton",
+      "description": "Bidirectional transport of L-asparagine",
+      "equation": "1 L-asparagine[c] <=> 1 L-asparagine[ck]",
+      "subsystem": "Cytoskeleton transport",
+      "ec": "",
+      "gpr": "",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Laspartate_c_ck",
+      "name": "Transport of L-aspartate between cytosol and cytoskeleton",
+      "description": "Bidirectional transport of L-aspartate",
+      "equation": "1 L-aspartate[c] <=> 1 L-aspartate[ck]",
+      "subsystem": "Cytoskeleton transport",
+      "ec": "",
+      "gpr": "",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lcysteine_c_ck",
+      "name": "Transport of L-cysteine between cytosol and cytoskeleton",
+      "description": "Bidirectional transport of L-cysteine",
+      "equation": "1 L-cysteine[c] <=> 1 L-cysteine[ck]",
+      "subsystem": "Cytoskeleton transport",
+      "ec": "",
+      "gpr": "",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lglutamine_c_ck",
+      "name": "Transport of L-glutamine between cytosol and cytoskeleton",
+      "description": "Bidirectional transport of L-glutamine",
+      "equation": "1 L-glutamine[c] <=> 1 L-glutamine[ck]",
+      "subsystem": "Cytoskeleton transport",
+      "ec": "",
+      "gpr": "",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lglutamate_c_ck",
+      "name": "Transport of L-glutamate between cytosol and cytoskeleton",
+      "description": "Bidirectional transport of L-glutamate",
+      "equation": "1 L-glutamate[c] <=> 1 L-glutamate[ck]",
+      "subsystem": "Cytoskeleton transport",
+      "ec": "",
+      "gpr": "",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_glycine_c_ck",
+      "name": "Transport of glycine between cytosol and cytoskeleton",
+      "description": "Bidirectional transport of glycine",
+      "equation": "1 glycine[c] <=> 1 glycine[ck]",
+      "subsystem": "Cytoskeleton transport",
+      "ec": "",
+      "gpr": "",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lhistidine_c_ck",
+      "name": "Transport of L-histidine between cytosol and cytoskeleton",
+      "description": "Bidirectional transport of L-histidine",
+      "equation": "1 L-histidine[c] <=> 1 L-histidine[ck]",
+      "subsystem": "Cytoskeleton transport",
+      "ec": "",
+      "gpr": "",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lisoleucine_c_ck",
+      "name": "Transport of L-isoleucine between cytosol and cytoskeleton",
+      "description": "Bidirectional transport of L-isoleucine",
+      "equation": "1 L-isoleucine[c] <=> 1 L-isoleucine[ck]",
+      "subsystem": "Cytoskeleton transport",
+      "ec": "",
+      "gpr": "",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lleucine_c_ck",
+      "name": "Transport of L-leucine between cytosol and cytoskeleton",
+      "description": "Bidirectional transport of L-leucine",
+      "equation": "1 L-leucine[c] <=> 1 L-leucine[ck]",
+      "subsystem": "Cytoskeleton transport",
+      "ec": "",
+      "gpr": "",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Llysine_c_ck",
+      "name": "Transport of L-lysine between cytosol and cytoskeleton",
+      "description": "Bidirectional transport of L-lysine",
+      "equation": "1 L-lysine[c] <=> 1 L-lysine[ck]",
+      "subsystem": "Cytoskeleton transport",
+      "ec": "",
+      "gpr": "",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lmethionine_c_ck",
+      "name": "Transport of L-methionine between cytosol and cytoskeleton",
+      "description": "Bidirectional transport of L-methionine",
+      "equation": "1 L-methionine[c] <=> 1 L-methionine[ck]",
+      "subsystem": "Cytoskeleton transport",
+      "ec": "",
+      "gpr": "",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lphenylalanine_c_ck",
+      "name": "Transport of L-phenylalanine between cytosol and cytoskeleton",
+      "description": "Bidirectional transport of L-phenylalanine",
+      "equation": "1 L-phenylalanine[c] <=> 1 L-phenylalanine[ck]",
+      "subsystem": "Cytoskeleton transport",
+      "ec": "",
+      "gpr": "",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lproline_c_ck",
+      "name": "Transport of L-proline between cytosol and cytoskeleton",
+      "description": "Bidirectional transport of L-proline",
+      "equation": "1 L-proline[c] <=> 1 L-proline[ck]",
+      "subsystem": "Cytoskeleton transport",
+      "ec": "",
+      "gpr": "",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lserine_c_ck",
+      "name": "Transport of L-serine between cytosol and cytoskeleton",
+      "description": "Bidirectional transport of L-serine",
+      "equation": "1 L-serine[c] <=> 1 L-serine[ck]",
+      "subsystem": "Cytoskeleton transport",
+      "ec": "",
+      "gpr": "",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lthreonine_c_ck",
+      "name": "Transport of L-threonine between cytosol and cytoskeleton",
+      "description": "Bidirectional transport of L-threonine",
+      "equation": "1 L-threonine[c] <=> 1 L-threonine[ck]",
+      "subsystem": "Cytoskeleton transport",
+      "ec": "",
+      "gpr": "",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Ltryptophan_c_ck",
+      "name": "Transport of L-tryptophan between cytosol and cytoskeleton",
+      "description": "Bidirectional transport of L-tryptophan",
+      "equation": "1 L-tryptophan[c] <=> 1 L-tryptophan[ck]",
+      "subsystem": "Cytoskeleton transport",
+      "ec": "",
+      "gpr": "",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Ltyrosine_c_ck",
+      "name": "Transport of L-tyrosine between cytosol and cytoskeleton",
+      "description": "Bidirectional transport of L-tyrosine",
+      "equation": "1 L-tyrosine[c] <=> 1 L-tyrosine[ck]",
+      "subsystem": "Cytoskeleton transport",
+      "ec": "",
+      "gpr": "",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_Lvaline_c_ck",
+      "name": "Transport of L-valine between cytosol and cytoskeleton",
+      "description": "Bidirectional transport of L-valine",
+      "equation": "1 L-valine[c] <=> 1 L-valine[ck]",
+      "subsystem": "Cytoskeleton transport",
+      "ec": "",
+      "gpr": "",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_ATP_c_ck",
+      "name": "Transport of ATP between cytosol and cytoskeleton",
+      "description": "Bidirectional transport of ATP",
+      "equation": "1 ATP[c] <=> 1 ATP[ck]",
+      "subsystem": "Cytoskeleton transport",
+      "ec": "",
+      "gpr": "",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_GTP_c_ck",
+      "name": "Transport of GTP between cytosol and cytoskeleton",
+      "description": "Bidirectional transport of GTP",
+      "equation": "1 GTP[c] <=> 1 GTP[ck]",
+      "subsystem": "Cytoskeleton transport",
+      "ec": "",
+      "gpr": "",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_UDPNacetylalphaDglucosamine_c_ck",
+      "name": "Transport of UDP-N-acetyl-alpha-D-glucosamine between cytosol and cytoskeleton",
+      "description": "Bidirectional transport of UDP-N-acetyl-alpha-D-glucosamine",
+      "equation": "1 UDP-N-acetyl-alpha-D-glucosamine[c] <=> 1 UDP-N-acetyl-alpha-D-glucosamine[ck]",
+      "subsystem": "Cytoskeleton transport",
+      "ec": "",
+      "gpr": "",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_1phosphatidyl1Dmyoinositol_4phosphate_c_ck",
+      "name": "Transport of 1-phosphatidyl-1D-myo-inositol-4-phosphate between cytosol and cytoskeleton",
+      "description": "Bidirectional transport of 1-phosphatidyl-1D-myo-inositol-4-phosphate",
+      "equation": "1 1-phosphatidyl-1D-myo-inositol-4-phosphate[c] <=> 1 1-phosphatidyl-1D-myo-inositol-4-phosphate[ck]",
+      "subsystem": "Cytoskeleton transport",
+      "ec": "",
+      "gpr": "",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_H2O_c_ck",
+      "name": "Transport of H2O between cytosol and cytoskeleton",
+      "description": "Bidirectional transport of H2O",
+      "equation": "1 H2O[c] <=> 1 H2O[ck]",
+      "subsystem": "Cytoskeleton transport",
+      "ec": "",
+      "gpr": "",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_ADP_c_ck",
+      "name": "Transport of ADP between cytosol and cytoskeleton",
+      "description": "Bidirectional transport of ADP",
+      "equation": "1 ADP[c] <=> 1 ADP[ck]",
+      "subsystem": "Cytoskeleton transport",
+      "ec": "",
+      "gpr": "",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_GDP_c_ck",
+      "name": "Transport of GDP between cytosol and cytoskeleton",
+      "description": "Bidirectional transport of GDP",
+      "equation": "1 GDP[c] <=> 1 GDP[ck]",
+      "subsystem": "Cytoskeleton transport",
+      "ec": "",
+      "gpr": "",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_phosphate_c_ck",
+      "name": "Transport of phosphate between cytosol and cytoskeleton",
+      "description": "Bidirectional transport of phosphate",
+      "equation": "1 phosphate[c] <=> 1 phosphate[ck]",
+      "subsystem": "Cytoskeleton transport",
+      "ec": "",
+      "gpr": "",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_H+_c_ck",
+      "name": "Transport of H+ between cytosol and cytoskeleton",
+      "description": "Bidirectional transport of H+",
+      "equation": "1 H+[c] <=> 1 H+[ck]",
+      "subsystem": "Cytoskeleton transport",
+      "ec": "",
+      "gpr": "",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    },
+    {
+      "id": "T_UDP_c_ck",
+      "name": "Transport of UDP between cytosol and cytoskeleton",
+      "description": "Bidirectional transport of UDP",
+      "equation": "1 UDP[c] <=> 1 UDP[ck]",
+      "subsystem": "Cytoskeleton transport",
+      "ec": "",
+      "gpr": "",
+      "lower_bound": -1000.0,
+      "upper_bound": 1000.0,
+      "sbo": "SBO:0000185"
+    }
+  ]
+}

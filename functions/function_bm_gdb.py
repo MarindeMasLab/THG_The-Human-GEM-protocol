@@ -203,7 +203,7 @@ def batch_fetch_kegg_entries(
 
             # Use KEGG REST API batch get
             url = f"https://rest.kegg.jp/get/{batch_str}"
-            response = urllib.request.urlopen(url).read()
+            response = urllib.request.urlopen(url, timeout=10).read()
 
             # Handle both bytes and str
             content = (
@@ -265,8 +265,9 @@ def compartment_file_to_dict_bm(
     col0_to_col2 = {}
     for _, row in full_df.iterrows():
         if pd.notna(row[0]) and pd.notna(row[2]):
-            biocyc_name = str(row[0]).strip().lower()
-            endo1a_name = str(row[2]).strip().lower()
+            # Strip all whitespace including non-breaking spaces (\xa0)
+            biocyc_name = str(row[0]).replace('\xa0', ' ').strip().lower()
+            endo1a_name = str(row[2]).replace('\xa0', ' ').strip().lower()
             col0_to_col2[biocyc_name] = endo1a_name
 
     # Extract unique values from column 2 (Endo1-a compartments)
@@ -476,9 +477,9 @@ def getGPR22(ec, time):
     try:
         NCBI_ID = "9606"
         page1 = "https://biocyc.org/META/NEW-IMAGE?type=EC-NUMBER&object=EC-" + ec
-        page = str(urllib.request.urlopen(page1).read())
-        page_cp = str(urllib.request.urlopen(page1).read())
-        page_cp = str(urllib.request.urlopen(page1).read())
+        page = str(urllib.request.urlopen(page1, timeout=10).read())
+        page_cp = str(urllib.request.urlopen(page1, timeout=10).read())
+        page_cp = str(urllib.request.urlopen(page1, timeout=10).read())
         page = str(page)
         url = page
         ss = []
@@ -982,7 +983,7 @@ def getGPR_old(page, ec, time):
         NCBI_ID = "9606"
         if not page:
             page = "https://biocyc.org/META/NEW-IMAGE?type=EC-NUMBER&object=EC-" + ec
-            page = str(urllib.request.urlopen(page).read())
+            page = str(urllib.request.urlopen(page, timeout=10).read())
         page = str(page)
         page_cp = page
         url = page
@@ -1502,7 +1503,7 @@ def getHtml(url, timeout, referer=False, file_data=[], additional_data={}):
             req = urllib.request.Request(url)
         if referer:
             req.add_header("Referer", referer)
-        return urllib.request.urlopen(req).read()
+        return urllib.request.urlopen(req, timeout=10).read()
     except Exception as e:
         time.sleep(timeout)
         return ""
@@ -1523,7 +1524,7 @@ def getHtmlS(url, timeout):
             "Connection": "keep-alive",
         }
         req = urllib.request.Request(url, headers=hdr)
-        return urllib.request.urlopen(req).read()
+        return urllib.request.urlopen(req, timeout=10).read()
     except Exception as e:
         time.sleep(timeout)
         print('Exception "' + str(e) + '" in getHtml with URL "' + url + '"')
@@ -1566,13 +1567,148 @@ def ParseNestedParen(string, level):
 """"Path: Extract the links from a HTML page"""
 
 
-def getLinkPath(page):
+def getLinkPath(page, follow_maps=True):
     try:
-        urls0 = list(set(re.findall(r'name="rn:(R[0-9]+)" type="([a-z]+)', page)))
-        urls1 = [
-            x[0].replace("R", "http://www.kegg.jp/dbget-bin/www_bget?rn:R")
-            for x in urls0
-        ]
+        # Collect (reaction_id, type) tuples from KGML-like entry attributes.
+        urls_set = set()
+
+        # 1) Standard name attribute pattern: name="rn:RXXXXX" (type may be present or absent)
+        try:
+            # accept optional `type="..."` so we don't miss entries where type is absent
+            name_matches = re.findall(r'name="rn:(R[0-9]{5,6})"(?:\s*type="([a-z]+)")?', page)
+            for m in name_matches:
+                rid = m[0]
+                rtype = m[1] if len(m) > 1 and m[1] else ""
+                urls_set.add((rid, rtype))
+        except Exception:
+            pass
+
+        # 2) Some KGML use a separate reaction="rn:RXXXXX" attribute inside <entry>.
+        #    Find the whole <entry ...> tag and extract the reaction id and its type (if present).
+        try:
+            for m in re.finditer(r'<entry[^>]*reaction="rn:(R[0-9]+)"[^>]*>', page):
+                tag = m.group(0)
+                rid = m.group(1)
+                tmatch = re.search(r'type="([a-z]+)"', tag)
+                rtype = tmatch.group(1) if tmatch else ""
+                urls_set.add((rid, rtype))
+        except Exception:
+            pass
+
+        # Final list of reaction tuples
+        urls0 = list(urls_set)
+
+        # Fallback: some pathway KGML don't include reaction attributes (e.g. hsa00190).
+        # In that case fetch the KEGG flat file for the pathway and extract the
+        # REACTION lines which list KEGG reaction IDs. This handles maps where
+        # reactions are only present in the flat file representation.
+        if not urls0:
+            try:
+                # Try to detect the pathway id (e.g. hsa00190) from the KGML header
+                pid = None
+                m = re.search(r'path:(hsa[0-9]{5})', page)
+                if m:
+                    pid = m.group(1)
+                else:
+                    m = re.search(r'name="path:(hsa[0-9]{5})"', page)
+                    if m:
+                        pid = m.group(1)
+                if not pid:
+                    m = re.search(r'(^|\W)(hsa[0-9]{5})(\W|$)', page)
+                    if m:
+                        pid = m.group(2)
+                if pid:
+                    try:
+                        url = f"https://rest.kegg.jp/get/{pid}"
+                        resp = urllib.request.urlopen(url, timeout=10).read()
+                        text = resp.decode("utf-8") if isinstance(resp, bytes) else resp
+                        # find all RIDs in the REACTION section
+                        rids = sorted(set(re.findall(r'R[0-9]{5,6}', text)))
+                        for rid in rids:
+                            urls_set.add((rid, ""))
+                        urls0 = list(urls_set)
+                    except Exception:
+                        pass
+
+                # If still no reactions, try mapping KOs and genes present in the KGML
+                # to reactions via KEGG REST 'link' endpoint (KO -> RN, gene -> RN).
+                if not urls0:
+                    try:
+                        kos = sorted(set(re.findall(r'ko:K[0-9]+', page)))
+                        genes = sorted(set(re.findall(r'hsa:[0-9]+', page)))
+
+                        def fetch_links(ids, prefix='ko'):
+                            found = set()
+                            if not ids:
+                                return found
+                            # chunk ids to avoid too-long URLs
+                            chunk_size = 20
+                            for i in range(0, len(ids), chunk_size):
+                                chunk = ids[i : i + chunk_size]
+                                q = "+".join(chunk)
+                                try:
+                                    url = f"https://rest.kegg.jp/link/rn/{q}"
+                                    resp = urllib.request.urlopen(url, timeout=10).read()
+                                    txt = resp.decode('utf-8') if isinstance(resp, bytes) else resp
+                                    for line in txt.split('\n'):
+                                        if not line.strip():
+                                            continue
+                                        parts = line.split('\t')
+                                        if len(parts) >= 2:
+                                            rid = re.search(r'(R[0-9]{5,6})', parts[1])
+                                            if rid:
+                                                found.add(rid.group(1))
+                                except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, 
+                                        ConnectionError, OSError, Exception):
+                                    # Catch all network-related errors including SSL handshake failures
+                                    continue
+                            return found
+
+                        r_from_kos = fetch_links(kos, 'ko')
+                        r_from_genes = fetch_links(genes, 'hsa')
+                        for rid in sorted(r_from_kos.union(r_from_genes)):
+                            urls_set.add((rid, ''))
+                        urls0 = list(urls_set)
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+            # One-level follow of linked pathway maps: some KGML only contain
+            # references to other maps via `path:hsaXXXXX`. If requested,
+            # fetch each linked map's KGML and extract reactions at one level
+            # (no recursion) to augment the current pathway's reactions.
+            if follow_maps and not urls0:
+                try:
+                    linked = sorted(set(re.findall(r'path:(hsa[0-9]{5})', page)))
+                    # also catch entries like name="path:hsaXXXXX"
+                    linked += sorted(set(re.findall(r'name="path:(hsa[0-9]{5})"', page)))
+                    linked = [x for x in linked if x]
+                    # limit number of linked maps fetched to avoid explosion
+                    max_linked = 20
+                    for pid in linked[:max_linked]:
+                        try:
+                            url = f"https://rest.kegg.jp/get/{pid}/kgml"
+                            resp = urllib.request.urlopen(url, timeout=10).read()
+                            text = resp.decode('utf-8') if isinstance(resp, bytes) else resp
+                            # call getLinkPath on the linked map but do not follow maps again
+                            try:
+                                _urls2, _urls3 = getLinkPath(text, follow_maps=False)
+                                # _urls3 is list of ((rid, type), viewer_url)
+                                for ((rid, rtype), _) in _urls3:
+                                    urls_set.add((rid, rtype if rtype else ''))
+                            except Exception:
+                                # best-effort: also attempt to extract RIDs from flat file
+                                rids = sorted(set(re.findall(r'R[0-9]{5,6}', text)))
+                                for rid in rids:
+                                    urls_set.add((rid, ''))
+                        except Exception:
+                            continue
+                    urls0 = list(urls_set)
+                except Exception:
+                    pass
+
+        # Map to KEGG reaction viewer URLs
+        urls1 = [rid.replace("R", "http://www.kegg.jp/dbget-bin/www_bget?rn:R") for (rid, _) in urls0]
         urls21 = list(
             set(
                 re.findall(
@@ -1603,6 +1739,9 @@ def getLinkPath(page):
 
 def getReacParam(page, time):
     try:
+        # Ensure page is bytes for consistent handling
+        if isinstance(page, str):
+            page = page.encode('utf-8')
         # page = urllib.request.urlopen(page).read()
         urls0 = page.replace(b'href="', b"http://www.genome.jp")
         # urls0=str(urls0)
@@ -1620,6 +1759,12 @@ def getReacParam(page, time):
         )
         b0 = re.findall(r"<nobr>Equation</nobr>.*", a0.decode("utf-8"))
         b0 = re.findall(r"Equation.*", a0.decode("utf-8"))
+        
+        # Validate that we found equation data
+        if not b0:
+            # No equation found - return empty result
+            return ""
+        
         # b0 = re.findall(r'Equation.+?reaction', a0.decode('utf-8'),re.DOTALL)
         urls11 = [
             ("http://www.genome.jp/dbget-bin/www_bget?cpd:" + str(x), str(x))
@@ -2340,7 +2485,7 @@ def getLocation_old(gpr, genelist1, genelist2, time):
                                 + GeneID
                                 + "&sort=score"
                             )
-                            url = str(urllib.request.urlopen(https).read())
+                            url = str(urllib.request.urlopen(https, timeout=10).read())
                             # print(https)
                             if re.search(
                                 'uniprot\/([A-Z0-9-]+)">[A-Z0-9-]+<\/a><\/td><td>'
@@ -2748,6 +2893,9 @@ def getCompParamFromRestAPI(flat_file_text, ident, time, EF, specialCompounds, R
     --------
     tuple : Same format as getCompParam
     """
+    import logging
+    LOGGER = logging.getLogger(__name__)
+    
     try:
         defaultdict = recondict()
 
@@ -2787,12 +2935,46 @@ def getCompParamFromRestAPI(flat_file_text, ident, time, EF, specialCompounds, R
             urls21 = fields["FORMULA"].strip()
             urls22 = urls21
         else:
-            # Fallback to EF file or empty
-            for line in EF:
-                if line.startswith(ident):
-                    urls21 = line.split("\t")[2] if len(line.split("\t")) > 2 else ""
-                    urls22 = urls21
-                    break
+            # Check if this is a generic compound with alternatives in COMMENT
+            if "COMMENT" in fields:
+                comment_text = fields["COMMENT"]
+                # Look for patterns like "[CPD:C00472]" or "[CPD:C00530]"
+                alternative_cpds = re.findall(r"\[CPD:([CDG][0-9]+)\]", comment_text)
+                
+                if alternative_cpds:
+                    # Try to fetch the first alternative compound's formula
+                    alt_cpd = alternative_cpds[0]
+                    LOGGER.info(f"Generic compound {ident} detected. Trying alternative: {alt_cpd}")
+                    try:
+                        alt_url = f"https://rest.kegg.jp/get/{alt_cpd}"
+                        alt_response = urllib.request.urlopen(alt_url, timeout=10).read()
+                        alt_text = (
+                            alt_response.decode("utf-8")
+                            if isinstance(alt_response, bytes)
+                            else alt_response
+                        )
+                        alt_fields = parse_kegg_flat_file(alt_text)
+                        
+                        if "FORMULA" in alt_fields:
+                            urls21 = alt_fields["FORMULA"].strip()
+                            urls22 = urls21
+                            # Also use alternative's name if current name is generic
+                            if "NAME" in alt_fields:
+                                alt_name = alt_fields["NAME"].split(";")[0].strip()
+                                urls3 = f"{urls3} (using {alt_name})"
+                            LOGGER.info(f"Using formula from {alt_cpd}: {urls21}")
+                        else:
+                            LOGGER.warning(f"Alternative compound {alt_cpd} also lacks formula")
+                    except Exception as e:
+                        LOGGER.warning(f"Could not fetch alternative compound {alt_cpd}: {e}")
+            
+            # Fallback to EF file or empty if no alternative found
+            if not urls21:
+                for line in EF:
+                    if line.startswith(ident):
+                        urls21 = line.split("\t")[2] if len(line.split("\t")) > 2 else ""
+                        urls22 = urls21
+                        break
 
         # Handle COMPOSITION for glycans
         if "COMPOSITION" in fields:
@@ -2812,7 +2994,7 @@ def getCompParamFromRestAPI(flat_file_text, ident, time, EF, specialCompounds, R
                 # Fetch the primary compound data
                 try:
                     primary_url = f"https://rest.kegg.jp/get/{urls01}"
-                    primary_response = urllib.request.urlopen(primary_url).read()
+                    primary_response = urllib.request.urlopen(primary_url, timeout=10).read()
                     primary_text = (
                         primary_response.decode("utf-8")
                         if isinstance(primary_response, bytes)
@@ -3004,6 +3186,25 @@ def getCompParamFromRestAPI(flat_file_text, ident, time, EF, specialCompounds, R
 
 
 def getCompParam(page, ident, time, EF, specialCompounds, RxnID):
+    """
+    DEPRECATED: Legacy HTML parser for KEGG compound data.
+    
+    This function was designed to parse HTML pages from KEGG's legacy web interface.
+    KEGG has moved to REST API only, and HTML pages are no longer available.
+    
+    Use getCompParamFromRestAPI() instead for all new code.
+    
+    This function is kept for backward compatibility but may not work correctly
+    since KEGG's HTML interface is no longer functional.
+    """
+    import warnings
+    warnings.warn(
+        "getCompParam() is deprecated. KEGG's HTML interface is no longer functional. "
+        "Use getCompParamFromRestAPI() instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    
     try:
         # page can be either HTML (legacy) or REST API formatted data
         defaultdict = recondict()
@@ -3069,10 +3270,40 @@ def getCompParam(page, ident, time, EF, specialCompounds, RxnID):
                     "GlycomeDB[\S\s]+?>(JCGG-[A-Z0-9]+)<", page
                 )  # JCGGDB
         else:  # If the compound is not a Glycan
+            import logging
+            LOGGER = logging.getLogger(__name__)
+            
             urls01 = ident  # principal identifier
             urls02 = ident  # secondary identifier
             urls21 = getFormula(page, time, EF, specialCompounds, None)
             urls22 = urls21  # secondary formula
+            
+            # Check if this is a generic compound (no formula) with alternatives in HTML comment
+            if not urls21 or urls21.strip() == "":
+                # Look for generic compound comment patterns in HTML
+                comment_match = re.search(
+                    r'Comment[\S\s]+?Generic compound[\S\s]+?\[CPD:([CDG][0-9]+)\]',
+                    page,
+                    re.IGNORECASE
+                )
+                if comment_match:
+                    alt_cpd = comment_match.group(1)
+                    LOGGER.info(f"Generic compound {ident} detected (HTML). Trying alternative: {alt_cpd}")
+                    try:
+                        # Fetch alternative compound page
+                        alt_url = f"http://www.genome.jp/dbget-bin/www_bget?cpd:{alt_cpd}"
+                        alt_page = getHtml(alt_url, time)
+                        alt_formula = getFormula(alt_page, time, EF, specialCompounds, None)
+                        
+                        if alt_formula and alt_formula.strip():
+                            urls21 = alt_formula
+                            urls22 = alt_formula
+                            LOGGER.info(f"Using formula from {alt_cpd}: {alt_formula}")
+                        else:
+                            LOGGER.warning(f"Alternative compound {alt_cpd} also lacks formula")
+                    except Exception as e:
+                        LOGGER.warning(f"Could not fetch alternative compound {alt_cpd}: {e}")
+            
             # Extract compound name with better error handling
             name_match = re.findall(
                 'Name<.span><.th>.n<td class="td21 defd"><div class="cel"><div class="cel">(.+?);?<br>',

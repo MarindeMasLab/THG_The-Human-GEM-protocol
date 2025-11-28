@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+import os
 import re
 import urllib.request
 from typing import TYPE_CHECKING
@@ -175,18 +176,33 @@ class reaction(object):
 
 
 class gpr(object):
-    def __init__(self, ec, time):
+    def __init__(self, ec, session=None):
         self.ec = ec
-        session = setup_biocyc_session()
+        # Use provided session or create new one
+        if session is None:
+            session = setup_biocyc_session()
         self.GPRPAss = getGPR(self.ec, session)
         location_module = _loc()
+        
+        # Determine project root path for bb.pickle file and Excel file
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.join(current_dir, "..")
+        bb_pickle_path = os.path.join(project_root, "files", "bb.pickle")
+        excel_file = os.path.join(project_root, "files", "ListOfCompartments_sept2024.xlsx")
+        comp_abb_file = os.path.join(project_root, "files", "compartments_info.txt")
+        
         self.Subcell = location_module.getLocationnew(
             self.GPRPAss[3],
             self.GPRPAss[1],
             self.GPRPAss[2],
-            1,
-            "files/bb.pickle",
+            1,  # impose_locations: 1 = restrict to standard compartments (restricted mode)
+            bb_pickle_path,
             session,
+            None,  # ensembl_cache
+            excel_file,
+            "Def-Compartments",  # compartments_sheet_name
+            {},  # comp_dict (empty, will be built by function)
+            comp_abb_file,
         )
 
     def EC(self):  # Patway-KEGG
@@ -208,6 +224,10 @@ class gpr(object):
 
 
 class gene(object):
+    # Class-level cache shared across all instances
+    _location_cache = {}  # {gene_symbol: {'compartments': [...], 'biocyc_id': '...'}}
+    _cache_stats = {'hits': 0, 'misses': 0, 'queries': 0}
+    
     def __init__(self, gene, db):
         self.gene = gene
         self.db = db
@@ -218,10 +238,125 @@ class gene(object):
         except Exception:
             return ""
 
+    @classmethod
+    def get_locations(cls, gene_symbol, biocyc_id=None, session=None):
+        """Get subcellular locations for a gene with caching.
+        
+        This method checks if the gene's locations are already cached.
+        If not, it returns None to signal that the caller should perform
+        the query and then cache the result using cache_location().
+        
+        Args:
+            gene_symbol: Gene symbol (e.g., 'BRCA1')
+            biocyc_id: BioCyc gene ID (optional, for cache metadata)
+            session: requests.Session for BioCyc queries (unused in cache lookup)
+            
+        Returns:
+            list or None: List of compartment names if cached, None if not cached
+        """
+        import logging
+        LOGGER = logging.getLogger(__name__)
+        
+        if gene_symbol in cls._location_cache:
+            cls._cache_stats['hits'] += 1
+            cached_data = cls._location_cache[gene_symbol]
+            LOGGER.debug(f"Cache HIT for {gene_symbol}: {cached_data['compartments']}")
+            return cached_data['compartments']
+        
+        cls._cache_stats['misses'] += 1
+        LOGGER.debug(f"Cache MISS for {gene_symbol} - needs querying")
+        return None  # Signal to caller: not cached, perform query
+    
+    @classmethod
+    def cache_location(cls, gene_symbol, compartments, biocyc_id=None):
+        """Store gene location in cache.
+        
+        Args:
+            gene_symbol: Gene symbol (e.g., 'BRCA1')
+            compartments: List of compartment names (e.g., ['mitochondria', 'cytosol'])
+            biocyc_id: BioCyc gene ID (optional, for metadata)
+        """
+        import logging
+        LOGGER = logging.getLogger(__name__)
+        
+        cls._location_cache[gene_symbol] = {
+            'compartments': compartments,
+            'biocyc_id': biocyc_id
+        }
+        cls._cache_stats['queries'] += 1
+        LOGGER.debug(f"Cached locations for {gene_symbol}: {compartments}")
+    
+    @classmethod
+    def clear_cache(cls):
+        """Clear location cache (useful for testing)."""
+        cls._location_cache.clear()
+        cls._cache_stats = {'hits': 0, 'misses': 0, 'queries': 0}
+    
+    @classmethod
+    def get_cache_stats(cls):
+        """Get cache performance statistics.
+        
+        Returns:
+            dict: Statistics including hits, misses, queries, hit_rate, and cache_size
+        """
+        total = cls._cache_stats['hits'] + cls._cache_stats['misses']
+        hit_rate = (cls._cache_stats['hits'] / total * 100) if total > 0 else 0
+        return {
+            **cls._cache_stats,
+            'hit_rate': f"{hit_rate:.1f}%",
+            'cache_size': len(cls._location_cache)
+        }
+    
+    @classmethod
+    def save_cache(cls, filepath):
+        """Save location cache to pickle file.
+        
+        Args:
+            filepath: Path to save the cache pickle file
+        """
+        import pickle
+        import logging
+        LOGGER = logging.getLogger(__name__)
+        
+        try:
+            with open(filepath, 'wb') as f:
+                pickle.dump(cls._location_cache, f)
+            LOGGER.info(f"Saved gene location cache ({len(cls._location_cache)} genes) to {filepath}")
+        except Exception as e:
+            LOGGER.error(f"Failed to save gene location cache: {e}")
+    
+    @classmethod
+    def load_cache(cls, filepath):
+        """Load location cache from pickle file.
+        
+        Args:
+            filepath: Path to load the cache pickle file from
+            
+        Returns:
+            bool: True if cache was loaded successfully, False otherwise
+        """
+        import pickle
+        import os
+        import logging
+        LOGGER = logging.getLogger(__name__)
+        
+        if os.path.exists(filepath):
+            try:
+                with open(filepath, 'rb') as f:
+                    cls._location_cache = pickle.load(f)
+                LOGGER.info(f"Loaded gene location cache ({len(cls._location_cache)} genes) from {filepath}")
+                return True
+            except Exception as e:
+                LOGGER.error(f"Failed to load gene location cache: {e}")
+                return False
+        else:
+            LOGGER.debug(f"Gene location cache file not found: {filepath}")
+            return False
+
     def Ensg(self):  # MetaCyc
         try:
             iiii2 = re.search(
-                "gene=([A-Z0-9]+)",
+                r"gene=([A-Z0-9]+)",
                 str(
                     urllib.request.urlopen(
                         "https://www.genome.jp/dbget-bin/www_bget?hsa+" + self.gene
@@ -230,7 +365,7 @@ class gene(object):
             )  # .group(1)
             if not iiii2:
                 iiii2 = re.search(
-                    "(ENSG[0-9]+)",
+                    r"(ENSG[0-9]+)",
                     str(
                         urllib.request.urlopen(
                             "https://www.ensembl.org/Homo_sapiens/Gene/Summary?g="
@@ -247,7 +382,7 @@ class gene(object):
     def Entrez(self):  # MetaCyc
         try:
             EntrezGene = re.findall(
-                self.gene + "_HUMAN[\S\s].*?\n", open(self.db).read()
+                self.gene + r"_HUMAN[\S\s].*?\n", open(self.db).read()
             )[0].split("\t")[4]
             return EntrezGene
         except Exception:
@@ -256,7 +391,7 @@ class gene(object):
     def Uniprot(self):  # Uniprot
         try:
             UniProtGene = re.findall(
-                self.gene + "_HUMAN[\S\s].*?\n", open(self.db).read()
+                self.gene + r"_HUMAN[\S\s].*?\n", open(self.db).read()
             )[0].split("\t")[0]
             return UniProtGene
         except Exception:
@@ -267,13 +402,15 @@ class compound(object):
     def __init__(self, url, ident, time, EF, specialCompounds, *newparam):
         self.ident = ident
         bm = _bm()
+        # Fetch data from REST API (ignoring legacy url parameter, always use REST)
         pagina_content = bm.getHtml(f"https://rest.kegg.jp/get/{self.ident}", time)
         self.pagina = (
             pagina_content.decode("utf-8")
             if isinstance(pagina_content, bytes)
             else pagina_content
         )
-        self.atributes = bm.getCompParam(
+        # Use REST API parser (not HTML parser) since we're fetching from REST endpoint
+        self.atributes = bm.getCompParamFromRestAPI(
             self.pagina, self.ident, time, EF, specialCompounds, RxnID=None
         )
         # store raw newparam then populate plain attributes

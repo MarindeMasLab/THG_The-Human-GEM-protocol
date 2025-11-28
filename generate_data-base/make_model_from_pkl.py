@@ -141,7 +141,34 @@ model = cobra_reconstruction(
 # Define output path
 Output = os.path.join(project_root, "models", "Human_Database_from_pickle.xml")
 print(f"\nWriting model to: {Output}")
+
+# Log compartment names before writing
+print(f"Compartment names in model before writing:")
+for comp_id in sorted(list(model.compartments.keys())[:5]):
+    print(f"  {comp_id}: '{model.compartments[comp_id]}'")
+
 cobra.io.write_sbml_model(model, Output)
+
+# Post-process SBML to add compartment names (COBRA doesn't write them by default)
+print("Adding compartment names to SBML file...")
+
+# Read the file as text and add name attributes
+with open(Output, 'r', encoding='utf-8') as f:
+    sbml_content = f.read()
+
+# Replace compartment tags to include name attribute
+for comp_id, comp_name in model.compartments.items():
+    if comp_name and comp_name != comp_id:
+        # Find the compartment tag and add name attribute
+        old_tag = f'compartment id="{comp_id}" constant="true"'
+        new_tag = f'compartment id="{comp_id}" name="{comp_name}" constant="true"'
+        sbml_content = sbml_content.replace(old_tag, new_tag)
+
+# Write back
+with open(Output, 'w', encoding='utf-8') as f:
+    f.write(sbml_content)
+
+print(f"Added names for {len([n for n in model.compartments.values() if n])} compartments")
 
 print("\n" + "=" * 80)
 print("MODEL GENERATION COMPLETE!")

@@ -95,16 +95,17 @@ def get_ecnumber_biocyc_html(
 ) -> str:
     """Get raw HTML representing a EC entry in BioCyc."""
     return session.get(
-        f"https://websvc.biocyc.org/{org}/NEW-IMAGE?type=EC-NUMBER&object=EC-{ec_number}"
+        f"https://websvc.biocyc.org/{org}/NEW-IMAGE?type=EC-NUMBER&object=EC-{ec_number}",
+        timeout=10
     ).text
 
 
 def get_html(request_url: str, session: Optional[requests.Session] = None) -> str:
     """Fetch an html by perfoming a GET HTTPS request, maybe with session."""
     if session is not None:
-        return session.get(request_url).text
+        return session.get(request_url, timeout=10).text
     else:
-        return requests.get(request_url).text
+        return requests.get(request_url, timeout=10).text
 
 
 def pattern_match_org(page: str, org: str = "Homo Sapiens") -> List[str]:
@@ -210,7 +211,7 @@ def _fetch_kegg_from_ec_html(ec_number: str):
         # Try direct link from EC to HSA genes
         try:
             ec_to_hsa_url = f"https://rest.kegg.jp/link/hsa/ec:{ec_number}"
-            response = urllib.request.urlopen(ec_to_hsa_url).read()
+            response = urllib.request.urlopen(ec_to_hsa_url, timeout=10).read()
             content = (
                 response.decode("utf-8") if isinstance(response, bytes) else response
             )
@@ -243,7 +244,7 @@ def _fetch_kegg_from_ec_html(ec_number: str):
         if not urls0 or not urls0[0]:
             try:
                 ec_to_mmu_url = f"https://rest.kegg.jp/link/mmu/ec:{ec_number}"
-                response = urllib.request.urlopen(ec_to_mmu_url).read()
+                response = urllib.request.urlopen(ec_to_mmu_url, timeout=10).read()
                 content = (
                     response.decode("utf-8")
                     if isinstance(response, bytes)

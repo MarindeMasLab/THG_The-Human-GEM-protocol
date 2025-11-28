@@ -1,0 +1,8 @@
+# Ignore all example outputs
+*
+
+# But keep this .gitignore file
+!.gitignore
+
+# Keep README if present
+!README.md
