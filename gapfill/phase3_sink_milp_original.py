@@ -16,19 +16,21 @@ from cobra import Reaction, Configuration
 
 # Available LP solvers through optlang (used by COBRApy)
 # Note: gurobi and cplex require commercial licenses
-VALID_LP_SOLVERS = ['glpk', 'glpk_exact', 'scipy', 'gurobi', 'cplex']
+# Note: hybrid uses HiGHS (free, fast) - requires cobrapy >= 0.29.0
+VALID_LP_SOLVERS = ['glpk', 'glpk_exact', 'scipy', 'gurobi', 'cplex', 'hybrid']
 
 
 def set_lp_solver(solver_name):
     """Set the LP solver used by COBRApy for FBA.
     
     Args:
-        solver_name: One of 'glpk', 'glpk_exact', 'scipy', 'gurobi', 'cplex'
+        solver_name: One of 'glpk', 'glpk_exact', 'scipy', 'gurobi', 'cplex', 'hybrid'
                      - glpk: Default, good balance of speed and reliability
                      - glpk_exact: Uses exact arithmetic, slower but more precise
                      - scipy: Pure Python fallback, no external dependencies
                      - gurobi: Commercial solver, very fast (requires license)
                      - cplex: Commercial solver, very fast (requires license)
+                     - hybrid: Uses HiGHS for LP/MILP (free, fast, requires cobrapy >= 0.29.0)
     
     Returns:
         True if solver was set successfully, False otherwise
@@ -48,6 +50,8 @@ def set_lp_solver(solver_name):
             print("  For Gurobi: pip install gurobipy and ensure license is active")
         elif solver_name == 'cplex':
             print("  For CPLEX: pip install cplex and ensure license is active")
+        elif solver_name == 'hybrid':
+            print("  For hybrid (HiGHS): pip install highspy and cobrapy >= 0.29.0")
         return False
 
 
@@ -1600,7 +1604,7 @@ if __name__ == '__main__':
                        help='Tradeoff: coverage vs PTR count')
     parser.add_argument('--solver', choices=['milp', 'greedy', 'dynamic'], default='dynamic',
                        help='Solver: milp (optimal), greedy (fast), dynamic (auto)')
-    parser.add_argument('--solver-lp', choices=['glpk', 'glpk_exact', 'scipy', 'gurobi', 'cplex'], default='glpk',
+    parser.add_argument('--solver-lp', choices=['glpk', 'glpk_exact', 'scipy', 'gurobi', 'cplex', 'hybrid'], default='glpk',
                        help='LP solver for FBA: glpk (default), glpk_exact, scipy')
     parser.add_argument('--sample-blocked', type=int, default=None,
                        help='Sample N blocked reactions (for large components)')
