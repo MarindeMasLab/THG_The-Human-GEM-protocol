@@ -1792,14 +1792,14 @@ def getReacParam(page, time):
             .replace(">+", ">")
             .replace(">n<", ">1<")
         )
-        c11 = (
-            re.sub("<ahttp://www.genome\.jp/dbget-bin/www_bget\?cpd:C[0-9]+", "", b1)
-            .replace(">C", ">1C")
-            .replace(">", "\n")
-        )
-        d11 = ""
-        if c11:
-            d11 = re.findall(r"([0-9]+)(C[0-9]+)", c11)
+        # Extract compounds (C) with stoichiometry - try both old and new KEGG URL formats
+        # New format: stoich<ahttp://www.genome.jp/entry/Cxxxxx">Cxxxxx</a>
+        # Old format: stoich<ahttp://www.genome.jp/dbget-bin/www_bget?cpd:Cxxxxx">Cxxxxx</a>
+        d11_new = re.findall(r"([0-9]*)<ahttp://www\.genome\.jp/entry/(C[0-9]+)\">", b1)
+        d11_old = re.findall(r"([0-9]*)<ahttp://www\.genome\.jp/dbget-bin/www_bget\?cpd:(C[0-9]+)", b1)
+        d11_raw = d11_new if d11_new else d11_old
+        # Default empty stoichiometry to '1'
+        d11 = [(x[0] if x[0] else '1', x[1]) for x in d11_raw]
         urls21 = [
             (
                 str(x[0]),
@@ -1808,14 +1808,12 @@ def getReacParam(page, time):
             )
             for x in d11
         ]
-        c12 = (
-            re.sub("<ahttp://www.genome\.jp/dbget-bin/www_bget\?gl:G[0-9]+", "", b1)
-            .replace(">G", ">1G")
-            .replace(">", "\n")
-        )
-        d12 = ""
-        if c12:
-            d12 = re.findall(r"([0-9]+)(G[0-9]+)", c12)
+        # Extract glycans (G) with stoichiometry - try both old and new KEGG URL formats
+        d12_new = re.findall(r"([0-9]*)<ahttp://www\.genome\.jp/entry/(G[0-9]+)\">", b1)
+        d12_old = re.findall(r"([0-9]*)<ahttp://www\.genome\.jp/dbget-bin/www_bget\?gl:(G[0-9]+)", b1)
+        d12_raw = d12_new if d12_new else d12_old
+        # Default empty stoichiometry to '1'
+        d12 = [(x[0] if x[0] else '1', x[1]) for x in d12_raw]
         urls22 = [
             (
                 str(x[0]),
@@ -1840,14 +1838,12 @@ def getReacParam(page, time):
             .replace(">+", ">")
             .replace(">n<", ">1<")
         )
-        c21 = (
-            re.sub("<ahttp://www.genome\.jp/dbget-bin/www_bget\?cpd:C[0-9]+", "", b2)
-            .replace(">C", ">1C")
-            .replace(">", "\n")
-        )
-        d21 = ""
-        if c21:
-            d21 = re.findall(r"([0-9]+)(C[0-9]+)", c21)
+        # Extract compounds (C) with stoichiometry for products - try both old and new KEGG URL formats
+        d21_new = re.findall(r"([0-9]*)<ahttp://www\.genome\.jp/entry/(C[0-9]+)\">", b2)
+        d21_old = re.findall(r"([0-9]*)<ahttp://www\.genome\.jp/dbget-bin/www_bget\?cpd:(C[0-9]+)", b2)
+        d21_raw = d21_new if d21_new else d21_old
+        # Default empty stoichiometry to '1'
+        d21 = [(x[0] if x[0] else '1', x[1]) for x in d21_raw]
         urls31 = [
             (
                 str(x[0]),
@@ -1856,14 +1852,12 @@ def getReacParam(page, time):
             )
             for x in d21
         ]
-        c22 = (
-            re.sub("<ahttp://www.genome\.jp/dbget-bin/www_bget\?gl:G[0-9]+", "", b2)
-            .replace(">G", ">1G")
-            .replace(">", "\n")
-        )
-        d22 = ""
-        if c22:
-            d22 = re.findall(r"([0-9]+)(G[0-9]+)", c22)
+        # Extract glycans (G) with stoichiometry for products - try both old and new KEGG URL formats
+        d22_new = re.findall(r"([0-9]*)<ahttp://www\.genome\.jp/entry/(G[0-9]+)\">", b2)
+        d22_old = re.findall(r"([0-9]*)<ahttp://www\.genome\.jp/dbget-bin/www_bget\?gl:(G[0-9]+)", b2)
+        d22_raw = d22_new if d22_new else d22_old
+        # Default empty stoichiometry to '1'
+        d22 = [(x[0] if x[0] else '1', x[1]) for x in d22_raw]
         urls32 = [
             (
                 str(x[0]),
@@ -3146,6 +3140,12 @@ def getCompParamFromRestAPI(flat_file_text, ident, time, EF, specialCompounds, R
 
         if urls21a == "":
             urls21a = urls21
+        
+        # FIX: For glycans or compounds with simple formulas (no parentheses),
+        # Formula4 (urls21aa) would be empty. Copy Formula1 to Formula4 if needed.
+        if not urls21aa and urls21a:
+            urls21aa = urls21a
+            LOGGER.debug(f"Formula4 copied from Formula1 for {ident}: {urls21aa}")
 
         # Build urls1 (associated reactions) from REACTION field
         if "REACTION" in fields:
@@ -3443,6 +3443,11 @@ def getCompParam(page, ident, time, EF, specialCompounds, RxnID):
                     )
         if urls21a == "":
             urls21a = urls21
+        
+        # FIX: For glycans or compounds with simple formulas (no parentheses),
+        # Formula4 (urls21aa) would be empty. Copy Formula1 to Formula4 if needed.
+        if not urls21aa and urls21a:
+            urls21aa = urls21a
         # urls22 = urls21a
         urls4aa = str(urls4aa)
         return (

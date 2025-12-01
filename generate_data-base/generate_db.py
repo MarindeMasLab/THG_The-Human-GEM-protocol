@@ -1232,7 +1232,6 @@ if __name__ == "__main__":
                             try:
                                 IthRxnMB = mass_balance(eq, RxnID)
                                 LOGGER.debug(f"Mass balance result: {IthRxnMB}")
-                                error_tracker.add_success('mass_balance')
                             except Exception as e:
                                 LOGGER.warning(f"Mass balance failed for reaction {RxnID}: {e}")
                                 error_tracker.add_error(
@@ -1242,10 +1241,16 @@ if __name__ == "__main__":
                                     level='warning'
                                 )
                                 IthRxnMB = None
-                                
-                        if IthRxnMB and IthRxnMB[
-                                4
-                            ]:  # If new compounds have to be added to mass balance the reactions, then check if they need to be added to the network as compounds
+                        
+                        # Check if mass balance was successful
+                        # IthRxnMB[10] is TestOfBalance: 0=balanced initially, 1=balanced after adjustment, 2=failed
+                        # IthRxnMB[4] is NewSpecies[0]: list of new compounds to add (can be empty for already-balanced reactions)
+                        mass_balance_succeeded = IthRxnMB and IthRxnMB[10] != 2
+                        
+                        if mass_balance_succeeded:
+                            # If new compounds have to be added to mass balance the reactions,
+                            # check if they need to be added to the network as compounds
+                            if IthRxnMB[4]:
                                 LOGGER.debug(
                                     f"Adding extra compounds for mass balance: {IthRxnMB[4]}"
                                 )
@@ -1279,6 +1284,7 @@ if __name__ == "__main__":
                                                     specialCompounds,
                                                 )
                                             )
+                            error_tracker.add_success('mass_balance')
                         else:  # if the reaction cannot be mass balanced all the stoichimetric coef are assumed to be like in the original reaction
                             LOGGER.warning(
                                 f"Reaction {RxnID} cannot be mass balanced - using original stoichiometry"
