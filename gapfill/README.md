@@ -286,7 +286,7 @@ python3 gapfill/gapfill.py <command> [options]
 | `--parallel-fba` | Enable parallel FBA testing | False |
 | `--workers-fba` | Workers for FBA parallelization | 2 |
 | `--small-threshold` | Size cutoff for parallel vs sequential | 500 |
-| `--solver-lp` | LP solver (glpk, glpk_exact, scipy) | glpk |
+| `--solver-lp` | LP solver (glpk, glpk_exact, scipy, gurobi, cplex) | glpk |
 | `--lambda` | MILP tradeoff weight | 0.01 |
 | `--min-comp-size` | Minimum component size to process | 4 |
 | `--max-components` | Maximum components to process | None |

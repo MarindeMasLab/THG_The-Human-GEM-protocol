@@ -82,7 +82,7 @@ def main():
     pall.add_argument('--parallel-fba', action='store_true', help='Enable parallel FBA testing within components (sink_milp)')
     pall.add_argument('--workers-fba', type=int, default=2, help='Workers for parallel FBA testing (sink_milp)')
     pall.add_argument('--small-threshold', type=int, default=500, help='Component size threshold for parallel vs sequential (sink_milp)')
-    pall.add_argument('--solver-lp', choices=['glpk','glpk_exact','scipy'], default='glpk', help='LP solver for FBA (sink_milp)')
+    pall.add_argument('--solver-lp', choices=['glpk','glpk_exact','scipy','gurobi','cplex'], default='glpk', help='LP solver for FBA (sink_milp). gurobi/cplex require licenses.')
 
     args = parser.parse_args()
 
