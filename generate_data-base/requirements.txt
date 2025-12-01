@@ -1,49 +1,75 @@
-anyio==3.6.2
-appdirs==1.4.4
-attrs==22.1.0
-certifi==2022.9.24
-charset-normalizer==2.1.1
-cobra==0.26.0
-commonmark==0.9.1
-depinfo==1.7.0
-dill==0.3.6
-diskcache==5.4.0
-et-xmlfile==1.1.0
-exceptiongroup==1.0.4
-future==0.18.2
-h11==0.12.0
-httpcore==0.15.0
-httpx==0.23.0
-idna==3.4
-importlib-resources==5.10.0
-iniconfig==1.1.1
-mpmath==1.2.1
-numpy==1.23.4
-openpyxl==3.0.10
-optlang==1.6.0
-packaging==21.3
-pandas==1.5.1
-pluggy==1.0.0
-PubChemPy==1.0.4
-pydantic==1.10.2
-Pygments==2.13.0
-pyparsing==3.0.9
-pytest==7.2.0
-python-dateutil==2.8.2
-python-dotenv==1.0.0
-python-libsbml==5.19.7
-pytz==2022.6
-requests==2.28.1
-rfc3986==1.5.0
-rich==12.6.0
-ruamel.yaml==0.17.21
-ruamel.yaml.clib==0.2.7
-scipy==1.9.3
-six==1.16.0
-sniffio==1.3.0
-swiglpk==5.0.8
-sympy==1.11.1
-tomli==2.0.1
-tqdm==4.64.1
-typing_extensions==4.4.0
-urllib3==1.26.16
+# Requirements for Generate Human Metabolic Database
+# THG: The Human GEM Protocol
+# Last Updated: December 2024
+
+# =============================================================================
+# Core Dependencies
+# =============================================================================
+
+# COBRApy - Constraint-Based Reconstruction and Analysis
+# Required for metabolic model creation, manipulation, and SBML I/O
+cobra>=0.29.0
+
+# Data manipulation and analysis
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Scientific computing
+scipy>=1.10.0
+
+# =============================================================================
+# API and Web Access
+# =============================================================================
+
+# HTTP library for KEGG REST API access
+requests>=2.28.0
+
+# PubChem compound identification and lookup
+PubChemPy>=1.0.4
+
+# =============================================================================
+# Utilities
+# =============================================================================
+
+# Progress bars for long-running operations
+tqdm>=4.65.0
+
+# Extended pickling support for caching complex objects
+dill>=0.3.6
+
+# Excel report generation
+XlsxWriter>=3.0.0
+
+# Symbolic mathematics for formula parsing
+sympy>=1.12
+
+# Environment variable management
+python-dotenv>=1.0.0
+
+# =============================================================================
+# Optional Dependencies (for full functionality)
+# =============================================================================
+
+# Escher for pathway visualization (optional)
+# escher>=1.7.3
+
+# Jupyter for interactive analysis (optional)
+# jupyter>=1.0.0
+# ipykernel>=6.0.0
+
+# =============================================================================
+# Development Dependencies (install with: pip install -r requirements-dev.txt)
+# =============================================================================
+
+# Testing framework
+pytest>=7.0.0
+
+# Code coverage
+pytest-cov>=4.0.0
+
+# Type checking
+# mypy>=1.0.0
+
+# Linting
+# flake8>=6.0.0
+# black>=23.0.0
