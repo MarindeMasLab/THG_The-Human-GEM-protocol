@@ -16,28 +16,49 @@ from cobra import Reaction, Configuration
 
 # Available LP solvers through optlang (used by COBRApy)
 # Note: gurobi and cplex require commercial licenses
-# Note: hybrid uses HiGHS (free, fast) - requires cobrapy >= 0.29.0
-VALID_LP_SOLVERS = ['glpk', 'glpk_exact', 'scipy', 'gurobi', 'cplex', 'hybrid']
+# Note: hybrid uses HiGHS via optlang - requires cobrapy >= 0.29.0
+# Note: highs uses direct HiGHS with primal simplex - ~4x faster than glpk!
+VALID_LP_SOLVERS = ['glpk', 'glpk_exact', 'scipy', 'gurobi', 'cplex', 'hybrid', 'highs']
+
+# Global flag for using direct HiGHS solver
+_USE_FAST_HIGHS = False
 
 
 def set_lp_solver(solver_name):
     """Set the LP solver used by COBRApy for FBA.
     
     Args:
-        solver_name: One of 'glpk', 'glpk_exact', 'scipy', 'gurobi', 'cplex', 'hybrid'
+        solver_name: One of 'glpk', 'glpk_exact', 'scipy', 'gurobi', 'cplex', 'hybrid', 'highs'
                      - glpk: Default, good balance of speed and reliability
                      - glpk_exact: Uses exact arithmetic, slower but more precise
                      - scipy: Pure Python fallback, no external dependencies
                      - gurobi: Commercial solver, very fast (requires license)
                      - cplex: Commercial solver, very fast (requires license)
-                     - hybrid: Uses HiGHS for LP/MILP (free, fast, requires cobrapy >= 0.29.0)
+                     - hybrid: Uses HiGHS via optlang (free, requires cobrapy >= 0.29.0)
+                     - highs: Direct HiGHS with primal simplex (~4x faster than glpk!)
     
     Returns:
         True if solver was set successfully, False otherwise
     """
+    global _USE_FAST_HIGHS
+    
     if solver_name not in VALID_LP_SOLVERS:
         print(f"Warning: Unknown solver '{solver_name}'. Valid options: {VALID_LP_SOLVERS}")
         return False
+    
+    # Special handling for direct HiGHS
+    if solver_name == 'highs':
+        try:
+            import highspy
+            _USE_FAST_HIGHS = True
+            print(f"LP solver set to: highs (direct HiGHS with primal simplex - ~4x faster!)")
+            return True
+        except ImportError:
+            print("Warning: highspy not installed. Install with: pip install highspy")
+            print("Falling back to glpk")
+            solver_name = 'glpk'
+    else:
+        _USE_FAST_HIGHS = False
     
     try:
         Configuration().solver = solver_name

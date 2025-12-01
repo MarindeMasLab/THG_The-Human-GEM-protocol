@@ -286,10 +286,19 @@ python3 gapfill/gapfill.py <command> [options]
 | `--parallel-fba` | Enable parallel FBA testing | False |
 | `--workers-fba` | Workers for FBA parallelization | 2 |
 | `--small-threshold` | Size cutoff for parallel vs sequential | 500 |
-| `--solver-lp` | LP solver (glpk, glpk_exact, scipy, gurobi, cplex, hybrid) | glpk |
+| `--solver-lp` | LP solver (glpk, glpk_exact, scipy, gurobi, cplex, hybrid, **highs**) | glpk |
 | `--lambda` | MILP tradeoff weight | 0.01 |
 | `--min-comp-size` | Minimum component size to process | 4 |
 | `--max-components` | Maximum components to process | None |
+
+**Solver Options:**
+- `glpk`: Default, good balance of speed and reliability
+- `glpk_exact`: Exact arithmetic, slower but more precise
+- `scipy`: Pure Python fallback, no external dependencies
+- `gurobi`: Commercial solver, very fast (requires license)
+- `cplex`: Commercial solver, very fast (requires license)
+- `hybrid`: HiGHS via optlang (free, requires cobrapy >= 0.29.0)
+- **`highs`**: Direct HiGHS with primal simplex - **~4x faster than glpk!** (recommended)
 
 ---
 

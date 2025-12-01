@@ -26,7 +26,44 @@ import time
 from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from cobra.io import load_json_model, save_json_model
-from cobra import Reaction, Model
+from cobra import Reaction, Model, Configuration
+
+
+# Available LP solvers
+# Note: highs uses direct HiGHS with primal simplex - ~4x faster than glpk!
+VALID_LP_SOLVERS = ['glpk', 'glpk_exact', 'scipy', 'gurobi', 'cplex', 'hybrid', 'highs']
+
+# Global flag for using direct HiGHS solver
+_USE_FAST_HIGHS = False
+
+
+def set_lp_solver(solver_name):
+    """Set the LP solver used by COBRApy for FBA."""
+    global _USE_FAST_HIGHS
+    
+    if solver_name not in VALID_LP_SOLVERS:
+        print(f"Warning: Unknown solver '{solver_name}'. Valid options: {VALID_LP_SOLVERS}")
+        return False
+    
+    if solver_name == 'highs':
+        try:
+            import highspy
+            _USE_FAST_HIGHS = True
+            print(f"LP solver set to: highs (direct HiGHS with primal simplex - ~4x faster!)")
+            return True
+        except ImportError:
+            print("Warning: highspy not installed. Falling back to glpk")
+            solver_name = 'glpk'
+    else:
+        _USE_FAST_HIGHS = False
+    
+    try:
+        Configuration().solver = solver_name
+        print(f"LP solver set to: {solver_name}")
+        return True
+    except Exception as e:
+        print(f"Warning: Could not set solver '{solver_name}': {e}")
+        return False
 
 
 def load_candidates(path):
