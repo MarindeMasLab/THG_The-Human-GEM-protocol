@@ -144,7 +144,17 @@ The database generation follows a multi-stage pipeline:
 └─────────────────────────────────────────────────────────────────┘
                                  ↓
 ┌─────────────────────────────────────────────────────────────────┐
-│                    STAGE 5: MODEL ASSEMBLY                      │
+│              STAGE 5: GPR & sGPR RULE GENERATION                │
+│  Fetch gene associations → Build GPR rules → Generate sGPR      │
+└─────────────────────────────────────────────────────────────────┘
+                                 ↓
+┌─────────────────────────────────────────────────────────────────┐
+│          STAGE 6: ISOFORM-BASED COMPARTMENTALIZATION            │
+│  Expand reactions by isoforms → Assign compartments → Localize  │
+└─────────────────────────────────────────────────────────────────┘
+                                 ↓
+┌─────────────────────────────────────────────────────────────────┐
+│                    STAGE 7: MODEL ASSEMBLY                      │
 │  Create COBRA model → Add reactions → Set bounds → Export SBML  │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -177,7 +187,25 @@ The database generation follows a multi-stage pipeline:
 - Identifies and reports mass-imbalanced reactions
 - Handles special cases (polymers, generic compounds)
 
-#### Stage 5: Model Assembly
+#### Stage 5: GPR & sGPR Rule Generation
+- Fetches gene associations from KEGG for each reaction
+- Builds Gene-Protein-Reaction (GPR) rules with AND/OR logic
+- Generates simplified GPR (sGPR) rules for downstream analysis
+- Maps EC numbers to genes via KEGG orthology
+- Handles multi-enzyme complexes and isozyme alternatives
+- Integrates with Ensembl for gene annotation and validation
+
+#### Stage 6: Isoform-Based Compartmentalization
+- Expands reactions based on enzyme isoform localization
+- Queries subcellular localization databases for protein targeting
+- Creates compartment-specific copies of reactions:
+  - Cytoplasm (c), Mitochondria (m), Endoplasmic Reticulum (r)
+  - Golgi (g), Nucleus (n), Lysosome (l), Peroxisome (x), Extracellular (e)
+- Generates transport reactions between compartments
+- Handles isoform-specific metabolite pools
+- Ensures metabolic connectivity across cellular compartments
+
+#### Stage 7: Model Assembly
 - Creates COBRApy Model object
 - Adds metabolites with annotations (KEGG, PubChem, InChI)
 - Adds reactions with GPR rules
