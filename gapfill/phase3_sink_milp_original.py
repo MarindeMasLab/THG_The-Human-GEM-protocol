@@ -23,6 +23,45 @@ VALID_LP_SOLVERS = ['glpk', 'glpk_exact', 'scipy', 'gurobi', 'cplex', 'hybrid', 
 # Global flag for using direct HiGHS solver
 _USE_FAST_HIGHS = False
 
+# Global FastFBASolver instance (created lazily when needed)
+_fast_solver = None
+_fast_solver_model_id = None  # Track which model the solver was built for
+
+
+def _get_fast_solver(model):
+    """Get or create a FastFBASolver for the given model.
+    
+    Lazily creates the solver on first use. Reuses if same model.
+    """
+    global _fast_solver, _fast_solver_model_id
+    
+    if not _USE_FAST_HIGHS:
+        return None
+    
+    # Check if we need to create a new solver
+    model_id = id(model)
+    if _fast_solver is None or _fast_solver_model_id != model_id:
+        try:
+            # Try relative import first, then absolute
+            try:
+                from .fast_fba import FastFBASolver
+            except ImportError:
+                from fast_fba import FastFBASolver
+            _fast_solver = FastFBASolver(model)
+            _fast_solver_model_id = model_id
+        except Exception as e:
+            print(f"Warning: Could not create FastFBASolver: {e}")
+            return None
+    
+    return _fast_solver
+
+
+def _reset_fast_solver():
+    """Reset the fast solver (call when model changes significantly)."""
+    global _fast_solver, _fast_solver_model_id
+    _fast_solver = None
+    _fast_solver_model_id = None
+
 
 def set_lp_solver(solver_name):
     """Set the LP solver used by COBRApy for FBA.
@@ -178,12 +217,27 @@ def get_deadend_info(model):
 
 
 def find_blocked_reactions_in_set(model, reaction_ids, zero_cutoff=None):
-    """Find which reactions in the given set are blocked."""
+    """Find which reactions in the given set are blocked.
+    
+    Uses FastFBASolver if _USE_FAST_HIGHS is True, otherwise standard COBRApy.
+    """
     if zero_cutoff is None:
         zero_cutoff = model.tolerance * 10
     
     blocked = set()
     
+    # Use FastFBASolver if highs is selected
+    if _USE_FAST_HIGHS:
+        fast_solver = _get_fast_solver(model)
+        if fast_solver is not None:
+            for rid in reaction_ids:
+                if rid not in fast_solver.rxn_to_idx:
+                    continue
+                if not fast_solver.can_carry_flux(rid, zero_cutoff):
+                    blocked.add(rid)
+            return blocked
+    
+    # Standard COBRApy approach
     for rid in reaction_ids:
         try:
             rxn = model.reactions.get_by_id(rid)
@@ -334,6 +388,8 @@ def test_candidate_batch(model, candidate, blocked_rxn_ids, zero_cutoff=None):
     
     NOTE: Assumes temp sinks are already added to the model.
     
+    Uses FastFBASolver if _USE_FAST_HIGHS is True, otherwise standard COBRApy.
+    
     Returns: set of reaction IDs that become unblocked
     """
     if zero_cutoff is None:
@@ -350,6 +406,32 @@ def test_candidate_batch(model, candidate, blocked_rxn_ids, zero_cutoff=None):
     
     unblocked = set()
     
+    # Use FastFBASolver if highs is selected
+    # Note: This creates a solver each time which is slow. For better performance,
+    # use test_candidate_batch_fast which reuses the solver.
+    if _USE_FAST_HIGHS:
+        fast_solver = _get_fast_solver(model)
+        if fast_solver is not None:
+            try:
+                # Add PTR dynamically to existing solver
+                ptr_id = fast_solver.add_temp_ptr(met1, met2)
+                
+                # Test each blocked reaction
+                for rid in blocked_rxn_ids:
+                    if rid not in fast_solver.rxn_to_idx:
+                        continue
+                    if fast_solver.can_carry_flux(rid, zero_cutoff):
+                        unblocked.add(rid)
+                
+                # Remove PTR
+                fast_solver.remove_temp_ptr(ptr_id)
+                
+                return unblocked
+            except Exception as e:
+                # Fall back to COBRApy if FastFBASolver fails
+                pass
+    
+    # Standard COBRApy approach
     with model:
         # Add candidate PTR once
         ptr = Reaction('_TEST_PTR_')
@@ -397,6 +479,8 @@ def test_candidate_batch(model, candidate, blocked_rxn_ids, zero_cutoff=None):
 
 # Global variable for parallel worker (set by initializer)
 _worker_model = None
+_worker_fast_solver = None  # FastFBASolver for worker process
+_worker_use_highs = False   # Whether to use FastFBASolver in worker
 
 
 def _init_worker(model_json_path, temp_sink_mets, deadend_types, solver_lp='glpk'):
@@ -408,14 +492,17 @@ def _init_worker(model_json_path, temp_sink_mets, deadend_types, solver_lp='glpk
         deadend_types: List of dead-end types ('substrate' or 'product')
         solver_lp: LP solver to use for FBA
     """
-    global _worker_model
+    global _worker_model, _worker_fast_solver, _worker_use_highs
     
-    # Set LP solver for this worker process
-    from cobra import Configuration
-    try:
-        Configuration().solver = solver_lp
-    except Exception:
-        pass  # Fall back to default
+    _worker_use_highs = (solver_lp == 'highs')
+    
+    # Set LP solver for this worker process (for non-highs solvers)
+    if not _worker_use_highs:
+        from cobra import Configuration
+        try:
+            Configuration().solver = solver_lp
+        except Exception:
+            pass  # Fall back to default
     
     _worker_model = load_json_model(model_json_path)
     
@@ -435,16 +522,54 @@ def _init_worker(model_json_path, temp_sink_mets, deadend_types, solver_lp='glpk
             rxn.add_metabolites({met: -1.0})
             rxn.bounds = (0, 1000.0)
         _worker_model.add_reactions([rxn])
+    
+    # Create FastFBASolver once for this worker (if using highs)
+    _worker_fast_solver = None
+    if _worker_use_highs:
+        try:
+            try:
+                from .fast_fba import FastFBASolver
+            except ImportError:
+                from fast_fba import FastFBASolver
+            _worker_fast_solver = FastFBASolver(_worker_model)
+        except Exception as e:
+            print(f"Worker: Could not create FastFBASolver: {e}")
+            _worker_use_highs = False
 
 
 def _test_single_reaction(args):
-    """Worker function to test if a single reaction can carry flux with a PTR."""
+    """Worker function to test if a single reaction can carry flux with a PTR.
+    
+    Uses FastFBASolver if solver_lp='highs' was set in _init_worker.
+    Reuses the pre-built solver and adds/removes PTR dynamically.
+    """
     rid, met1, met2, zero_cutoff = args
-    global _worker_model
+    global _worker_model, _worker_use_highs, _worker_fast_solver
     
     if _worker_model is None:
         return (rid, False)
     
+    # Use FastFBASolver if available (created in _init_worker)
+    if _worker_use_highs and _worker_fast_solver is not None:
+        try:
+            # Check if reaction exists
+            if rid not in _worker_fast_solver.rxn_to_idx:
+                return (rid, False)
+            
+            # Add PTR dynamically
+            ptr_id = _worker_fast_solver.add_temp_ptr(met1, met2)
+            
+            # Test if reaction can carry flux
+            can_carry = _worker_fast_solver.can_carry_flux(rid, zero_cutoff)
+            
+            # Remove PTR
+            _worker_fast_solver.remove_temp_ptr(ptr_id)
+            
+            return (rid, can_carry)
+        except Exception:
+            pass  # Fall back to COBRApy
+    
+    # Standard COBRApy approach
     try:
         m1 = _worker_model.metabolites.get_by_id(met1)
         m2 = _worker_model.metabolites.get_by_id(met2)
