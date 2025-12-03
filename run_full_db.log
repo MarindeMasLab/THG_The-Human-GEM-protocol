@@ -1,0 +1,65 @@
+2025-11-17 18:23:11,413 - __main__ - INFO - Resuming from pathway index 2 (pathway 3/94)
+2025-11-17 18:23:13,670 - __main__ - DEBUG - ================================================================================
+2025-11-17 18:23:13,671 - __main__ - DEBUG - Processing Reaction R08570 from pathway Pentose phosphate pathway
+2025-11-17 18:23:13,671 - __main__ - DEBUG - ================================================================================
+2025-11-17 18:23:37,942 - __main__ - DEBUG - Reaction Name: R08570
+2025-11-17 18:23:37,942 - __main__ - DEBUG - Reaction EC: ['4.1.2.55', '4.1.2.51']
+2025-11-17 18:23:37,942 - __main__ - DEBUG - Thermodynamic: ortholog
+2025-11-17 18:23:37,942 - __main__ - DEBUG - Initial Substrates (raw from KEGG):
+2025-11-17 18:23:37,942 - __main__ - DEBUG -   - Coeff: 1, Link: http://www.genome.jp/dbget-bin/www_bget?cpd:C00204..., ID: C00204
+2025-11-17 18:23:37,942 - __main__ - DEBUG - Initial Products (raw from KEGG):
+2025-11-17 18:23:37,943 - __main__ - DEBUG -   - Coeff: 1, Link: http://www.genome.jp/dbget-bin/www_bget?cpd:C00577..., ID: C00577
+2025-11-17 18:23:37,943 - __main__ - DEBUG -   - Coeff: 1, Link: http://www.genome.jp/dbget-bin/www_bget?cpd:C00022..., ID: C00022
+2025-11-17 18:23:37,943 - __main__ - DEBUG - Compounds in reaction R08570: ['C00204', 'C00577', 'C00022']
+2025-11-17 18:23:37,943 - __main__ - DEBUG - Total unique compounds: 3
+2025-11-17 18:23:37,943 - __main__ - DEBUG - New compounds to fetch: ['C00204', 'C00577']
+2025-11-17 18:23:37,943 - __main__ - DEBUG - Fetching 2 compounds: ['C00204', 'C00577']
+2025-11-17 18:23:39,253 - __main__ - DEBUG - Batch data retrieved: 2 entries
+2025-11-17 18:23:39,253 - __main__ - DEBUG - Processing compound C00204...
+2025-11-17 18:23:39,253 - __main__ - DEBUG - Using batch data for C00204
+2025-11-17 18:23:39,838 - pubchempy - DEBUG - Request URL: https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/cids/JSON
+2025-11-17 18:23:39,838 - pubchempy - DEBUG - Request data: b'name=2-Dehydro-3-deoxy-D-gluconate'
+2025-11-17 18:23:40,350 - pubchempy - DEBUG - Request URL: https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/JSON
+2025-11-17 18:23:40,350 - pubchempy - DEBUG - Request data: b'cid=44229111'
+2025-11-17 18:23:40,920 - pubchempy - DEBUG - Created Compound(44229111)
+2025-11-17 18:23:42,088 - __main__ - DEBUG - Compound C00204 details:
+2025-11-17 18:23:42,088 - __main__ - DEBUG -   - ID1: C00204
+2025-11-17 18:23:42,088 - __main__ - DEBUG -   - ID2: C00204
+2025-11-17 18:23:42,088 - __main__ - DEBUG -   - Name: 2-Dehydro-3-deoxy-D-gluconate
+2025-11-17 18:23:42,088 - __main__ - DEBUG -   - Formula1: C6H10O6
+2025-11-17 18:23:42,088 - __main__ - DEBUG -   - Formula2: C6H10O6
+2025-11-17 18:23:42,088 - __main__ - DEBUG -   - Atom composition: 
+2025-11-17 18:23:42,088 - __main__ - DEBUG - Processing compound C00577...
+2025-11-17 18:23:42,088 - __main__ - DEBUG - Using batch data for C00577
+2025-11-17 18:23:42,679 - pubchempy - DEBUG - Request URL: https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/cids/JSON
+2025-11-17 18:23:42,679 - pubchempy - DEBUG - Request data: b'name=D-Glyceraldehyde'
+2025-11-17 18:23:43,287 - pubchempy - DEBUG - Request URL: https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/JSON
+2025-11-17 18:23:43,287 - pubchempy - DEBUG - Request data: b'cid=79014'
+2025-11-17 18:23:43,799 - pubchempy - DEBUG - Created Compound(79014)
+2025-11-17 18:23:45,068 - __main__ - DEBUG - Compound C00577 details:
+2025-11-17 18:23:45,068 - __main__ - DEBUG -   - ID1: C00577
+2025-11-17 18:23:45,068 - __main__ - DEBUG -   - ID2: C00577
+2025-11-17 18:23:45,068 - __main__ - DEBUG -   - Name: D-Glyceraldehyde
+2025-11-17 18:23:45,068 - __main__ - DEBUG -   - Formula1: C3H6O3
+2025-11-17 18:23:45,068 - __main__ - DEBUG -   - Formula2: C3H6O3
+2025-11-17 18:23:45,068 - __main__ - DEBUG -   - Atom composition: 
+2025-11-17 18:23:45,068 - __main__ - DEBUG - Calling getRxncons to evaluate reaction R08570
+2025-11-17 18:23:45,068 - __main__ - DEBUG - Mass balance test result for R08570: 1
+2025-11-17 18:23:45,068 - __main__ - DEBUG - Reaction equation: 1 C6H10O6 -> 1 C3H6O3 + 1 C3H4O3
+2025-11-17 18:23:45,069 - __main__ - DEBUG - Mass balance result: ([1.0], [1.0, 1.0], 0, 0, [], [], ['C6H10O6'], ['C3H6O3', 'C3H4O3'], '1 C6H10O6 -> 1 C3H6O3 + 1 C3H4O3', '1 C6H10O6 -> 1 C3H6O3 + 1 C3H4O3', 1)
+2025-11-17 18:23:45,069 - __main__ - DEBUG - Final Reaction Structure for R08570:
+2025-11-17 18:23:45,069 - __main__ - DEBUG -   Substrates:
+2025-11-17 18:23:45,069 - __main__ - DEBUG -     1.0 C00204 (2-Dehydro-3-deoxy-D-gluconate)
+2025-11-17 18:23:45,069 - __main__ - DEBUG -   Products:
+2025-11-17 18:23:45,069 - __main__ - DEBUG -     1.0 C00577 (D-Glyceraldehyde)
+2025-11-17 18:23:45,069 - __main__ - DEBUG -     1.0 C00022 (Pyruvate)
+2025-11-17 18:23:45,069 - __main__ - DEBUG - Assigning substrates/products for reaction R08570: substrates=[['1.0', 'http://www.genome.jp/dbget-bin/www_bget?cpd:C00204', 'C00204']] products=[['1.0', 'http://www.genome.jp/dbget-bin/www_bget?cpd:C00577', 'C00577'], ['1.0', 'http://www.genome.jp/dbget-bin/www_bget?cpd:C00022', 'C00022']]
+2025-11-17 18:23:47,488 - functions.gpr.auth_gpr - INFO - Page length: 65716
+2025-11-17 18:23:47,489 - functions.gpr.auth_gpr - INFO - Trying old BioCyc format
+2025-11-17 18:23:47,490 - functions.gpr.auth_gpr - INFO - Urls matched from matched from HUMAN: 0
+2025-11-17 18:23:48,754 - functions.gpr.auth_gpr - INFO - Trying old BioCyc format
+2025-11-17 18:23:48,758 - functions.gpr.auth_gpr - INFO - Trying old BioCyc format
+2025-11-17 18:23:48,761 - functions.gpr.auth_gpr - INFO - Urls matched from changed MetaCyc: 0
+2025-11-17 18:23:48,761 - functions.gpr.auth_gpr - WARNING - Trying Kegg
+2025-11-17 18:23:50,086 - functions.gpr.auth_gpr - INFO - Urls from HUMAN kegg: ['']
+2025-11-17 18:23:51,374 - functions.gpr.auth_gpr - WARNING - Urls from MOUSE kegg: ['']

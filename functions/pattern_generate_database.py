@@ -447,7 +447,7 @@ def DefRxn(Rxn, MetEquiv):
         # 		RxnProduct =  ['<speciesReference species="'+x[0]+'" stoichiometry="'+str(x[1])+'" constant="true"/>' for x in P]
         RxnProduct = [
             '          <speciesReference species="'
-            + re.sub("_.+", "_" + LocVar.get(re.search("_(.+)", x[0]).group(1)), x[0])
+                + re.sub(r"_.+", "_" + LocVar.get(re.search(r"_(.+)", x[0]).group(1)), x[0])
             + '" stoichiometry="'
             + str(x[1])
             + '" constant="true"/>\n'
@@ -465,11 +465,11 @@ def DefRxn(Rxn, MetEquiv):
         # print(303, Rxn.GPR )
         RxnGPRIdent = Rxn.GPR
         if RxnGPRIdent[0].replace("[", "").replace("]", ""):
-            # 			RxnGPR = ['<modifierSpeciesReference species="E_'+x+'"/>' for x in re.findall('\[([A-Za-z0-9*]+)\]', Rxn.GPR[1])]
+            # 			RxnGPR = ['<modifierSpeciesReference species="E_'+x+'"/>' for x in re.findall(r'\[([A-Za-z0-9*]+)\]', Rxn.GPR[1])]
             RxnGPR = [
                 '<modifierSpeciesReference species="' + x + '"/>'
                 for x in re.findall(
-                    "([A-Za-z0-9\-]+)", Rxn.GPR[1].replace("and", "").replace("or", "")
+                    r"([A-Za-z0-9\-]+)", Rxn.GPR[1].replace("and", "").replace("or", "")
                 )
             ]
             # print(RxnGPR)
@@ -622,13 +622,13 @@ def DefMod(Gene):
                 '<rdf:li rdf:resource="https://identifiers.org/ensembl/'
                 + str(x)
                 + '"/>'
-                for x in list(set(re.findall("ENST[0-9]+", z)))
+                for x in list(set(re.findall(r"ENST[0-9]+", z)))
             ]
             y2 = [
                 '<rdf:li rdf:resource="https://identifiers.org/ensembl/'
                 + str(x)
                 + '"/>'
-                for x in list(set(re.findall("ENSP[0-9]+", z)))
+                for x in list(set(re.findall(r"ENSP[0-9]+", z)))
             ]
         except Exception:  # URLError: <urlopen error [Errno 60] Operation timed out>
             y, y2 = "", ""

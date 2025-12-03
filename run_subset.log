@@ -1,0 +1,103 @@
+2025-11-17 18:29:12,496 - __main__ - INFO - Resuming from pathway index 2 (pathway 3/2)
+2025-11-17 18:29:12,940 - __main__ - DEBUG - Loaded pre_sbml_pos_comp.pk keys: ['name', 'id', 'mets', 'mets_cl', 'met_equiv', 'reactions', 'reactions_cl', 'genes', 'pathways', 'loc']
+2025-11-17 18:29:12,941 - __main__ - DEBUG - mets: type=<class 'dict'>, len=65
+2025-11-17 18:29:12,941 - __main__ - DEBUG - reactions: type=<class 'dict'>, len=58
+2025-11-17 18:29:12,941 - __main__ - DEBUG - genes: type=<class 'dict'>, len=99
+2025-11-17 18:29:12,941 - __main__ - DEBUG - pathways: type=<class 'dict'>, len=2
+2025-11-17 18:29:12,941 - __main__ - DEBUG - loc: type=<class 'dict'>, len=1
+2025-11-17 18:29:12,943 - cobra.core.model - INFO - The current solver interface glpk doesn't support setting the optimality tolerance.
+2025-11-17 18:29:12,943 - __main__ - DEBUG - Starting cobra_reconstruction: metabolites=39 reactions=30 genes=99 pathways=2 loc=1
+2025-11-17 18:29:12,943 - __main__ - DEBUG - Sample metabolite keys: ['D08646_cytosol', 'C00221_cytosol', 'G11113_cytosol', 'C01172_cytosol', 'C00022_cytosol', 'C00074_cytosol', 'C00197_cytosol', 'C00236_cytosol', 'C00084_cytosol', 'C00006_cytosol']
+2025-11-17 18:29:12,943 - __main__ - DEBUG - Sample reaction keys: ['R01600_cytosol', 'R00200_cytosol', 'R01512_cytosol', 'R00711_cytosol', 'R09086_cytosol', 'R09532_cytosol', 'R01788_cytosol', 'R07618_cytosol', 'R01518_cytosol', 'R01015_cytosol']
+2025-11-17 18:29:12,943 - __main__ - INFO - Adding 39 metabolites to the model
+2025-11-17 18:29:12,944 - __main__ - INFO - Successfully added 39 metabolites
+2025-11-17 18:29:12,944 - __main__ - INFO - Annotating 39 metabolites
+Resuming from pathway index 2 (pathway 3/2)
+Annotating metabolites:   0%|          | 0/39 [00:00<?, ?met/s]Annotating metabolites: 100%|██████████| 39/39 [00:00<00:00, 305753.00met/s]
+2025-11-17 18:29:12,945 - __main__ - INFO - Processing glycan formulas
+Processing glycans:   0%|          | 0/39 [00:00<?, ?met/s]Processing glycans: 100%|██████████| 39/39 [00:00<00:00, 1797558.86met/s]
+2025-11-17 18:29:12,945 - __main__ - INFO - Normalizing metabolite IDs using equivalency mapping
+Normalizing metabolite IDs:   0%|          | 0/39 [00:00<?, ?met/s]Normalizing metabolite IDs: 100%|██████████| 39/39 [00:00<00:00, 85598.04met/s]
+2025-11-17 18:29:12,946 - __main__ - INFO - Adding 30 reactions to the model
+2025-11-17 18:29:12,947 - __main__ - INFO - Successfully added 30 reactions
+2025-11-17 18:29:12,947 - __main__ - INFO - Processing reaction metabolites and annotations
+Processing reactions:   0%|          | 0/30 [00:00<?, ?rxn/s]2025-11-17 18:29:12,948 - functions.gpr.ast_gpr - INFO - GPR appears to contain only ORs (no ANDs). Stripping all brackets for: '(HK1) or (HK3) or (HK2) or ((GCK) or (HKDC1))'
+2025-11-17 18:29:12,949 - functions.gpr.ast_gpr - INFO - GPR appears to contain only ORs (no ANDs). Stripping all brackets for: '(PKM)) or ((PKLR)'
+2025-11-17 18:29:12,949 - functions.gpr.ast_gpr - INFO - GPR appears to contain only ORs (no ANDs). Stripping all brackets for: '((PGK1) or (PGK2))'
+2025-11-17 18:29:12,949 - functions.gpr.ast_gpr - INFO - GPR appears to contain only ORs (no ANDs). Stripping all brackets for: '(G222)) or (G221) or ((G218)'
+2025-11-17 18:29:12,950 - functions.gpr.ast_gpr - INFO - GPR appears to contain only ORs (no ANDs). Stripping all brackets for: '(PTEN)) or ((MINPP1)'
+2025-11-17 18:29:12,950 - functions.gpr.ast_gpr - INFO - GPR appears to contain only ORs (no ANDs). Stripping all brackets for: '(G92579)) or (G57818) or ((G2538)'
+2025-11-17 18:29:12,951 - functions.gpr.ast_gpr - INFO - GPR appears to contain only ORs (no ANDs). Stripping all brackets for: '((G441531) or (G5223) or (G669)) or (G5224)'
+2025-11-17 18:29:12,951 - functions.gpr.ast_gpr - INFO - GPR appears to contain only ORs (no ANDs). Stripping all brackets for: '(PGM2)) or ((PGM1)'
+2025-11-17 18:29:12,952 - functions.gpr.ast_gpr - INFO - GPR appears to contain only ORs (no ANDs). Stripping all brackets for: '((FBP1) or (FBP2))'
+2025-11-17 18:29:12,952 - functions.gpr.ast_gpr - INFO - GPR appears to contain only ORs (no ANDs). Stripping all brackets for: '((PFKL) or (PFKP)) or (PFKM)'
+2025-11-17 18:29:12,953 - functions.gpr.ast_gpr - INFO - GPR appears to contain only ORs (no ANDs). Stripping all brackets for: '((G217) or (G501)) or (G219) or (G224) or (G223)'
+2025-11-17 18:29:12,953 - functions.gpr.ast_gpr - INFO - GPR appears to contain only ORs (no ANDs). Stripping all brackets for: '(PGAM2)) or (PGAM1) or ((BPGM)'
+2025-11-17 18:29:12,954 - functions.gpr.ast_gpr - INFO - GPR appears to contain only ORs (no ANDs). Stripping all brackets for: '(HK1) or (HK3) or (HK2) or ((GCK) or (HKDC1))'
+2025-11-17 18:29:12,954 - functions.gpr.ast_gpr - INFO - GPR appears to contain only ORs (no ANDs). Stripping all brackets for: '(G387712)) or (G2027) or (G2026) or ((G2023)'
+2025-11-17 18:29:12,955 - functions.gpr.ast_gpr - INFO - GPR appears to contain only ORs (no ANDs). Stripping all brackets for: '(G5161) or ((G5160) or (G5162))'
+2025-11-17 18:29:12,955 - functions.gpr.ast_gpr - INFO - GPR appears to contain only ORs (no ANDs). Stripping all brackets for: '(G125) or (G126) or ((G124) or (G128) or (G130) or (G131)) or (G127)'
+2025-11-17 18:29:12,956 - functions.gpr.ast_gpr - INFO - GPR appears to contain only ORs (no ANDs). Stripping all brackets for: '((PFKL) or (PFKP)) or (PFKM)'
+2025-11-17 18:29:12,956 - functions.gpr.ast_gpr - INFO - GPR appears to contain only ORs (no ANDs). Stripping all brackets for: '(G229) or (G230)) or ((G226)'
+2025-11-17 18:29:12,956 - functions.gpr.ast_gpr - INFO - GPR appears to contain only ORs (no ANDs). Stripping all brackets for: '(G5161) or ((G5160) or (G5162))'
+2025-11-17 18:29:12,957 - functions.gpr.ast_gpr - INFO - GPR appears to contain only ORs (no ANDs). Stripping all brackets for: '(PGAM2)) or (PGAM1) or ((BPGM)'
+2025-11-17 18:29:12,957 - functions.gpr.ast_gpr - INFO - GPR appears to contain only ORs (no ANDs). Stripping all brackets for: '((G2597) or (G26330))'
+Processing reactions: 100%|██████████| 30/30 [00:00<00:00, 3014.45rxn/s]
+2025-11-17 18:29:12,958 - __main__ - INFO - Adding 2 pathway groups
+2025-11-17 18:29:12,958 - __main__ - INFO - Assigning reactions to pathway groups
+Assigning pathways:   0%|          | 0/2 [00:00<?, ?pathway/s]Assigning pathways: 100%|██████████| 2/2 [00:00<00:00, 1523.26pathway/s]
+2025-11-17 18:29:12,959 - __main__ - INFO - Processing 99 genes
+2025-11-17 18:29:12,959 - __main__ - INFO - Batch-fetching Ensembl annotations for gene symbols
+2025-11-17 18:29:12,959 - __main__ - INFO - Attempting to fetch annotations for 99 gene symbols
+2025-11-17 18:29:12,959 - urllib3.util.retry - DEBUG - Converted retries value: 3 -> Retry(total=3, connect=None, read=None, redirect=None, status=None)
+2025-11-17 18:29:12,960 - functions.ensembl_client - INFO - Starting Ensembl annotation fetch for 99 unique identifiers
+2025-11-17 18:29:12,960 - functions.ensembl_client - INFO - Using batch_size=50, max_workers=10, timeout=5
+2025-11-17 18:29:12,960 - functions.ensembl_client - INFO - Found 0 Ensembl IDs and 99 gene symbols
+2025-11-17 18:29:12,960 - functions.ensembl_client - INFO - Processing 2 symbol batches
+Fetching by symbol:   0%|          | 0/2 [00:00<?, ?batch/s]2025-11-17 18:29:13,603 - functions.ensembl_client - DEBUG - Found 18/50 symbols in this batch
+Fetching by symbol:  50%|█████     | 1/2 [00:00<00:00,  1.55batch/s]2025-11-17 18:29:14,038 - functions.ensembl_client - DEBUG - Found 13/49 symbols in this batch
+Fetching by symbol: 100%|██████████| 2/2 [00:01<00:00,  1.92batch/s]Fetching by symbol: 100%|██████████| 2/2 [00:01<00:00,  1.85batch/s]
+2025-11-17 18:29:14,039 - functions.ensembl_client - INFO - Fetching cross-references for 31 IDs with 10 workers
+Fetching xrefs:   0%|          | 0/31 [00:00<?, ?gene/s]Fetching xrefs:   3%|▎         | 1/31 [00:00<00:03,  9.12gene/s]Fetching xrefs:  10%|▉         | 3/31 [00:00<00:04,  6.34gene/s]Fetching xrefs:  42%|████▏     | 13/31 [00:00<00:00, 27.82gene/s]Fetching xrefs:  58%|█████▊    | 18/31 [00:00<00:00, 32.46gene/s]Fetching xrefs:  74%|███████▍  | 23/31 [00:00<00:00, 28.86gene/s]Fetching xrefs:  87%|████████▋ | 27/31 [00:01<00:00, 12.78gene/s]Fetching xrefs:  97%|█████████▋| 30/31 [00:02<00:00,  9.99gene/s]Fetching xrefs: 100%|██████████| 31/31 [00:02<00:00, 13.64gene/s]
+2025-11-17 18:29:16,329 - functions.ensembl_client - INFO - Completed: 31 genes annotated, 31 with cross-references
+2025-11-17 18:29:16,338 - __main__ - INFO - Fetched Ensembl annotations for 31 genes (out of 99 requested)
+2025-11-17 18:29:16,339 - __main__ - INFO - Annotating 99 genes
+Annotating genes:   0%|          | 0/99 [00:00<?, ?gene/s]2025-11-17 18:29:16,339 - __main__ - WARNING - Gene 'G2645' was not found. Creating new one!
+2025-11-17 18:29:16,355 - __main__ - WARNING - Gene 'G9562' was not found. Creating new one!
+2025-11-17 18:29:16,382 - __main__ - WARNING - Gene 'G5372' was not found. Creating new one!
+2025-11-17 18:29:16,385 - __main__ - WARNING - Gene 'G5373' was not found. Creating new one!
+2025-11-17 18:29:16,388 - __main__ - WARNING - Gene 'G55276' was not found. Creating new one!
+2025-11-17 18:29:16,391 - __main__ - WARNING - Gene 'ACSS1' was not found. Creating new one!
+2025-11-17 18:29:16,391 - __main__ - WARNING - Gene 'ACSS2' was not found. Creating new one!
+2025-11-17 18:29:16,391 - __main__ - WARNING - Gene 'ACSS3' was not found. Creating new one!
+2025-11-17 18:29:16,391 - __main__ - WARNING - Gene 'G116285' was not found. Creating new one!
+2025-11-17 18:29:16,394 - __main__ - WARNING - Gene 'G123876' was not found. Creating new one!
+2025-11-17 18:29:16,398 - __main__ - WARNING - Gene 'G142827' was not found. Creating new one!
+2025-11-17 18:29:16,402 - __main__ - WARNING - Gene 'G341392' was not found. Creating new one!
+2025-11-17 18:29:16,405 - __main__ - WARNING - Gene 'G348158' was not found. Creating new one!
+2025-11-17 18:29:16,408 - __main__ - WARNING - Gene 'G54988' was not found. Creating new one!
+2025-11-17 18:29:16,411 - __main__ - WARNING - Gene 'G6296' was not found. Creating new one!
+2025-11-17 18:29:16,414 - __main__ - WARNING - Gene 'G80221' was not found. Creating new one!
+2025-11-17 18:29:16,421 - __main__ - WARNING - Gene 'G10327' was not found. Creating new one!
+Annotating genes:  58%|█████▊    | 57/99 [00:00<00:00, 565.93gene/s]2025-11-17 18:29:16,472 - __main__ - WARNING - Gene 'LDHA' was not found. Creating new one!
+2025-11-17 18:29:16,472 - __main__ - WARNING - Gene 'LDHAL6A' was not found. Creating new one!
+2025-11-17 18:29:16,472 - __main__ - WARNING - Gene 'LDHAL6B' was not found. Creating new one!
+2025-11-17 18:29:16,472 - __main__ - WARNING - Gene 'LDHB' was not found. Creating new one!
+2025-11-17 18:29:16,472 - __main__ - WARNING - Gene 'LDHC' was not found. Creating new one!
+2025-11-17 18:29:16,496 - __main__ - WARNING - Gene 'G6888' was not found. Creating new one!
+2025-11-17 18:29:16,501 - __main__ - WARNING - Gene 'G4351' was not found. Creating new one!
+2025-11-17 18:29:16,509 - __main__ - WARNING - Gene 'G374291' was not found. Creating new one!
+2025-11-17 18:29:16,512 - __main__ - WARNING - Gene 'G4535' was not found. Creating new one!
+2025-11-17 18:29:16,515 - __main__ - WARNING - Gene 'G4536' was not found. Creating new one!
+2025-11-17 18:29:16,519 - __main__ - WARNING - Gene 'G4537' was not found. Creating new one!
+2025-11-17 18:29:16,522 - __main__ - WARNING - Gene 'G4538' was not found. Creating new one!
+2025-11-17 18:29:16,525 - __main__ - WARNING - Gene 'G4539' was not found. Creating new one!
+2025-11-17 18:29:16,528 - __main__ - WARNING - Gene 'G4540' was not found. Creating new one!
+2025-11-17 18:29:16,532 - __main__ - WARNING - Gene 'G4541' was not found. Creating new one!
+2025-11-17 18:29:16,535 - __main__ - WARNING - Gene 'G4719' was not found. Creating new one!
+2025-11-17 18:29:16,539 - __main__ - WARNING - Gene 'G4720' was not found. Creating new one!
+2025-11-17 18:29:16,541 - __main__ - WARNING - Gene 'G4722' was not found. Creating new one!
+2025-11-17 18:29:16,544 - __main__ - WARNING - Gene 'G4723' was not found. Creating new one!
+2025-11-17 18:29:16,547 - __main__ - WARNING - Gene 'G4728' was not found. Creating new one!
+2025-11-17 18:29:16,552 - __main__ - WARNING - Gene 'G4729' was not found. Creating new one!
+Annotating genes: 100%|██████████| 99/99 [00:00<00:00, 458.51gene/s]
