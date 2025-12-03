@@ -85,7 +85,6 @@ def _rxn_product(self):
 
 def sanitize_loaded_reactions(rxn_dict, name="reactions"):
     """Sanitize reaction objects loaded from disk.
-
     Ensures each reaction has `subs`/`prods` attributes and that callable
     accessors (`Substrate`, `Product`, `SetSubstrate`, `SetProduct`) are
     bound to stable module-level methods instead of fragile lambdas.
@@ -110,7 +109,6 @@ def sanitize_loaded_reactions(rxn_dict, name="reactions"):
                     e,
                 )
                 subs = getattr(rxn, "subs", None)
-
             try:
                 if hasattr(rxn, "Product") and callable(rxn.Product):
                     prods = rxn.Product()
@@ -124,7 +122,6 @@ def sanitize_loaded_reactions(rxn_dict, name="reactions"):
                     e,
                 )
                 prods = getattr(rxn, "prods", None)
-
             # Ensure lists exist
             subs = subs if subs is not None else []
             prods = prods if prods is not None else []
@@ -138,7 +135,6 @@ def sanitize_loaded_reactions(rxn_dict, name="reactions"):
                 LOGGER.debug(
                     "Could not set subs/prods on reaction %s", key, exc_info=True
                 )
-
             try:
                 rxn.Substrate = MethodType(_rxn_substrate, rxn)
                 rxn.Product = MethodType(_rxn_product, rxn)
@@ -165,7 +161,6 @@ def cobra_reconstruction(
     metabolite_list_general: Dict[List, CompoundType],
 ) -> cobra.Model:
     """Reconstruction of gathered information given by using cobrapy.
-
     Parameters
     ----------
     model_name: str
@@ -278,11 +273,9 @@ def cobra_reconstruction(
                 x.formula = metabolite_list[xth_metabolite_id].Formula4
             except Exception as e:
                 import traceback
-
                 LOGGER.error(f"Error updating glycan formula for {x.id}: {e}")
                 LOGGER.error(traceback.format_exc())
                 continue
-
     LOGGER.info("Normalizing metabolite IDs using equivalency mapping")
     for x in tqdm(
         model.metabolites, desc="Normalizing metabolite IDs", unit="met"
@@ -292,8 +285,7 @@ def cobra_reconstruction(
                 metabolite_list_general[metabolite_equivalent[x.id.split("_")[0]]].ID1
                 + "_"
                 + x.compartment.lower()
-            )
-
+            )            
     def normalize_id(reac_id: str):
         iden, comp_desc = reac_id.split("_")
         comp = location_dict[comp_desc.lower()]
@@ -568,6 +560,10 @@ if __name__ == "__main__":
         sys.path.append(project_root)
 
     ListOfPaths = os.path.join(project_root, "files", "human_kegg_pathways.txt")
+    # If PATHWAY_SUBSET is set, use that file instead (allows testing subset runs)
+    subset_file = os.environ.get("PATHWAY_SUBSET")
+    if subset_file:
+        ListOfPaths = subset_file
     ModelCompounds = os.path.join(project_root, "files", "extra_compounds.txt")
     ExtraFormula = os.path.join(project_root, "files", "extra_formula.txt")
     ModelReactions = ""
@@ -1111,9 +1107,9 @@ if __name__ == "__main__":
                             tmp_xth_sgpr = ""
                             tmp_xth_gpr = ""
                             for y in range(int(len(xth_tmp_gpr) / 2)):
-                                if not re.findall("^\[\]$", xth_tmp_gpr[y + y][x]):
+                                if not re.findall(r"^\[\]$", xth_tmp_gpr[y + y][x]):
                                     tmp_xth_sgpr += xth_tmp_gpr[y + y][x]
-                                if not re.findall("^\[\]$", xth_tmp_gpr[y + y + 1][x]):
+                                if not re.findall(r"^\[\]$", xth_tmp_gpr[y + y + 1][x]):
                                     tmp_xth_gpr += xth_tmp_gpr[y + y + 1][x]
                             tmp_xth_sgpr = (
                                 str(
@@ -1269,7 +1265,7 @@ if __name__ == "__main__":
     while g < len(GPRList):
         if GPRIdent[g] in GPRList.keys() and GPRList[GPRIdent[g]].GprSubcell():
             gene_matches = re.findall(
-                "([A-Za-z0-9\-]+)",
+                r"([A-Za-z0-9\-]+)",
                 GPRList[GPRIdent[g]]
                 .GprSubcell()[1]
                 .replace("and", "")
