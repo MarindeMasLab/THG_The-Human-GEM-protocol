@@ -1,0 +1,21 @@
+# Gap-Filling Pipeline Requirements
+# ===================================
+# Python dependencies for the metabolic network gap-filling pipeline
+
+# Core metabolic modeling
+cobra>=0.26.0                    # COBRApy for constraint-based modeling
+
+# Graph algorithms and network analysis
+networkx>=2.6                    # Component analysis and MST algorithms
+
+# Numerical and optimization
+numpy>=1.20                      # Array operations
+scipy>=1.7                       # MILP optimization (scipy.optimize.milp)
+
+# Optional: Alternative MILP solver interface
+pulp>=2.7                        # Alternative MILP interface (optional)
+
+# Optional: LP solvers (install via system package manager)
+# - GLPK: apt install glpk-utils libglpk-dev (Ubuntu/Debian)
+# - GLPK: brew install glpk (macOS)
+# - Note: HiGHS is not supported by optlang/COBRApy
