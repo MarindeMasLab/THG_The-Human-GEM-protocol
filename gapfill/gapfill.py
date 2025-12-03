@@ -117,6 +117,23 @@ def main():
         default=500,
         help="Component size threshold for parallel vs sequential (sink_milp)",
     )
+    p3.add_argument(
+        "--use-cache",
+        action="store_true",
+        default=True,
+        help="Use coverage matrix cache (sink_milp)",
+    )
+    p3.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Disable coverage matrix cache (sink_milp)",
+    )
+    p3.add_argument(
+        "--cache-dir",
+        type=str,
+        default=None,
+        help="Cache directory (default: OUTPUT_DIR/cache)",
+    )
 
     pall = sub.add_parser(
         "run-all", help="Run full pipeline: phase1 -> phase2 -> phase3"
@@ -227,6 +244,23 @@ def main():
         choices=["glpk", "glpk_exact", "scipy", "gurobi", "cplex"],
         default="glpk",
         help="LP solver for FBA (sink_milp). gurobi/cplex require licenses.",
+    )
+    pall.add_argument(
+        "--use-cache",
+        action="store_true",
+        default=True,
+        help="Use coverage matrix cache (sink_milp)",
+    )
+    pall.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Disable coverage matrix cache (sink_milp)",
+    )
+    pall.add_argument(
+        "--cache-dir",
+        type=str,
+        default=None,
+        help="Cache directory (default: OUTPUT_DIR/cache)",
     )
 
     args = parser.parse_args()
@@ -385,6 +419,8 @@ def main():
                     n_workers_components=args.workers_components,
                     small_component_threshold=args.small_threshold,
                     component_ids=component_ids,
+                    use_cache=not args.no_cache,
+                    cache_dir=args.cache_dir,
                     verbose=True,
                 )
                 n = result.get("summary", {}).get(
@@ -552,6 +588,8 @@ def main():
                     small_component_threshold=args.small_threshold,
                     min_component_size=args.min_comp_size,
                     component_ids=component_ids,
+                    use_cache=not args.no_cache,
+                    cache_dir=args.cache_dir,
                     verbose=True,
                 )
                 n3 = result.get("summary", {}).get(

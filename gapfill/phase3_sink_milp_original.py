@@ -8,6 +8,8 @@ additional PTRs can unblock them (even though they're now topologically connecte
 import csv
 import os
 import time
+import hashlib
+import pickle
 import networkx as nx
 from collections import defaultdict
 from cobra.io import load_json_model, save_json_model
@@ -51,6 +53,69 @@ def set_lp_solver(solver_name):
         elif solver_name == "cplex":
             print("  For CPLEX: pip install cplex and ensure license is active")
         return False
+
+
+def compute_model_hash(model_json_path):
+    """Compute hash of model file for cache validation."""
+    with open(model_json_path, "rb") as f:
+        return hashlib.md5(f.read()).hexdigest()[:12]
+
+
+def get_coverage_cache_path(cache_dir, model_hash, component_id):
+    """Get path to coverage cache file for a specific component."""
+    os.makedirs(cache_dir, exist_ok=True)
+    return os.path.join(cache_dir, f"coverage_{model_hash}_comp{component_id}.pkl")
+
+
+def load_coverage_from_cache(cache_path, candidate_keys, verbose=True):
+    """Load coverage matrix from cache if valid.
+
+    Returns: coverage dict or None if cache invalid/missing
+    """
+    if not os.path.exists(cache_path):
+        return None
+
+    try:
+        with open(cache_path, "rb") as f:
+            cached = pickle.load(f)
+
+        # Validate cache
+        if cached.get("candidate_keys") != candidate_keys:
+            if verbose:
+                print("    Cache invalid: candidate set changed")
+            return None
+
+        if verbose:
+            print(f"    Loaded coverage from cache ({os.path.basename(cache_path)})")
+            age_mins = (time.time() - cached.get("timestamp", 0)) / 60
+            print(f"    Cache age: {age_mins:.1f} minutes")
+
+        return cached["coverage"]
+    except Exception as e:
+        if verbose:
+            print(f"    Cache load failed: {e}")
+        return None
+
+
+def save_coverage_to_cache(cache_path, coverage, candidate_keys, verbose=True):
+    """Save coverage matrix to cache."""
+    try:
+        cache_data = {
+            "coverage": coverage,
+            "candidate_keys": candidate_keys,
+            "timestamp": time.time(),
+            "num_candidates": len(candidate_keys),
+            "num_entries": sum(len(v) for v in coverage.values()),
+        }
+        with open(cache_path, "wb") as f:
+            pickle.dump(cache_data, f)
+
+        if verbose:
+            size_mb = os.path.getsize(cache_path) / (1024 * 1024)
+            print(f"    Saved coverage to cache ({size_mb:.2f} MB)")
+    except Exception as e:
+        if verbose:
+            print(f"    Cache save failed: {e}")
 
 
 def load_candidates(path):
@@ -1071,6 +1136,8 @@ def run_test_on_original_component(
     sample_blocked=None,  # Sample N blocked reactions (for large components)
     parallel=False,  # Use parallel FBA testing
     n_workers=None,  # Number of parallel workers
+    use_cache=True,  # Use coverage cache
+    cache_dir=None,  # Cache directory
     verbose=True,
 ):
     """
@@ -1232,26 +1299,44 @@ def run_test_on_original_component(
             f"  Stagnation limit: {stagnation_limit} (Type A: {num_type_a}, patience: {patience_limit})"
         )
 
-    # Compute coverage with temp sinks
+    # Compute coverage with temp sinks (with caching)
     if verbose:
         print("\nComputing coverage matrix (with temp sinks)...")
 
-    # Pass component_rxn_ids for graph pre-filtering optimization
-    component_rxn_ids = set(rxns_to_check)
-    coverage = compute_coverage_with_temp_sinks(
-        phase2_model,
-        comp_candidates,
-        blocked,
-        deadend_info,
-        component_rxn_ids=component_rxn_ids,
-        verbose=verbose,
-        early_termination=True,
-        stagnation_limit=stagnation_limit,
-        parallel=parallel,
-        n_workers=n_workers,
-        model_json_path=phase2_model_json,
-        solver_lp=solver_lp,
-    )
+    coverage = None
+    candidate_keys = {(c["met1"], c["met2"]) for c in comp_candidates}
+
+    # Try to load from cache
+    if use_cache:
+        if cache_dir is None:
+            cache_dir = os.path.join(out_dir, "cache")
+
+        model_hash = compute_model_hash(phase2_model_json)
+        cache_path = get_coverage_cache_path(cache_dir, model_hash, target_component_id)
+        coverage = load_coverage_from_cache(cache_path, candidate_keys, verbose)
+
+    # Compute if not cached
+    if coverage is None:
+        # Pass component_rxn_ids for graph pre-filtering optimization
+        component_rxn_ids = set(rxns_to_check)
+        coverage = compute_coverage_with_temp_sinks(
+            phase2_model,
+            comp_candidates,
+            blocked,
+            deadend_info,
+            component_rxn_ids=component_rxn_ids,
+            verbose=verbose,
+            early_termination=True,
+            stagnation_limit=stagnation_limit,
+            parallel=parallel,
+            n_workers=n_workers,
+            model_json_path=phase2_model_json,
+            solver_lp=solver_lp,
+        )
+
+        # Save to cache
+        if use_cache:
+            save_coverage_to_cache(cache_path, coverage, candidate_keys, verbose)
 
     # Filter to effective candidates
     effective = [
@@ -1353,6 +1438,8 @@ def process_small_component(args):
             sample_blocked=params["sample_blocked"],
             parallel=False,  # No nested parallelization
             n_workers=None,
+            use_cache=params.get("use_cache", True),
+            cache_dir=params.get("cache_dir"),
             verbose=False,  # Reduce output in parallel mode
         )
         return (cid, size, result)
@@ -1377,6 +1464,8 @@ def run_phase3_all_components(
     min_component_size=4,
     component_ids=None,
     sample_blocked=None,
+    use_cache=True,
+    cache_dir=None,
     verbose=True,
 ):
     """
@@ -1489,6 +1578,8 @@ def run_phase3_all_components(
             "solver": solver,
             "solver_lp": solver_lp,
             "sample_blocked": sample_blocked,
+            "use_cache": use_cache,
+            "cache_dir": cache_dir,
         }
 
         small_args = [
@@ -1578,13 +1669,15 @@ def run_phase3_all_components(
                 sample_blocked=sample_blocked,
                 parallel=parallel_fba,
                 n_workers=n_workers_fba,
+                use_cache=use_cache,
+                cache_dir=cache_dir,
                 verbose=verbose,
             )
             component_results[cid] = result
 
             # Collect selected PTRs
-            if "selected" in result and result["selected"]:
-                for ptr in result["selected"]:
+            if "selected_details" in result and result["selected_details"]:
+                for ptr in result["selected_details"]:
                     key = (ptr["met1"], ptr["met2"])
                     if key not in used_candidates:
                         used_candidates.add(key)
@@ -1644,6 +1737,8 @@ def run_phase3_all_components(
                 sample_blocked=sample_blocked,
                 parallel=parallel_fba,
                 n_workers=n_workers_fba,
+                use_cache=use_cache,
+                cache_dir=cache_dir,
                 verbose=verbose,
             )
             # Use 'selected_details' (list) not 'selected' (count)
