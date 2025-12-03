@@ -6,6 +6,7 @@ additional PTRs can unblock them (even though they're now topologically connecte
 """
 
 import csv
+import json
 import os
 import time
 import hashlib
@@ -116,6 +117,52 @@ def save_coverage_to_cache(cache_path, coverage, candidate_keys, verbose=True):
     except Exception as e:
         if verbose:
             print(f"    Cache save failed: {e}")
+
+
+def add_transport(model, sel, idx, prefix="SINK"):
+    """Add a PTR (pseudo-transport-reaction) to the model.
+
+    Args:
+        model: COBRApy model
+        sel: PTR dict with 'met1', 'met2', 'base', 'suffix1', 'suffix2', etc.
+        idx: Index for unique reaction ID
+        prefix: Prefix for reaction ID (default: "SINK")
+
+    Returns:
+        reaction ID if successful, None if metabolites not found
+    """
+    met1 = sel["met1"]
+    met2 = sel["met2"]
+    base = sel.get("base", "")
+    s1 = sel.get("suffix1", "")
+    s2 = sel.get("suffix2", "")
+
+    # Generate unique reaction ID
+    raw_id = f"{prefix}_TRANS_{base}_{s1}_{s2}_{idx}"
+    rid = "".join(ch if (ch.isalnum() or ch == "_") else "_" for ch in raw_id)
+
+    # Get metabolites
+    try:
+        m1 = model.metabolites.get_by_id(met1)
+        m2 = model.metabolites.get_by_id(met2)
+    except KeyError:
+        return None
+
+    # Create transport reaction
+    rxn = Reaction(rid)
+    rxn.name = f"Phase3 sink MILP transport {met1} <-> {met2}"
+    rxn.add_metabolites({m1: -1.0, m2: 1.0})
+    rxn.lower_bound = -1000.0
+    rxn.upper_bound = 1000.0
+    rxn.annotation = {
+        "phase3_selected": "true",
+        "strategy": "sink_milp",
+        "met1": met1,
+        "met2": met2,
+    }
+
+    model.add_reactions([rxn])
+    return rid
 
 
 def load_candidates(path):
@@ -1837,6 +1884,47 @@ def run_phase3_all_components(
         json.dump(convert_for_json(output), f, indent=2)
     if verbose:
         print(f"Saved full results to: {results_json}")
+
+    # ==========================================================================
+    # BUILD AND SAVE MODEL
+    # ==========================================================================
+    if verbose:
+        print(f"\n{'='*60}")
+        print("BUILDING FINAL MODEL")
+        print(f"{'='*60}")
+
+    # Load phase2 model (already connected)
+    model = load_json_model(phase2_model_json)
+    if verbose:
+        print(f"Loaded phase2 model: {len(model.reactions)} reactions")
+
+    # Add all selected PTRs to the model
+    added_count = 0
+    for idx, ptr in enumerate(all_selected):
+        rid = add_transport(model, ptr, idx, prefix="SINK")
+        if rid:
+            ptr["reaction_id"] = rid
+            added_count += 1
+        else:
+            if verbose:
+                print(
+                    f"  Warning: Could not add PTR {ptr.get('met1')} <-> {ptr.get('met2')}"
+                )
+
+    if verbose:
+        print(f"Added {added_count} PTRs to model")
+        print(f"Final model: {len(model.reactions)} reactions")
+
+    # Save the model
+    if phase3_model_out is None:
+        phase3_model_out = os.path.join(out_dir, "phase3_sink_milp_model.json")
+
+    save_json_model(model, phase3_model_out)
+    if verbose:
+        print(f"\nSaved final model to: {phase3_model_out}")
+
+    # Add model path to output
+    output["model_path"] = phase3_model_out
 
     return output
 

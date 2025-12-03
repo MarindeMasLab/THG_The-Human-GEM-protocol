@@ -430,8 +430,10 @@ def main():
                     args.out or os.path.join(os.path.dirname(__file__), "files"),
                     "phase3_selected_ptrs.csv",
                 )
-                model_out = args.model_out
-                print(f"Phase3 sink MILP wrote {out_csv}, selected {n} PTRs")
+                model_out = result.get("model_path", args.model_out)
+                print(
+                    f"Phase3 sink MILP wrote {out_csv}, model {model_out}, selected {n} PTRs"
+                )
             else:
                 # Default blocked strategies (exact, hybrid, hybrid_batch)
                 ph3_block = importlib.import_module("phase3_blocked_optimizer")
@@ -599,8 +601,8 @@ def main():
                     out_dir or os.path.join(os.path.dirname(__file__), "files"),
                     "phase3_selected_ptrs.csv",
                 )
-                phase3_model = None  # sink_milp doesn't create a new model yet
-                print(f"Phase-3 sink MILP: selected {n3} PTRs -> {out_csv3}")
+                phase3_model = result.get("model_path", args.model_out)
+                print(f"Phase-3 sink MILP: selected {n3} PTRs -> model {phase3_model}")
             else:
                 print("Running Phase-3 (blocked-reaction minimizer)...")
                 ph3_block = importlib.import_module("phase3_blocked_optimizer")
