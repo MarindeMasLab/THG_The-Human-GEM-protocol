@@ -826,7 +826,9 @@ def compute_coverage_with_temp_sinks(
 
             if n_workers is None:
                 n_workers = 2  # Conservative default
-            n_workers = min(n_workers, 4)  # Hard cap at 4 workers (~2GB RAM)
+            
+            # allow user to brick their computer if they want
+            # n_workers = min(n_workers, 4)  # Hard cap at 4 workers (~2GB RAM)
 
             if verbose:
                 print(f"      Parallel mode: {n_workers} workers (memory-safe limit)")
