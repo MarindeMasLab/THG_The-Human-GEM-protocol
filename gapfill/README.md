@@ -248,6 +248,7 @@ python3 gapfill/gapfill.py run-all --pipeline blocked --strategy sink_milp \
 |------|-------------|
 | `phase3_selected_ptrs.csv` | Final selected PTRs |
 | `phase3_results.json` | Detailed results per component |
+| `*_phase3_sink_milp.json` | Phase-2 model with Phase-3 PTRs added (default: `models/base/THG-beta-batch_251106_phase3_sink_milp.json`; can override with `--phase3-model`) |
 
 ---
 
@@ -291,6 +292,7 @@ python3 gapfill/gapfill.py <command> [options]
 | `--lambda` | MILP tradeoff weight | 0.01 |
 | `--min-comp-size` | Minimum component size to process | 4 |
 | `--max-components` | Maximum components to process | None |
+| `--phase3-model` | Path to write the Phase-3 model (Phase-2 + selected PTRs). When omitted, defaults to `models/base/THG-beta-batch_251106_phase3_sink_milp.json`. | None |
 
 **Solver Options:**
 - `glpk`: Default, good balance of speed and reliability
@@ -328,8 +330,21 @@ python3 gapfill/phase3_sink_milp_original.py \
     --components 4,5,6,7 \
     --parallel-components --workers-components 2 \
     --parallel-fba --workers-fba 2 \
-    --solver-lp glpk
+    --solver-lp glpk \
+    --phase3-model gapfill/files/phase3_custom.json
 ```
+
+### Example 3b: Single-component Phase 3 with model export
+
+```bash
+python3 gapfill/phase3_sink_milp_original.py \
+    --component 2 \
+    --sample-blocked 30 \
+    --max-candidates 200 \
+    --solver greedy \
+    --phase3-model gapfill/files/phase3_single_test.json
+```
+Exports a Phase-3 model JSON with only the selected PTRs added atop the Phase-2 model.
 
 ### Example 4: Deadends objective
 

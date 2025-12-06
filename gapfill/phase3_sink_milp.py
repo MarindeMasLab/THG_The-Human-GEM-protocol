@@ -488,13 +488,59 @@ def get_candidates_for_component(candidates, component_id, rxn_to_comp, used_can
     return relevant
 
 
+def _add_selected_ptrs_to_model(model, ptrs, prefix="PH3_SINK"):
+    """Add selected PTRs to `model` and return list of added reaction IDs."""
+    added = []
+    seen_pairs = set()
+    for idx, sel in enumerate(ptrs):
+        m1 = sel.get('met1'); m2 = sel.get('met2')
+        if not m1 or not m2:
+            continue
+        pair = (m1, m2)
+        if pair in seen_pairs:
+            continue
+        seen_pairs.add(pair)
+
+        base = sel.get('base', '')
+        s1 = sel.get('suffix1', '')
+        s2 = sel.get('suffix2', '')
+        raw_id = f"{prefix}_{base}_{s1}_{s2}_{idx}"
+        rid = ''.join(ch if (ch.isalnum() or ch == '_') else '_' for ch in raw_id)
+
+        try:
+            met1 = model.metabolites.get_by_id(m1)
+            met2 = model.metabolites.get_by_id(m2)
+        except KeyError:
+            continue
+
+        if rid in model.reactions:
+            continue
+
+        rxn = Reaction(rid)
+        rxn.name = f"phase3 sink PTR {m1} -> {m2}"
+        rxn.add_metabolites({met1: -1.0, met2: 1.0})
+        rxn.lower_bound = -1000.0
+        rxn.upper_bound = 1000.0
+        rxn.annotation = {
+            'phase3_selected': 'true',
+            'type': sel.get('type', ''),
+            'base': base,
+            'suffix1': s1,
+            'suffix2': s2,
+        }
+        model.add_reactions([rxn])
+        added.append(rid)
+    return added
+
+
 def run_test_on_component(
     candidates_csv,
     starting_model_json,
     target_component_index=2,  # 1-indexed, 1=main, 2=largest isolated, etc.
     out_dir=None,
     tradeoff_lambda=0.01,
-    verbose=True
+    verbose=True,
+    phase3_model_out=None
 ):
     """
     Run a test on a specific component using temp-sink approach.
@@ -633,6 +679,18 @@ def run_test_on_component(
             for s in selected[:10]:
                 print(f"  {s['met1']} <-> {s['met2']} (Type {s.get('type', '?')})")
     
+    # Optionally write updated model with selected PTRs on top of Phase-2 model
+    if phase3_model_out:
+        try:
+            base_model = load_json_model(starting_model_json)
+            _add_selected_ptrs_to_model(base_model, selected, prefix="PH3_SINK")
+            save_json_model(base_model, phase3_model_out)
+            if verbose:
+                print(f"Saved Phase-3 model with PTRs: {phase3_model_out}")
+        except Exception as e:
+            if verbose:
+                print(f"Warning: could not save Phase-3 model: {e}")
+
     return result
 
 
@@ -644,6 +702,8 @@ if __name__ == '__main__':
     parser.add_argument('--component', type=int, default=3, 
                        help='Component index (1=main, 2=largest isolated, etc.)')
     parser.add_argument('--lambda', dest='tradeoff_lambda', type=float, default=0.01)
+    parser.add_argument('--phase3-model', dest='phase3_model_out', default=None,
+                       help='Output path for Phase-3 model (adds selected PTRs to Phase-2 model)')
     args = parser.parse_args()
     
     base_dir = os.path.dirname(__file__)
@@ -660,5 +720,6 @@ if __name__ == '__main__':
             cand_csv,
             model_json,
             target_component_index=args.component,
-            tradeoff_lambda=args.tradeoff_lambda
+            tradeoff_lambda=args.tradeoff_lambda,
+            phase3_model_out=args.phase3_model_out
         )
