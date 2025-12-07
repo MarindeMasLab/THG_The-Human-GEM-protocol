@@ -488,7 +488,7 @@ def get_candidates_for_component(candidates, component_id, rxn_to_comp, used_can
     return relevant
 
 
-def _add_selected_ptrs_to_model(model, ptrs, prefix="PH3_SINK"):
+def _add_selected_ptrs_to_model(model, ptrs, prefix="TRANS"):
     """Add selected PTRs to `model` and return list of added reaction IDs."""
     added = []
     seen_pairs = set()
@@ -683,7 +683,7 @@ def run_test_on_component(
     if phase3_model_out:
         try:
             base_model = load_json_model(starting_model_json)
-            _add_selected_ptrs_to_model(base_model, selected, prefix="PH3_SINK")
+            _add_selected_ptrs_to_model(base_model, selected, prefix="TRANS")
             save_json_model(base_model, phase3_model_out)
             if verbose:
                 print(f"Saved Phase-3 model with PTRs: {phase3_model_out}")

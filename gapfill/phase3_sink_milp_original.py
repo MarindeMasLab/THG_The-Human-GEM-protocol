@@ -130,7 +130,7 @@ def load_candidates(path):
     return rows
 
 
-def _add_selected_ptrs_to_model(model, ptrs, prefix="PH3_SINK"):
+def _add_selected_ptrs_to_model(model, ptrs, prefix="TRANS"):
     """Add selected PTRs to `model` and return list of added reaction IDs."""
     added = []
     seen_pairs = set()
@@ -873,7 +873,7 @@ def compute_coverage_with_temp_sinks(model, candidates, blocked_rxns, deadend_in
             from multiprocessing import Pool, cpu_count
             if n_workers is None:
                 n_workers = 2  # Conservative default
-            n_workers = min(n_workers, 4)  # Hard cap at 4 workers (~2GB RAM)
+            n_workers = n_workers
             
             if verbose:
                 print(f"      Parallel mode: {n_workers} workers (memory-safe limit)")
@@ -1419,7 +1419,7 @@ def run_test_on_original_component(
     if phase3_model_out:
         try:
             base_model = load_json_model(phase2_model_json)
-            _add_selected_ptrs_to_model(base_model, selected, prefix="PH3_SINK")
+            _add_selected_ptrs_to_model(base_model, selected, prefix="TRANS")
             save_json_model(base_model, phase3_model_out)
             if verbose:
                 print(f"Saved Phase-3 model with PTRs: {phase3_model_out}")
@@ -1772,7 +1772,7 @@ def run_phase3_all_components(
             'THG-beta-batch_251106_phase3_sink_milp.json'))
     try:
         base_model = load_json_model(phase2_model_json)
-        _add_selected_ptrs_to_model(base_model, all_selected, prefix="PH3_SINK")
+        _add_selected_ptrs_to_model(base_model, all_selected, prefix="TRANS")
         save_json_model(base_model, phase3_model_out)
         if verbose:
             print(f"Saved Phase-3 model with PTRs: {phase3_model_out}")

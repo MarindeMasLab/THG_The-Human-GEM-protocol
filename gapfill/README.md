@@ -101,10 +101,12 @@ pip install -r requirements.txt
 # Deadends objective (minimize dead-end metabolites)
 python3 gapfill/gapfill.py run-all --pipeline deadends
 
-# Blocked reactions objective with sink_milp strategy (RECOMMENDED)
-python3 gapfill/gapfill.py run-all --pipeline blocked --strategy sink_milp \
+# Blocked reactions objective with sink_milp Phase 3 (RECOMMENDED)
+python3 gapfill/gapfill.py run-all --pipeline blocked --phase3-mode sink_milp \
     --parallel-components --workers-components 4 \
     --parallel-fba --workers-fba 2
+
+Note: `run-all` reuses existing `gapfill/files/candidates_all.csv` by default; use `--force-phase1` to regenerate Phase 1.
 ```
 
 ### Run individual phases:
@@ -163,6 +165,8 @@ python3 gapfill/gapfill.py phase2 --mode minimal --candidates candidates_all.csv
 - `minimal`: MST-based minimal connector selection (default)
 - `prioritized`: Priority-based selection (Type A → B → C)
 
+When using `gapfill.py run-all`, set `--phase2-mode minimal|prioritized` to choose between these connectors (default: `minimal`).
+
 **What it does:**
 1. Builds a graph where nodes are components and edges are PTR candidates
 2. Computes a **Minimum Spanning Tree (MST)** to connect all components
@@ -180,7 +184,7 @@ python3 gapfill/gapfill.py phase2 --mode minimal --candidates candidates_all.csv
 Selects additional PTRs to minimize blocked reactions.
 
 ```bash
-python3 gapfill/gapfill.py phase3 --mode blocked --strategy sink_milp
+python3 gapfill/gapfill.py phase3 --mode blocked
 ```
 
 **What it does:**
@@ -202,13 +206,14 @@ python3 gapfill/gapfill.py phase3 --mode blocked --strategy sink_milp
 | `component_milp` | MILP per component | Fast | Good | Yes |
 | `tiered_milp` | Tiered MILP (A→B→C) | Fast | Good | Yes |
 | `sink_milp` | Temp sinks + hybrid parallelization | Fast | Best | **Yes** |
+| `sink_milp_original` | Legacy sink MILP (exports Phase-3 model) | Fast | Best | Yes (use `--phase3-mode sink_milp_original`) |
 
 ### Recommended: `sink_milp`
 
-The `sink_milp` strategy is the most advanced and recommended approach:
+The `sink_milp` strategy is the most advanced and recommended approach. A legacy-compatible variant (`sink_milp_original`) is also available and can write the Phase-3 model when `--phase3-model` is provided.
 
 ```bash
-python3 gapfill/gapfill.py run-all --pipeline blocked --strategy sink_milp \
+python3 gapfill/gapfill.py run-all --pipeline blocked --phase3-mode sink_milp \
     --components 4,5,6,7 \
     --parallel-components --workers-components 4 \
     --parallel-fba --workers-fba 2 \
@@ -281,7 +286,7 @@ python3 gapfill/gapfill.py <command> [options]
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--strategy` | Optimization strategy | `exact` |
+| `--phase3-mode` | Phase 3 mode (`exact`, `hybrid`, `hybrid_batch`, `milp`, `component_milp`, `tiered_milp`, `sink_milp`, `sink_milp_original`) | `exact` |
 | `--components` | Comma-separated component IDs | All |
 | `--parallel-components` | Enable parallel component processing | False |
 | `--workers-components` | Workers for component parallelization | 4 |
@@ -311,13 +316,13 @@ python3 gapfill/gapfill.py <command> [options]
 ### Example 1: Full pipeline with default settings
 
 ```bash
-python3 gapfill/gapfill.py run-all --pipeline blocked --strategy sink_milp
+python3 gapfill/gapfill.py run-all --pipeline blocked --phase3-mode sink_milp
 ```
 
 ### Example 2: Process specific components with parallelization
 
 ```bash
-python3 gapfill/gapfill.py run-all --pipeline blocked --strategy sink_milp \
+python3 gapfill/gapfill.py run-all --pipeline blocked --phase3-mode sink_milp \
     --components 4,5,6,7 \
     --parallel-components --workers-components 4 \
     --parallel-fba --workers-fba 2
