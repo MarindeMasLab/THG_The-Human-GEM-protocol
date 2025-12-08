@@ -16,7 +16,7 @@ import json
 import time
 from copy import deepcopy
 from cobra.io import load_json_model, save_json_model
-from cobra import Reaction
+from cobra import Reaction, Configuration
 from cobra.flux_analysis import find_blocked_reactions
 
 
@@ -352,9 +352,31 @@ def run_phase3(candidates_csv,
 
 
 if __name__ == '__main__':
-    cand_csv = os.path.join(os.path.dirname(__file__), 'files', 'candidates_all.csv')
+    import argparse
+    parser = argparse.ArgumentParser(description='Greedy blocked-reaction Phase-3 optimizer')
+    parser.add_argument('--candidates', default=None, help='Phase-1 candidates CSV')
+    parser.add_argument('--model', default=None, help='Starting model JSON')
+    parser.add_argument('--out', default=None, help='Output directory')
+    parser.add_argument('--max', dest='max_additions', type=int, default=500, help='Max PTRs to add')
+    parser.add_argument('--solver-lp', choices=['glpk','glpk_exact','scipy','gurobi','cplex','hybrid','highs'], default=None, help='LP solver for FBA checks')
+    args = parser.parse_args()
+
+    if args.solver_lp:
+        try:
+            Configuration().solver = args.solver_lp
+            print(f"LP solver set to: {args.solver_lp}")
+        except Exception as e:
+            print(f"Warning: could not set solver '{args.solver_lp}': {e}")
+
+    cand_csv = args.candidates or os.path.join(os.path.dirname(__file__), 'files', 'candidates_all.csv')
     if not os.path.exists(cand_csv):
         print('Candidates CSV not found:', cand_csv)
     else:
-        out_csv, model_out, n = run_phase3(cand_csv)
+        out_csv, model_out, n = run_phase3(
+            cand_csv,
+            starting_model_json=args.model,
+            out_dir=args.out,
+            max_additions=args.max_additions,
+            resume=True
+        )
         print(f'Phase3 blocked-selected {n} connectors, wrote {out_csv} and model {model_out}')

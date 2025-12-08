@@ -41,6 +41,7 @@ import argparse
 import os
 import sys
 import importlib
+from cobra import Configuration
 
 
 def main():
@@ -63,6 +64,7 @@ def main():
     p3.add_argument('--model', help='Starting model JSON (phase2 output)')
     p3.add_argument('--out', help='Output dir for phase3 files')
     p3.add_argument('--max', type=int, default=500, help='Max additions for phase3')
+    p3.add_argument('--solver-lp', choices=['glpk','glpk_exact','scipy','gurobi','cplex','hybrid','highs'], default=None, help='LP solver for Phase-3 run (deadends/blocked)')
 
     pall = sub.add_parser('run-all', help='Run full pipeline: phase1 -> phase2 -> phase3')
     pall.add_argument('--pipeline', choices=['deadends','blocked'], default='deadends', help='Objective pipeline')
@@ -130,6 +132,14 @@ def main():
         return
 
     if args.cmd == 'phase3':
+        # Set LP solver globally if provided
+        if args.solver_lp:
+            try:
+                Configuration().solver = args.solver_lp
+                print(f"LP solver set to: {args.solver_lp}")
+            except Exception as e:
+                print(f"Warning: could not set solver '{args.solver_lp}': {e}")
+
         cand = args.candidates or os.path.join(os.path.dirname(__file__), 'files', 'candidates_all.csv')
         cand = os.path.normpath(cand)
         if not os.path.exists(cand):
@@ -153,6 +163,14 @@ def main():
         script_dir = os.path.dirname(__file__)
         if script_dir not in sys.path:
             sys.path.insert(0, script_dir)
+
+        # Set LP solver globally if provided (applies to Phase-3 steps)
+        if args.solver_lp:
+            try:
+                Configuration().solver = args.solver_lp
+                print(f"LP solver set to: {args.solver_lp}")
+            except Exception as e:
+                print(f"Warning: could not set solver '{args.solver_lp}': {e}")
 
         cand = args.candidates or os.path.join(os.path.dirname(__file__), 'files', 'candidates_all.csv')
         cand = os.path.normpath(cand)

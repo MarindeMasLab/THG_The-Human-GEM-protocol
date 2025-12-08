@@ -692,7 +692,11 @@ if __name__ == '__main__':
     parser.add_argument('--lambda', dest='tradeoff_lambda', type=float, default=0.01,
                        help='Tradeoff weight (higher = fewer PTRs)')
     parser.add_argument('--max-iter', type=int, default=10, help='Max iterations')
+    parser.add_argument('--solver-lp', choices=VALID_LP_SOLVERS, default=None, help='LP solver for FBA/MILP pre-checks')
     args = parser.parse_args()
+
+    if args.solver_lp:
+        set_lp_solver(args.solver_lp)
     
     cand_csv = args.candidates or os.path.join(os.path.dirname(__file__), 'files', 'candidates_all.csv')
     if not os.path.exists(cand_csv):
