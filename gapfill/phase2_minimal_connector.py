@@ -142,6 +142,11 @@ def run_phase2(candidates_csv,
 
     if phase2_model_out is None:
         phase2_model_out = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', 'models', 'base', 'THG-beta-batch_251106_phase2_minimal_connected.json'))
+    
+    # make sure the output path exists
+    output_dir = os.path.dirname(phase2_model_out)
+    os.makedirs(output_dir, exist_ok=True)
+    
     save_json_model(model, phase2_model_out)
 
     return out_csv, phase2_model_out, len(created)

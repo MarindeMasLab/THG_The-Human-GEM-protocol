@@ -684,6 +684,11 @@ def run_test_on_component(
         try:
             base_model = load_json_model(starting_model_json)
             _add_selected_ptrs_to_model(base_model, selected, prefix="TRANS")
+            
+            # make sure the output path exists
+            output_dir = os.path.dirname(phase3_model_out)
+            os.makedirs(output_dir, exist_ok=True)
+
             save_json_model(base_model, phase3_model_out)
             if verbose:
                 print(f"Saved Phase-3 model with PTRs: {phase3_model_out}")
