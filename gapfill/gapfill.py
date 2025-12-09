@@ -59,13 +59,18 @@ def main():
     p2.add_argument("--model", help="Unconnected model JSON")
     p2.add_argument("--out", help="Output dir for phase2 files")
 
-    p3 = sub.add_parser('phase3', help='Run phase3 optimizer')
-    p3.add_argument('--mode', choices=['deadends','blocked'], default='deadends')
-    p3.add_argument('--candidates', help='Phase1 candidates CSV')
-    p3.add_argument('--model', help='Starting model JSON (phase2 output)')
-    p3.add_argument('--out', help='Output dir for phase3 files')
-    p3.add_argument('--max', type=int, default=500, help='Max additions for phase3')
-    p3.add_argument('--solver-lp', choices=['glpk','glpk_exact','scipy','gurobi','cplex','hybrid','highs'], default=None, help='LP solver for Phase-3 run (deadends/blocked)')
+    p3 = sub.add_parser("phase3", help="Run phase3 optimizer")
+    p3.add_argument("--mode", choices=["deadends", "blocked"], default="deadends")
+    p3.add_argument("--candidates", help="Phase1 candidates CSV")
+    p3.add_argument("--model", help="Starting model JSON (phase2 output)")
+    p3.add_argument("--out", help="Output dir for phase3 files")
+    p3.add_argument("--max", type=int, default=500, help="Max additions for phase3")
+    p3.add_argument(
+        "--solver-lp",
+        choices=["glpk", "glpk_exact", "scipy", "gurobi", "cplex", "hybrid", "highs"],
+        default=None,
+        help="LP solver for Phase-3 run (deadends/blocked)",
+    )
 
     pall = sub.add_parser(
         "run-all", help="Run full pipeline: phase1 -> phase2 -> phase3"
@@ -213,8 +218,20 @@ def main():
         default="glpk",
         help="LP solver for FBA (sink_milp). gurobi/cplex require licenses. hybrid uses HiGHS via optlang. highs uses direct HiGHS (~4x faster than glpk!).",
     )
+    pall.add_argument(
+        "--stagnation-limit",
+        type=int,
+        default=None,
+        help="Stagnation limit for coverage computation (None = adaptive based on problem size). Stop if no new coverage for this many consecutive candidates.",
+    )
 
     args = parser.parse_args()
+
+    # Smart default: if --solver is gurobi/cplex and --solver-lp is still default glpk,
+    # use the same solver for LP operations for consistency
+    if args.cmd == "run-all" and hasattr(args, "solver"):
+        if args.solver in ["gurobi", "cplex"] and args.solver_lp == "glpk":
+            args.solver_lp = args.solver
 
     if args.cmd == "phase1":
         # ensure local package directory is on path so imports work when running script directly
@@ -262,8 +279,10 @@ def main():
             print("Phase2 prioritized wrote", out_csv, "model", model_out, "n=", n)
         return
 
-    if args.cmd == 'phase3':
-        cand = args.candidates or os.path.join(os.path.dirname(__file__), 'files', 'candidates_all.csv')
+    if args.cmd == "phase3":
+        cand = args.candidates or os.path.join(
+            os.path.dirname(__file__), "files", "candidates_all.csv"
+        )
         cand = os.path.normpath(cand)
         if not os.path.exists(cand):
             print("Candidates CSV not found:", cand)
@@ -298,7 +317,9 @@ def main():
         if script_dir not in sys.path:
             sys.path.insert(0, script_dir)
 
-        cand = args.candidates or os.path.join(os.path.dirname(__file__), 'files', 'candidates_all.csv')
+        cand = args.candidates or os.path.join(
+            os.path.dirname(__file__), "files", "candidates_all.csv"
+        )
         cand = os.path.normpath(cand)
         model = os.path.normpath(args.model)
         out_dir = args.out
@@ -428,6 +449,7 @@ def main():
                     small_component_threshold=args.small_threshold,
                     min_component_size=args.min_comp_size,
                     component_ids=component_ids,
+                    stagnation_limit=args.stagnation_limit,
                     verbose=True,
                 )
                 n3 = result.get("summary", {}).get(
@@ -462,6 +484,7 @@ def main():
                     small_component_threshold=args.small_threshold,
                     min_component_size=args.min_comp_size,
                     component_ids=component_ids,
+                    stagnation_limit=args.stagnation_limit,
                     verbose=True,
                     phase3_model_out=args.phase3_model_out,
                 )
