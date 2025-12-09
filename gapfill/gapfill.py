@@ -42,6 +42,7 @@ import argparse
 import os
 import sys
 import importlib
+from cobra import Configuration
 
 
 def main():
@@ -58,12 +59,13 @@ def main():
     p2.add_argument("--model", help="Unconnected model JSON")
     p2.add_argument("--out", help="Output dir for phase2 files")
 
-    p3 = sub.add_parser("phase3", help="Run phase3 optimizer")
-    p3.add_argument("--mode", choices=["deadends", "blocked"], default="deadends")
-    p3.add_argument("--candidates", help="Phase1 candidates CSV")
-    p3.add_argument("--model", help="Starting model JSON (phase2 output)")
-    p3.add_argument("--out", help="Output dir for phase3 files")
-    p3.add_argument("--max", type=int, default=500, help="Max additions for phase3")
+    p3 = sub.add_parser('phase3', help='Run phase3 optimizer')
+    p3.add_argument('--mode', choices=['deadends','blocked'], default='deadends')
+    p3.add_argument('--candidates', help='Phase1 candidates CSV')
+    p3.add_argument('--model', help='Starting model JSON (phase2 output)')
+    p3.add_argument('--out', help='Output dir for phase3 files')
+    p3.add_argument('--max', type=int, default=500, help='Max additions for phase3')
+    p3.add_argument('--solver-lp', choices=['glpk','glpk_exact','scipy','gurobi','cplex','hybrid','highs'], default=None, help='LP solver for Phase-3 run (deadends/blocked)')
 
     pall = sub.add_parser(
         "run-all", help="Run full pipeline: phase1 -> phase2 -> phase3"
@@ -260,10 +262,8 @@ def main():
             print("Phase2 prioritized wrote", out_csv, "model", model_out, "n=", n)
         return
 
-    if args.cmd == "phase3":
-        cand = args.candidates or os.path.join(
-            os.path.dirname(__file__), "files", "candidates_all.csv"
-        )
+    if args.cmd == 'phase3':
+        cand = args.candidates or os.path.join(os.path.dirname(__file__), 'files', 'candidates_all.csv')
         cand = os.path.normpath(cand)
         if not os.path.exists(cand):
             print("Candidates CSV not found:", cand)
@@ -298,9 +298,7 @@ def main():
         if script_dir not in sys.path:
             sys.path.insert(0, script_dir)
 
-        cand = args.candidates or os.path.join(
-            os.path.dirname(__file__), "files", "candidates_all.csv"
-        )
+        cand = args.candidates or os.path.join(os.path.dirname(__file__), 'files', 'candidates_all.csv')
         cand = os.path.normpath(cand)
         model = os.path.normpath(args.model)
         out_dir = args.out
