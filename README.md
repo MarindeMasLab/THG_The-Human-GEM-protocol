@@ -42,8 +42,13 @@ The different steps in the protocol can be found in different folders and can be
 2. generate_database: generates a metabolic network based using current available information from a large number of molecular databases:
 	- generate_database.py:
 		- Mass balance metabolic reactions (mass_balance)
-		- Constritruction of SGPRs and GPRs (getGPR)
+		- Construction of SGPRs and GPRs (getGPR)
 		- Identifies the cellular location of the metabolic reactions (getLocation)
+	- **Rhea Integration** (NEW):
+		- `rhea_extension.py`: Extends the KEGG-based model with Rhea database reactions
+		- Supports ChEBI compounds and macromolecules (proteins, nucleic acids)
+		- Human proteome filtering via UniProt
+		- SPARQL endpoint queries for reaction participants
 
 3. build model: curate and expands a metabolic network model
 	- build_model.py:

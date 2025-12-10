@@ -18,6 +18,7 @@ To change logging level, modify the level parameter in logging.basicConfig():
     logging.basicConfig(level=logging.WARNING) # Minimal output
 
 """
+import argparse
 import copy
 import logging
 import operator
@@ -58,10 +59,36 @@ from functions.error_tracker import ErrorTracker
 from types import MethodType
 from functions.ensembl_client import fetch_ensembl_annotations
 
+# Import Rhea extension module
+try:
+    from rhea_extension import RheaExtender
+    RHEA_AVAILABLE = True
+except ImportError:
+    RHEA_AVAILABLE = False
+    LOGGER = logging.getLogger(__name__)
+    LOGGER.warning("Rhea extension module not available")
+
 # Debugging flag: limit number of reactions to process (None = no limit)
 # Set this to an integer to process at most that many reactions and then
 # stop early. Useful when debugging to avoid long runs.
 MAX_REACTIONS = None  # e.g. set to 100 for debugging
+
+# Compartmentalization mode:
+#   1 = RESTRICTED: Only use compartments from the Excel lookup table
+#                   (unknown compartments default to cytosol)
+#   0 = UNRESTRICTED: Keep all compartment names as-is from BioCyc/UniProt
+# This setting applies to both KEGG and Rhea pipelines
+IMPOSE_LOCATIONS = 1  # Default: restricted mode
+
+# Rhea extension: add human Rhea reactions not already in KEGG
+# Options:
+#   ENABLE_RHEA = True  or  1     → Enable: process ALL human Rhea reactions (~4700+)
+#   ENABLE_RHEA = False or  None  → Disable: skip Rhea extension entirely
+#   ENABLE_RHEA = {'10040', '10112', ...}  → Test mode: process ONLY these specific Rhea IDs
+#
+# Current setting: DISABLED (change to True for production)
+ENABLE_RHEA = False  # Set to True to enable Rhea extension in production
+# ENABLE_RHEA = {'10040', '10112', '10116', '10132', '10164'}  # TEST: 5 Rhea reactions
 
 
 # Module-level helper methods to avoid fragile lambdas/closures when
@@ -326,6 +353,12 @@ def cobra_reconstruction(
             "lipidbank": compound.LipidBank,
             "lipidmaps": compound.LIPIDMAPS,
         }
+        # Add KEGG and HMDB if available (from Rhea ChEBI cross-refs via OLS4)
+        if hasattr(compound, 'KEGG') and compound.KEGG:
+            annotation["kegg.compound"] = compound.KEGG
+        if hasattr(compound, 'HMDB') and compound.HMDB:
+            annotation["hmdb"] = compound.HMDB
+            
         alt_formulas = [compound.Formula2, compound.Formula3, compound.Formula4]
         alt_formula = [
             form for form in alt_formulas if form != model_met.formula and form
@@ -463,25 +496,72 @@ def cobra_reconstruction(
                     )
                     new_met.annotation = model_met.annotation
                 else:
-                    # LOGGER.warning(
-                    #     f"Reactant {met_id} was not found in any compartment. Creating new one!"
-                    # )
-                    # Create a minimal metabolite with explicit compartment
+                    # Metabolite not found in any compartment - try to fetch from KEGG
+                    # before creating a minimal metabolite
+                    LOGGER.debug(
+                        f"Reactant {met_id} not found in model. Attempting KEGG fetch..."
+                    )
+                    met_name = ""
+                    met_formula = None
+                    met_charge = None
+                    met_annotation = {}
+                    
+                    # Try to fetch compound data from KEGG if it looks like a KEGG ID
+                    if met_root.startswith("C") or met_root.startswith("G") or met_root.startswith("D"):
+                        try:
+                            from functions.class_generate_database import compound as CompoundType
+                            comp_url = f"https://rest.kegg.jp/get/{met_root}"
+                            kegg_compound = CompoundType(comp_url, met_root, 30, [], '')
+                            met_name = kegg_compound.Name or ""
+                            met_formula = kegg_compound.Formula1 or None
+                            if kegg_compound.charge and str(kegg_compound.charge) not in ["", "None"]:
+                                met_charge = float(kegg_compound.charge)
+                            # Build annotation from compound data
+                            met_annotation = {
+                                k: v for k, v in {
+                                    "pubchem.compound": kegg_compound.PubChem,
+                                    "chebi.compound": kegg_compound.CheBI,
+                                    "inchi": kegg_compound.inchi,
+                                    "inchikey": kegg_compound.inchikey,
+                                }.items() if v
+                            }
+                            LOGGER.debug(
+                                f"Fetched {met_root} from KEGG: name={met_name}, formula={met_formula}"
+                            )
+                        except Exception as e:
+                            LOGGER.debug(f"Could not fetch {met_root} from KEGG: {e}")
+                    
                     new_met = cobra.Metabolite(
                         id=met_id,
+                        name=met_name,
+                        formula=met_formula,
+                        charge=met_charge,
                         compartment=met_comp,
                     )
+                    if met_annotation:
+                        new_met.annotation = met_annotation
                 new_mets.append(new_met)
         if new_mets:
             model.add_metabolites(new_mets)
 
         reac.add_metabolites(metabolites)
         ec = rxn.EC()
-        reac.annotation = {"kegg.reaction": kegg_id, "ec-code": ec[0] if ec else ""}
+        # Use correct identifier type based on reaction ID format
+        if kegg_id.startswith("RHEA"):
+            reac.annotation = {"rhea": kegg_id, "ec-code": ec[0] if ec else ""}
+            # Add KEGG reaction cross-reference if available (from rhea2kegg mapping)
+            if hasattr(rxn, 'KEGG_ID') and callable(rxn.KEGG_ID):
+                kegg_rxn_id = rxn.KEGG_ID()
+                if kegg_rxn_id:
+                    reac.annotation["kegg.reaction"] = kegg_rxn_id
+        else:
+            reac.annotation = {"kegg.reaction": kegg_id, "ec-code": ec[0] if ec else ""}
         
         # Handle reactions with empty or missing GPR data
-        if rxn.GPR and len(rxn.GPR) >= 2:
-            sgpr, gpr = rxn.GPR[0], rxn.GPR[1].replace("[", "").replace("]", "")
+        # Note: rxn.GPR is a method that returns (sGPR, GPR) tuple
+        gpr_data = rxn.GPR() if callable(rxn.GPR) else rxn.GPR
+        if gpr_data and len(gpr_data) >= 2:
+            sgpr, gpr = gpr_data[0], gpr_data[1].replace("[", "").replace("]", "")
         else:
             sgpr, gpr = "", ""
             LOGGER.debug(f"Reaction {kegg_id} has no GPR data")
@@ -509,14 +589,20 @@ def cobra_reconstruction(
 
     # add a group per pathway
     LOGGER.info(f"Adding {len(pathways)} pathway groups")
-    model.add_groups([cobra.core.Group(group, group) for group in pathways])
+    # Create groups with clean IDs (replace spaces with underscores for SBML SId compatibility)
+    # Group(id, name) - id must be valid SId (no spaces), name can have spaces
+    model.add_groups([
+        cobra.core.Group(group.replace(" ", "_"), group) 
+        for group in pathways
+    ])
     LOGGER.info("Assigning reactions to pathway groups")
     for group, members in tqdm(
         pathways.items(), desc="Assigning pathways", unit="pathway"
     ):
         # the members are the reactions in each pathway
         # TODO(carrascomj): reaction ids coming from paths are not in compartments
-        model.groups.get_by_id(group).add_members(
+        group_id = group.replace(" ", "_")  # Match the cleaned ID used when creating groups
+        model.groups.get_by_id(group_id).add_members(
             reduce(
                 operator.add,
                 [model.reactions.query(member) for member in members.split()],
@@ -652,14 +738,27 @@ def reaction_has_human_genes(rxn, time=20):
     return False
 
 
-def process_reaction_gpr(rxn, gpr_list, gpr_ident, session):
+def process_reaction_gpr(rxn, gpr_list, gpr_ident, session, impose_locations=None):
     """Process GPR data for a reaction and return GPR/Subcel data.
+    
+    Args:
+        rxn: Reaction object
+        gpr_list: Dictionary to cache GPR objects
+        gpr_ident: List of processed EC numbers
+        session: BioCyc session
+        impose_locations: Compartmentalization mode (uses global IMPOSE_LOCATIONS if None)
+            1 = RESTRICTED: Only use compartments from Excel lookup
+            0 = UNRESTRICTED: Keep all compartment names as-is
     
     Returns:
         tuple: (tmpGPR, tmpSC2, error_type) where:
             - tmpSC2 is [dict, dict] with compartment info
             - error_type is None (success), 'timeout', 'connection', or 'no_data'
     """
+    # Use global setting if not specified
+    if impose_locations is None:
+        impose_locations = IMPOSE_LOCATIONS
+        
     tmpGPR = ()
     tmpSC = ()
     error_type = None
@@ -671,7 +770,7 @@ def process_reaction_gpr(rxn, gpr_list, gpr_ident, session):
         if ec not in gpr_ident:
             gpr_ident.append(ec)
             try:
-                gpr_list[ec] = gpr(ec, session)
+                gpr_list[ec] = gpr(ec, session, impose_locations=impose_locations)
             except (requests.exceptions.Timeout, TimeoutError) as e:
                 LOGGER.warning(f"Timeout querying GPR for EC {ec}: {e}")
                 has_timeout_error = True
@@ -785,6 +884,48 @@ def process_reaction_gpr(rxn, gpr_list, gpr_ident, session):
 
 
 if __name__ == "__main__":
+
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(
+        description="Generate metabolic model database from KEGG pathways.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python generate_db.py                    # Run without Rhea extension
+  python generate_db.py --rhea             # Enable Rhea extension (all human reactions)
+  python generate_db.py --rhea 10040,10112 # Enable Rhea with specific IDs only
+  
+Environment variables:
+  PATHWAY_SUBSET  Path to file with subset of pathways to process
+"""
+    )
+    parser.add_argument(
+        "--rhea",
+        nargs="?",
+        const="all",
+        default=None,
+        metavar="IDS",
+        help="Enable Rhea extension. Without argument: process all human Rhea reactions. "
+             "With comma-separated IDs: process only those specific Rhea IDs (e.g., --rhea 10040,10112)"
+    )
+    parser.add_argument(
+        "--no-rhea",
+        action="store_true",
+        help="Explicitly disable Rhea extension (default behavior)"
+    )
+    args = parser.parse_args()
+
+    # Override ENABLE_RHEA based on command-line arguments
+    if args.no_rhea:
+        ENABLE_RHEA = False
+    elif args.rhea is not None:
+        if args.rhea == "all":
+            ENABLE_RHEA = True
+        else:
+            # Parse comma-separated Rhea IDs
+            ENABLE_RHEA = set(rid.strip() for rid in args.rhea.split(",") if rid.strip())
+            print(f"Rhea extension enabled for specific IDs: {ENABLE_RHEA}")
+    # If neither --rhea nor --no-rhea specified, use the default ENABLE_RHEA value from config
 
     # Load environment variables from .env file
     env_file = os.path.join(project_root, ".env")
@@ -1060,11 +1201,23 @@ if __name__ == "__main__":
                         LOGGER.debug(f"Total unique compounds: {len(set(RxnCmp))}")
 
                         # Collect new compound IDs for concurrent fetching
+                        # Build reverse lookup for MetEquiv values (equiv_id -> original_id)
+                        # to detect compounds that are already in MetList under their equivalent ID
+                        MetEquiv_values = set(MetEquiv.values())
+                        
                         new_compounds_to_fetch = []
                         c = 0
                         while c < len(RxnCmp):
                             CompID = RxnCmp[c]
-                            if not CompID in MetIdent and not CompID in MetEquiv:
+                            # Skip if:
+                            # 1. Already in MetIdent (processed before)
+                            # 2. Is a key in MetEquiv (has an equivalence mapping)
+                            # 3. Is a value in MetEquiv (is the target of an equivalence mapping)
+                            # 4. Already in MetList (compound data already exists)
+                            if (not CompID in MetIdent 
+                                and not CompID in MetEquiv 
+                                and not CompID in MetEquiv_values
+                                and not CompID in MetList):
                                 MetIdent.append(
                                     CompID
                                 )  # Optimized: use append instead of concatenation
@@ -1170,18 +1323,29 @@ if __name__ == "__main__":
                                         f"  - Atom composition: {MetList[CompID].Atom1}"
                                     )
 
-                                    # Handle ID equivalences
+                                    # Handle ID equivalences (e.g., C00167 <-> G10612 bidirectional mapping)
                                     if MetList[CompID].ID1 != MetList[CompID].ID2:
+                                        equiv_id = MetList[CompID].ID1
                                         LOGGER.debug(
-                                            f"ID equivalence found: {CompID} -> {MetList[CompID].ID1}"
+                                            f"ID equivalence found: {CompID} -> {equiv_id}"
                                         )
-                                        MetIdent[len(MetIdent) - 1] = MetList[
-                                            CompID
-                                        ].ID1
-                                        MetEquiv[CompID] = MetList[CompID].ID1
-                                        # Direct assignment instead of deepcopy when possible
-                                        MetList[MetList[CompID].ID1] = MetList[CompID]
-                                        del MetList[CompID]
+                                        MetIdent[len(MetIdent) - 1] = equiv_id
+                                        MetEquiv[CompID] = equiv_id
+                                        
+                                        # Check if equiv_id already exists in MetList (from previous processing)
+                                        # This handles bidirectional cases: if C00167 -> G10612 was processed,
+                                        # MetList['G10612'] already exists. If G10612 -> C00167 is now processed,
+                                        # don't overwrite or delete - just add to MetEquiv for lookup.
+                                        if equiv_id in MetList:
+                                            LOGGER.debug(
+                                                f"Equiv ID {equiv_id} already in MetList - keeping existing, removing duplicate {CompID}"
+                                            )
+                                            # Remove the duplicate we just created
+                                            del MetList[CompID]
+                                        else:
+                                            # Normal case: store under equiv_id and remove original
+                                            MetList[equiv_id] = MetList[CompID]
+                                            del MetList[CompID]
                                 except Exception as e:
                                     LOGGER.error(
                                         f"Error processing compound {CompID}: {e}"
@@ -1315,6 +1479,25 @@ if __name__ == "__main__":
                                 0,
                             )
                         LibEnd = UnwrapRxnSubsProdParam(IthRxnMB, LibIni, IthRxnMB)
+
+                        # Ensure all metabolites from mass balancing are in MetList
+                        # This is critical for common metabolites like H2O (C00001) and H+ (C00080)
+                        # that are added during balancing but might not have been fetched yet
+                        for lib_dict in [LibEnd[0], LibEnd[1]]:
+                            for formula_key, (coef, comp_id) in lib_dict.items():
+                                if comp_id and comp_id not in MetList and comp_id not in MetEquiv:
+                                    if comp_id.startswith("C") or comp_id.startswith("G") or comp_id.startswith("D"):
+                                        LOGGER.debug(f"Fetching mass-balance compound {comp_id} from KEGG")
+                                        try:
+                                            comp_url = f"https://rest.kegg.jp/get/{comp_id}"
+                                            MetList[comp_id] = compound(
+                                                comp_url, comp_id, time, EF, specialCompounds
+                                            )
+                                            if comp_id not in MetIdent:
+                                                MetIdent.append(comp_id)
+                                            LOGGER.debug(f"Added {comp_id}: Name={MetList[comp_id].Name}, Formula={MetList[comp_id].Formula1}")
+                                        except Exception as e:
+                                            LOGGER.warning(f"Failed to fetch mass-balance compound {comp_id}: {e}")
 
                         # Add metabolites and stc coeff to reaction
                         S = list()
@@ -1827,6 +2010,58 @@ if __name__ == "__main__":
         if failed_location_reactions:
             print(f"\nWarning: {len(failed_location_reactions)} reactions still failed after retry:")
             print(f"  {', '.join(sorted(failed_location_reactions))}")
+
+    ######### Rhea Extension ###########
+    # Extend model with human Rhea reactions not already covered by KEGG
+    if ENABLE_RHEA and RHEA_AVAILABLE:
+        LOGGER.info("="*80)
+        LOGGER.info("RHEA EXTENSION PHASE")
+        LOGGER.info("="*80)
+        
+        # Determine if we're limiting to specific Rhea IDs (for testing)
+        limit_rhea_ids = None
+        if isinstance(ENABLE_RHEA, set):
+            limit_rhea_ids = ENABLE_RHEA
+            LOGGER.info(f"Testing mode: limiting to {len(limit_rhea_ids)} Rhea IDs")
+        
+        try:
+            rhea_extender = RheaExtender(cache_dir=os.path.join(current_dir, '.rhea_cache'))
+            
+            rhea_result = rhea_extender.run(
+                RxnList=RxnList,
+                MetList=MetList,
+                RxnIdent=RxnIdent,
+                MetIdent=MetIdent,
+                MetEquiv=MetEquiv,
+                GPRList=GPRList,
+                GPRIdent=GPRIdent,
+                GeneList=None,  # Will be built later
+                GeneIdent=None,
+                RxnList_CL=RxnList_CL,
+                MetList_CL=MetList_CL,
+                RxnIdent_CL=RxnIdent_CL,
+                MetIdent_CL=MetIdent_CL,
+                Compartment_CL=Compartment_CL,
+                PathNameRxn=PathNameRxn,
+                session=session,
+                time=time,
+                EF=EF,
+                specialCompounds=specialCompounds,
+                limit_rhea_ids=limit_rhea_ids,
+                impose_locations=IMPOSE_LOCATIONS,
+            )
+            
+            LOGGER.info("Rhea extension completed successfully")
+            print(f"\nRhea extension added {rhea_result.get('reactions_added', 0)} reactions")
+            
+        except Exception as e:
+            LOGGER.error(f"Rhea extension failed: {e}")
+            import traceback
+            LOGGER.error(traceback.format_exc())
+            print(f"\nWarning: Rhea extension failed: {e}")
+    elif ENABLE_RHEA and not RHEA_AVAILABLE:
+        LOGGER.warning("ENABLE_RHEA is set but rhea_extension module is not available")
+        print("\nWarning: Rhea extension requested but module not available")
 
     ######### Genes ###########
     GeneList = {}

@@ -560,23 +560,66 @@ def UnwrapRxnSubsProdParam(Reaction, LibIni, IthRxnMB):
     return LibIni
 
 
+def _has_formula_in_metlist(met_id: str, MetList: dict) -> bool:
+    """
+    Check if a metabolite has a non-empty formula in MetList.
+    
+    This is used to allow non-KEGG compounds (e.g., Rhea macromolecules with 'M' prefix,
+    ChEBI compounds with 'CHEBI' prefix) to participate in mass balance if they have
+    been enriched with formulas from external databases.
+    
+    Args:
+        met_id: The metabolite ID to check
+        MetList: Dictionary of all metabolites
+        
+    Returns:
+        True if the metabolite has a formula, False otherwise
+    """
+    if met_id in MetList:
+        met = MetList[met_id]
+        formula = getattr(met, 'Formula1', '') or getattr(met, 'Formula2', '')
+        if formula and formula.strip():
+            return True
+    return False
+
+
 ### Called directly by RxnBalance functions:
 ## 1. Extracts the reaction formula in the form of string from the parameters of an Object of Class Reaction. Only to create DB
 def RxnParam2Eq(Reaction, MetList, MetEquiv):
     Substrate = Reaction.Substrate()
     Product = Reaction.Product()
+    
+    # Get all participant IDs
+    all_participant_ids = [y[2] for y in Reaction.Substrate() + Reaction.Product()]
+    
+    # Check if all participants can be treated as glycans (G-prefix only)
+    # The gly_test branch uses Reformulation() which requires actual glycan IDs
+    # Only G-prefix compounds should use this path
+    def is_glycan(x):
+        """Check if compound is a glycan (G-prefix or maps to G-prefix in MetEquiv)."""
+        if x and x[0] == "G":
+            return True
+        if x in MetEquiv:
+            equiv_id = MetEquiv[x]
+            return equiv_id and equiv_id[0] == "G"
+        return False
+    
     gly_test = min(
-        [
-            1 if x in list(MetEquiv.keys()) or x[0] == "G" else 0
-            for x in [y[2] for y in Reaction.Substrate() + Reaction.Product()]
-        ]
-    )  # 1: All can be glycans, 0: at least 1 cannot be glycan
+        [1 if is_glycan(x) else 0 for x in all_participant_ids]
+    )  # 1: All are glycans (G-prefix), 0: at least 1 is not a glycan
+    
+    # Check if all participants can be treated as compounds (C-prefix, in MetEquiv, or have formula)
+    # This is the more general path that handles:
+    # - KEGG compounds (C-prefix)
+    # - ChEBI compounds (with formulas)
+    # - Any compound with a formula in MetList (including enriched macromolecules)
     c_test = min(
         [
-            1 if x in list(MetEquiv.keys()) or x[0] == "C" else 0
-            for x in [y[2] for y in Reaction.Substrate() + Reaction.Product()]
+            1 if (x in MetEquiv or (x and x[0] == "C") or _has_formula_in_metlist(x, MetList)) else 0
+            for x in all_participant_ids
         ]
     )  # 1: All can be compounds, 0: at least 1 cannot be compounds
+    
     mb_test = gly_test + c_test  # if 0 the reaction cannot be mass balanced
     if mb_test != 0:
         if gly_test == 1:

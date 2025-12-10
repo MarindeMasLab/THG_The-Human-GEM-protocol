@@ -1,6 +1,6 @@
 # Requirements for Generate Human Metabolic Database
 # THG: The Human GEM Protocol
-# Last Updated: December 2024
+# Last Updated: December 2025
 
 # =============================================================================
 # Core Dependencies
@@ -21,11 +21,14 @@ scipy>=1.10.0
 # API and Web Access
 # =============================================================================
 
-# HTTP library for KEGG REST API access
+# HTTP library for KEGG/Reactome/UniProt REST API access
 requests>=2.28.0
 
 # PubChem compound identification and lookup
 PubChemPy>=1.0.4
+
+# SPARQL queries to Rhea and ChEBI endpoints
+SPARQLWrapper>=2.0.0
 
 # =============================================================================
 # Utilities

@@ -1492,21 +1492,33 @@ def getGPR_old(page, ec, time):
 
 
 def getHtml(url, timeout, referer=False, file_data=[], additional_data={}):
-    try:
-        if additional_data:
-            url += "?" + urllib.parse.urlencode(additional_data)
-        if file_data:
+    if additional_data:
+        url += "?" + urllib.parse.urlencode(additional_data)
+    req = None
+    if file_data:
+        try:
             with open(file_data[1], "rb") as f:
                 response = requests.post(url, files={file_data[0]: f})
                 return response.tgext
-        else:
-            req = urllib.request.Request(url)
+        except Exception:
+            time.sleep(timeout)
+            return ""
+    else:
+        req = urllib.request.Request(url)
         if referer:
             req.add_header("Referer", referer)
-        return urllib.request.urlopen(req, timeout=10).read()
-    except Exception as e:
-        time.sleep(timeout)
-        return ""
+
+    # Retry network fetch with exponential backoff to survive transient KEGG hiccups
+    for attempt in range(3):
+        try:
+            return urllib.request.urlopen(req, timeout=10).read()
+        except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, ConnectionError, OSError, Exception):
+            if attempt < 2:
+                time.sleep(2 ** attempt)
+                continue
+            # Final failure: return empty string immediately to keep pipeline moving
+            # (don't sleep - that would cause timeout commands to kill the process)
+            return ""
     return ""
 
 
@@ -1646,22 +1658,30 @@ def getLinkPath(page, follow_maps=True):
                             for i in range(0, len(ids), chunk_size):
                                 chunk = ids[i : i + chunk_size]
                                 q = "+".join(chunk)
-                                try:
-                                    url = f"https://rest.kegg.jp/link/rn/{q}"
-                                    resp = urllib.request.urlopen(url, timeout=10).read()
-                                    txt = resp.decode('utf-8') if isinstance(resp, bytes) else resp
-                                    for line in txt.split('\n'):
-                                        if not line.strip():
+                                # Retry with exponential backoff to survive transient KEGG hiccups
+                                for attempt in range(3):
+                                    try:
+                                        url = f"https://rest.kegg.jp/link/rn/{q}"
+                                        resp = urllib.request.urlopen(url, timeout=10).read()
+                                        txt = resp.decode('utf-8') if isinstance(resp, bytes) else resp
+                                        for line in txt.split('\n'):
+                                            if not line.strip():
+                                                continue
+                                            parts = line.split('\t')
+                                            if len(parts) >= 2:
+                                                rid = re.search(r'(R[0-9]{5,6})', parts[1])
+                                                if rid:
+                                                    found.add(rid.group(1))
+                                        break  # success, exit retry loop
+                                    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError,
+                                            ConnectionError, OSError, Exception):
+                                        # Catch all network-related errors including SSL handshake failures
+                                        if attempt < 2:
+                                            time.sleep(2 ** attempt)
                                             continue
-                                        parts = line.split('\t')
-                                        if len(parts) >= 2:
-                                            rid = re.search(r'(R[0-9]{5,6})', parts[1])
-                                            if rid:
-                                                found.add(rid.group(1))
-                                except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, 
-                                        ConnectionError, OSError, Exception):
-                                    # Catch all network-related errors including SSL handshake failures
-                                    continue
+                                        else:
+                                            # On final failure, skip this chunk but keep pipeline moving
+                                            break
                             return found
 
                         r_from_kos = fetch_links(kos, 'ko')
@@ -2153,10 +2173,14 @@ def getRxncons(rxn, time, MetEquiv, MetList, MetIdent, EF, specialCompounds):
             RxnCmp2 = [x[2] for x in reaction2.Substrate()] + [
                 x[2] for x in reaction2.Product()
             ]
+            # Build reverse lookup for MetEquiv values
+            MetEquiv_values = set(MetEquiv.values())
             c = 0
             while c < len(RxnCmp2):
                 CompID = RxnCmp2[c]
-                if not CompID in MetIdent and not CompID in MetEquiv:
+                # Skip if already processed or is an equivalence target
+                if (not CompID in MetIdent and not CompID in MetEquiv 
+                    and not CompID in MetEquiv_values and not CompID in MetList):
                     MetIdent = MetIdent + [CompID]
                     if CompID[0] == "C":
                         CURL = "http://www.kegg.jp/dbget-bin/www_bget?cpd:" + CompID
@@ -2164,12 +2188,17 @@ def getRxncons(rxn, time, MetEquiv, MetList, MetIdent, EF, specialCompounds):
                         CURL = "http://www.kegg.jp/dbget-bin/www_bget?gl:" + CompID
                     MetList[CompID] = compound(CURL, CompID, time, EF, specialCompounds)
                     if MetList[CompID].ID1 != MetList[CompID].ID2:
-                        MetIdent[len(MetIdent) - 1] = MetList[CompID].ID1
-                        MetEquiv[CompID] = MetList[CompID].ID1
-                        MetList[MetList[CompID].ID1] = copy.deepcopy(
-                            MetList[CompID]
-                        )  # Change the reference in the dictionary to account for the 1th ID
-                        del MetList[CompID]
+                        equiv_id = MetList[CompID].ID1
+                        MetIdent[len(MetIdent) - 1] = equiv_id
+                        MetEquiv[CompID] = equiv_id
+                        # Check if equiv_id already exists in MetList
+                        if equiv_id in MetList:
+                            # Already exists - just remove duplicate
+                            del MetList[CompID]
+                        else:
+                            # Normal case: store under equiv_id and remove original
+                            MetList[equiv_id] = copy.deepcopy(MetList[CompID])
+                            del MetList[CompID]
                 c = c + 1
         # 2st check if the glycans have associated compounds
         else:
@@ -2206,10 +2235,14 @@ def getRxncons(rxn, time, MetEquiv, MetList, MetIdent, EF, specialCompounds):
             ) - count == 0:  # all the glycans have an associated compound
                 ######### Check if all the compounds in the jth reaction are in the compound list ###########
                 RxnCmp = [x[2] for x in Pini] + [x[2] for x in Sini]
+                # Build reverse lookup for MetEquiv values
+                MetEquiv_values = set(MetEquiv.values())
                 c = 0
                 while c < len(RxnCmp):
                     CompID = RxnCmp[c]
-                    if not CompID in MetIdent and not CompID in MetEquiv:
+                    # Skip if already processed or is an equivalence target
+                    if (not CompID in MetIdent and not CompID in MetEquiv
+                        and not CompID in MetEquiv_values and not CompID in MetList):
                         MetIdent = MetIdent + [CompID]
                         if CompID[0] == "C":
                             CURL = "http://www.kegg.jp/dbget-bin/www_bget?cpd:" + CompID
@@ -2219,12 +2252,17 @@ def getRxncons(rxn, time, MetEquiv, MetList, MetIdent, EF, specialCompounds):
                             CURL, CompID, time, EF, specialCompounds
                         )
                         if MetList[CompID].ID1 != MetList[CompID].ID2:
-                            MetIdent[len(MetIdent) - 1] = MetList[CompID].ID1
-                            MetEquiv[CompID] = MetList[CompID].ID1
-                            MetList[MetList[CompID].ID1] = copy.deepcopy(
-                                MetList[CompID]
-                            )  # Change the reference in the dictionary to account for the 1th ID
-                            del MetList[CompID]
+                            equiv_id = MetList[CompID].ID1
+                            MetIdent[len(MetIdent) - 1] = equiv_id
+                            MetEquiv[CompID] = equiv_id
+                            # Check if equiv_id already exists in MetList
+                            if equiv_id in MetList:
+                                # Already exists - just remove duplicate
+                                del MetList[CompID]
+                            else:
+                                # Normal case: store under equiv_id and remove original
+                                MetList[equiv_id] = copy.deepcopy(MetList[CompID])
+                                del MetList[CompID]
                     c = c + 1
                 ######### Replace the old glycans by the new compounds ###########
                 reaction2 = copy.deepcopy(rxn)

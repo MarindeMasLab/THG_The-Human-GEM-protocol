@@ -176,7 +176,16 @@ class reaction(object):
 
 
 class gpr(object):
-    def __init__(self, ec, session=None):
+    def __init__(self, ec, session=None, impose_locations=1):
+        """Initialize GPR object for an EC number.
+        
+        Args:
+            ec: EC number to query
+            session: BioCyc session (optional)
+            impose_locations: Compartmentalization mode
+                1 = RESTRICTED: Only use compartments from Excel lookup (default)
+                0 = UNRESTRICTED: Keep all compartment names as-is
+        """
         self.ec = ec
         # Use provided session or create new one
         if session is None:
@@ -195,7 +204,7 @@ class gpr(object):
             self.GPRPAss[3],
             self.GPRPAss[1],
             self.GPRPAss[2],
-            1,  # impose_locations: 1 = restrict to standard compartments (restricted mode)
+            impose_locations,  # 1 = restricted, 0 = unrestricted
             bb_pickle_path,
             session,
             None,  # ensembl_cache

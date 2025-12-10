@@ -436,8 +436,9 @@ def getLocationnew(
                             )
                         except ValueError:
                             # Gene not found in list, skip this gene
+                            gene_name_clean = re.sub(r"\*[0-9]+", "", a[m].upper())
                             LOGGER.warning(
-                                f"Gene {a[m].upper()} not found in genelist11, skipping"
+                                f"Gene {gene_name_clean} not found in genelist11, skipping"
                             )
                             continue
 
@@ -523,7 +524,8 @@ def getLocationnew(
 
                         # Early exit: if BioCyc found location data, skip UniProt
                         if dd:
-                            LOGGER.info(f"Gene {a[m]} location found in BioCyc: {dd}")
+                            gene_name_clean = re.sub(r"\*[0-9]+", "", a[m])
+                            LOGGER.info(f"Gene {gene_name_clean} location found in BioCyc: {dd}")
                             # Process BioCyc locations immediately for caching
                             SubUnLoc = []
                             

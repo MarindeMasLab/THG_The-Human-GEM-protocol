@@ -6,7 +6,7 @@
 
 ## Overview
 
-This module provides a comprehensive pipeline for generating genome-scale metabolic models (GEMs) from KEGG pathway data. It automatically fetches reactions and metabolites from KEGG, resolves compound identities, calculates molecular formulas, performs mass balance validation, and exports SBML-compatible models for use with COBRApy and other metabolic modeling tools.
+This module provides a comprehensive pipeline for generating genome-scale metabolic models (GEMs) from KEGG pathway data, with optional extension via **Rhea** reactions. It automatically fetches reactions and metabolites from KEGG (and Rhea), resolves compound identities, calculates molecular formulas, performs mass balance validation, and exports SBML-compatible models for use with COBRApy and other metabolic modeling tools.
 
 ## Table of Contents
 
@@ -27,18 +27,26 @@ This module provides a comprehensive pipeline for generating genome-scale metabo
 ### Core Capabilities
 
 - **KEGG Integration**: Automated fetching of reactions, compounds, and pathways from KEGG REST API
-- **Compound Identification**: Multi-source metabolite identification using PubChem, KEGG, and custom databases
+- **Rhea Extension**: Optional integration of Rhea reactions with ChEBI metabolites, Reactome pathway grouping, and UniProt EC-to-gene mapping
+- **Compound Identification**: Multi-source metabolite identification using PubChem, KEGG, ChEBI, and custom databases
 - **Formula Resolution**: Intelligent formula parsing including glycan composition calculation
 - **Mass Balance Validation**: Automatic detection and reporting of mass-imbalanced reactions
 - **SBML Export**: Export to SBML format compatible with COBRApy, Escher, and other tools
 - **Gene Associations**: Integration of gene-protein-reaction (GPR) rules
 - **Compartmentalization**: Support for multiple cellular compartments
 
-### Recent Improvements (v2.0)
+### Recent Improvements (v2.1)
 
-1. **Fixed Mass Balance Counting**: Corrected false positive reporting in mass balance validation
-2. **KEGG URL Parsing Update**: Adapted to new KEGG stoichiometry URL format (`map` → `R`)
-3. **Glycan Formula Support**: Added fallback mechanism for glycan formulas and composition-based calculation
+1. **Rhea Extension Module**: New multi-database pipeline supporting:
+   - Rhea reaction database integration via SPARQL queries
+   - ChEBI metabolite resolution with formula and charge
+   - Reactome pathway grouping with human-readable names
+   - UniProt EC-to-gene mapping for GPR rules
+   - Ensembl gene annotation integration
+2. **Fixed Mass Balance Counting**: Corrected false positive reporting in mass balance validation
+3. **KEGG URL Parsing Update**: Adapted to new KEGG stoichiometry URL format (`map` → `R`)
+4. **Glycan Formula Support**: Added fallback mechanism for glycan formulas and composition-based calculation
+5. **Improved Group IDs**: Clean SBML SId-compatible group identifiers
 
 ## Installation
 
@@ -70,12 +78,13 @@ pip install -r generate_data-base/requirements.txt
 ### Dependencies
 
 | Package | Version | Purpose |
-|---------|---------|---------|
+|---------|---------|----------|
 | cobra | ≥0.29.0 | Metabolic model manipulation and SBML I/O |
 | pandas | ≥2.0.0 | Data manipulation and analysis |
 | numpy | ≥1.24.0 | Numerical computations |
 | scipy | ≥1.10.0 | Scientific computing |
-| requests | ≥2.28.0 | HTTP requests to KEGG API |
+| requests | ≥2.28.0 | HTTP requests to KEGG/Reactome/UniProt APIs |
+| SPARQLWrapper | ≥2.0.0 | SPARQL queries to Rhea/ChEBI endpoints |
 | pubchempy | ≥1.0.4 | PubChem compound identification |
 | tqdm | ≥4.65.0 | Progress bars |
 | dill | ≥0.3.6 | Extended pickling support |
@@ -149,6 +158,11 @@ The database generation follows a multi-stage pipeline:
 └─────────────────────────────────────────────────────────────────┘
                                  ↓
 ┌─────────────────────────────────────────────────────────────────┐
+│         STAGE 5b: RHEA EXTENSION (Optional)                     │
+│  Query Rhea SPARQL → ChEBI metabolites → Reactome pathways      │
+└─────────────────────────────────────────────────────────────────┘
+                                 ↓
+┌─────────────────────────────────────────────────────────────────┐
 │          STAGE 6: ISOFORM-BASED COMPARTMENTALIZATION            │
 │  Expand reactions by isoforms → Assign compartments → Localize  │
 └─────────────────────────────────────────────────────────────────┘
@@ -195,6 +209,14 @@ The database generation follows a multi-stage pipeline:
 - Handles multi-enzyme complexes and isozyme alternatives
 - Integrates with Ensembl for gene annotation and validation
 
+#### Stage 5b: Rhea Extension (Optional)
+- Queries Rhea database via SPARQL for additional reactions
+- Resolves ChEBI metabolites with formulas and charges
+- Maps reactions to Reactome pathways with human-readable names
+- Retrieves EC numbers and maps to human genes via UniProt
+- Integrates with existing KEGG-based reactions and pathways
+- Configurable via `ENABLE_RHEA` set of Rhea master IDs
+
 #### Stage 6: Isoform-Based Compartmentalization
 - Expands reactions based on enzyme isoform localization
 - Queries subcellular localization databases for protein targeting
@@ -219,6 +241,7 @@ The database generation follows a multi-stage pipeline:
 | File | Description |
 |------|-------------|
 | `generate_db.py` | Main pipeline script - orchestrates the entire database generation process |
+| `rhea_extension.py` | Rhea database integration - SPARQL queries, ChEBI metabolites, Reactome pathways |
 | `../functions/function_bm_gdb.py` | KEGG API functions, formula parsing, and compound parameter extraction |
 | `../functions/equations_bm_gdb.py` | Reaction equation parsing and stoichiometry extraction |
 | `../functions/functions_mass_balance.py` | Mass balance validation and atom counting |
@@ -567,6 +590,6 @@ This project is licensed under the MIT License - see the [LICENSE](../LICENSE) f
 
 ---
 
-**Last Updated**: December 2024  
-**Version**: 2.0.0  
+**Last Updated**: December 2025  
+**Version**: 2.1.0  
 **Maintainer**: Marinde Mas Lab
