@@ -16,3 +16,6 @@ THG-beta-batch_251106_connected_minptr_combined_compartments.json - THG-beta-bat
 
 THG-beta-expanded_251117 - THG-beta-batch_251106_connected_minptr_combined_compartments.json model with added cytoskeleton and glycocalix using implement_pathway
 
+endoA_251209 - after_phase3_251208_combined_compartments_w_ck_gl
+
+endoA_251210 - after_phase3_251209_combined_compartments_w_ck_gl
