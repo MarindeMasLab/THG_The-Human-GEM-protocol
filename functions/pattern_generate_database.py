@@ -775,7 +775,7 @@ def rxnSubcel(
                 compartments = list(Rxn.Subcel[0].keys())
                 LOGGER.debug(f"Reaction {Rxn.ID} - Subcel[0] keys: {compartments}")
         
-        # If no compartments from GPR, default to cytosol
+        # If no compartments from GPR, default to cytosol (full name for consistency with KEGG)
         if not compartments:
             compartments = ["cytosol"]
             LOGGER.info(f"Reaction {Rxn.ID} has no GPR compartment info, defaulting to cytosol")
@@ -783,7 +783,7 @@ def rxnSubcel(
         for cl in compartments:
             # Default to cytosol if compartment is unknown/empty
             if not cl:
-                cl = "cytosol"
+                cl = "c"
             
             RxnID_CL = Rxn.ID + "_" + cl
             LOGGER.debug(f"Reaction {Rxn.ID} - Attempting to create {RxnID_CL}, already exists: {RxnID_CL in RxnIdent_CL}")

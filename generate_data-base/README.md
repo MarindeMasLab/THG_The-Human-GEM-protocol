@@ -19,7 +19,7 @@ This module provides a comprehensive pipeline for generating genome-scale metabo
 - [Usage Examples](#usage-examples)
 - [Output Files](#output-files)
 - [Troubleshooting](#troubleshooting)
-- [API Reference](#api-reference)
+- [Key Functions and Classes](#key-functions-and-classes)
 - [Contributing](#contributing)
 
 ## Features
@@ -83,9 +83,9 @@ pip install -r generate_data-base/requirements.txt
 | pandas | ≥2.0.0 | Data manipulation and analysis |
 | numpy | ≥1.24.0 | Numerical computations |
 | scipy | ≥1.10.0 | Scientific computing |
-| requests | ≥2.28.0 | HTTP requests to KEGG/Reactome/UniProt APIs |
-| SPARQLWrapper | ≥2.0.0 | SPARQL queries to Rhea/ChEBI endpoints |
+| requests | ≥2.28.0 | HTTP requests to KEGG/Rhea/UniProt APIs |
 | pubchempy | ≥1.0.4 | PubChem compound identification |
+| openpyxl | ≥3.0.0 | Excel file reading (compartment definitions) |
 | tqdm | ≥4.65.0 | Progress bars |
 | dill | ≥0.3.6 | Extended pickling support |
 | xlsxwriter | ≥3.0.0 | Excel report generation |
@@ -94,37 +94,42 @@ pip install -r generate_data-base/requirements.txt
 
 ## Quick Start
 
-### Basic Usage
+### Command Line Usage
 
-```python
-from generate_db import run_pipeline
+The pipeline is executed as a script from the command line:
 
-# Run the full pipeline with default settings
-run_pipeline(
-    pathway_file='../files/human_kegg_pathways.txt',
-    output_dir='../models/',
-    model_name='Human_GEM'
-)
+```bash
+# Navigate to the generate_data-base directory
+cd generate_data-base
+
+# Run without Rhea extension (KEGG only)
+python generate_db.py
+
+# Run with Rhea extension (all human Rhea reactions)
+python generate_db.py --rhea
+
+# Run with specific Rhea IDs only
+python generate_db.py --rhea 10040,10112,10116
 ```
 
-### Minimal Example
+### Environment Setup
 
-```python
-from generate_db import (
-    KEGGPWYS, 
-    rxnsFromPathway, 
-    getGeneAssoc,
-    modelExchange
-)
+Before running, set up BioCyc credentials in a `.env` file at the project root:
 
-# Load pathways
-kegg_pws = KEGGPWYS(rxnsFile='../files/pathway_reactions.tsv')
+```env
+# BioCyc credentials required for GPR (Gene-Protein-Reaction) data extraction
+# You need to create an account at BioCyc from a licensed institution
+BIOCYC_EMAIL=your.email@institution.edu
+BIOCYC_PASSWORD=your_password
+```
 
-# Get reactions for a specific pathway
-reactions = rxnsFromPathway('hsa00010')  # Glycolysis
+### Pathway Subset
 
-# Build exchange reactions
-exchanges = modelExchange(reactions)
+To process only specific pathways, set the `PATHWAY_SUBSET` environment variable:
+
+```bash
+export PATHWAY_SUBSET="../files/human_kegg_pathways_subset.txt"
+python generate_db.py
 ```
 
 ## Pipeline Architecture
@@ -219,11 +224,13 @@ The database generation follows a multi-stage pipeline:
 
 #### Stage 6: Isoform-Based Compartmentalization
 - Expands reactions based on enzyme isoform localization
-- Queries subcellular localization databases for protein targeting
-- Creates compartment-specific copies of reactions:
-  - Cytoplasm (c), Mitochondria (m), Endoplasmic Reticulum (r)
-  - Golgi (g), Nucleus (n), Lysosome (l), Peroxisome (x), Extracellular (e)
-- Generates transport reactions between compartments
+- Queries BioCyc for protein subcellular localization
+- Creates compartment-specific copies of reactions
+- Uses EndoA adjacency matrix to determine allowed transport pairs
+- Transport reactions only created between adjacent compartments:
+  - Cytosol ↔ Mitochondria (c ↔ m)
+  - Mitochondria ↔ Inner Mitochondria (m ↔ i)
+  - Cytosol ↔ ER, Golgi, Nucleus, etc.
 - Handles isoform-specific metabolite pools
 - Ensures metabolic connectivity across cellular compartments
 
@@ -241,27 +248,30 @@ The database generation follows a multi-stage pipeline:
 | File | Description |
 |------|-------------|
 | `generate_db.py` | Main pipeline script - orchestrates the entire database generation process |
-| `rhea_extension.py` | Rhea database integration - SPARQL queries, ChEBI metabolites, Reactome pathways |
-| `../functions/function_bm_gdb.py` | KEGG API functions, formula parsing, and compound parameter extraction |
-| `../functions/equations_bm_gdb.py` | Reaction equation parsing and stoichiometry extraction |
-| `../functions/functions_mass_balance.py` | Mass balance validation and atom counting |
-| `../functions/class_generate_database.py` | Core classes for database generation |
+| `rhea_extension.py` | Rhea database integration - SPARQL queries, ChEBI metabolites, UniProt gene mapping |
+| `transport_utils.py` | Transport reaction handling - compartment boundaries and EndoA adjacency matrix |
+| `extend_model_with_rhea.py` | Standalone tool to extend existing SBML models with Rhea reactions |
+| `make_model_from_pkl.py` | Utility to create COBRA model from pickle checkpoint files |
+| `resume_db_gen.py` | Resume interrupted pipeline runs from checkpoint |
 
-### Support Files
+### Function Modules (in `../functions/`)
 
 | File | Description |
 |------|-------------|
-| `../functions/function_metabolite_identification.py` | PubChem integration and metabolite lookup |
-| `../functions/function_reac_identification.py` | Reaction identification utilities |
-| `../functions/ensembl_client.py` | Ensembl API client for gene annotations |
-| `../functions/error_tracker.py` | Error logging and tracking utilities |
+| `class_generate_database.py` | Core classes: `reaction`, `compound`, `gene`, `gpr` |
+| `function_bm_gdb.py` | KEGG API functions, formula parsing, compound parameter extraction |
+| `equations_bm_gdb.py` | Reaction equation parsing and stoichiometry extraction |
+| `functions_mass_balance.py` | Mass balance validation and atom counting |
+| `pattern_generate_database.py` | Compartmentalization logic (`rxnSubcel`) |
+| `ensembl_client.py` | Ensembl API client for gene annotations |
+| `error_tracker.py` | Error logging and tracking utilities |
 
 ### Input Files (in `../files/`)
 
 | File | Description |
 |------|-------------|
 | `human_kegg_pathways.txt` | List of KEGG pathway IDs to process |
-| `compartments_info.txt` | Cellular compartment definitions |
+| `ListOfCompartments_sept2024.xlsx` | Compartment definitions and EndoA adjacency matrix |
 | `extra_compounds.txt` | Custom compound definitions |
 | `extra_formula.txt` | Manual formula overrides |
 | `special_compounds.txt` | Special handling rules for specific compounds |
@@ -273,128 +283,150 @@ The database generation follows a multi-stage pipeline:
 Create a `.env` file in the project root:
 
 ```env
-# KEGG API settings
-KEGG_DELAY=0.5          # Delay between API calls (seconds)
-KEGG_MAX_RETRIES=3      # Maximum retry attempts for failed requests
-
-# Output settings
-OUTPUT_FORMAT=sbml      # Output format (sbml, json, mat)
-VERBOSE=true            # Enable verbose logging
+# BioCyc credentials required for GPR data extraction
+# Requires an account from a licensed institution
+BIOCYC_EMAIL=your.email@institution.edu
+BIOCYC_PASSWORD=your_password
 ```
 
-### Configuration Options
+### Script Configuration (in `generate_db.py`)
+
+Key configuration variables at the top of `generate_db.py`:
 
 ```python
-# In generate_db.py
-CONFIG = {
-    'kegg_delay': 0.5,           # API rate limiting
-    'max_retries': 3,            # Failed request retries
-    'cache_enabled': True,       # Enable result caching
-    'mass_balance_strict': False, # Strict mass balance mode
-    'include_orphan_rxns': True,  # Include orphan reactions
-    'compartments': ['c', 'm', 'e', 'n', 'r', 'g', 'x', 'l'],
-}
+# Debugging: limit number of reactions (None = no limit)
+MAX_REACTIONS = None  # Set to integer for debugging
+
+# Compartmentalization mode:
+#   1 = RESTRICTED: Only use compartments from Excel lookup table
+#   0 = UNRESTRICTED: Keep all compartment names as-is
+IMPOSE_LOCATIONS = 1  # Default: restricted mode
+
+# Rhea extension options:
+#   ENABLE_RHEA = True        → Process ALL human Rhea reactions (~4700+)
+#   ENABLE_RHEA = False       → Skip Rhea extension
+#   ENABLE_RHEA = {'10040'}   → Process only specific Rhea IDs
+ENABLE_RHEA = False  # Set to True for production
 ```
+
+### Compartments
+
+The pipeline uses 9 cellular compartments defined in `ListOfCompartments_sept2024.xlsx`:
+
+| Abbreviation | Compartment |
+|--------------|-------------|
+| c | cytosol |
+| m | mitochondria |
+| i | inner mitochondria (intermembrane space) |
+| n | nucleus |
+| r | endoplasmic reticulum |
+| g | golgi apparatus |
+| l | lysosome |
+| x | peroxisome |
+| e | extracellular |
 
 ## Usage Examples
 
-### Example 1: Full Pipeline Execution
+### Example 1: Full Pipeline (Command Line)
+
+```bash
+# Set up environment
+cd generate_data-base
+export BIOCYC_EMAIL="your.email@institution.edu"
+export BIOCYC_PASSWORD="your_password"
+
+# Run full pipeline with KEGG + Rhea
+python generate_db.py --rhea
+```
+
+### Example 2: Process Specific Pathways
+
+```bash
+# Create a file with specific pathway IDs
+echo -e "hsa00010\nhsa00020\nhsa00030" > ../files/my_pathways.txt
+
+# Set environment variable and run
+export PATHWAY_SUBSET="../files/my_pathways.txt"
+python generate_db.py
+```
+
+### Example 3: Testing with Specific Rhea IDs
+
+```bash
+# Process only specific Rhea reactions for testing
+python generate_db.py --rhea 10040,10112,10116,11436
+```
+
+### Example 4: Using the RheaExtender Programmatically
 
 ```python
-from generate_db import main
+from rhea_extension import RheaExtender
 
-# Run complete pipeline
-main(
-    pathway_file='../files/human_kegg_pathways.txt',
-    output_prefix='Human_GEM_v1',
-    skip_cache=False,
-    verbose=True
+# Initialize extender with data structures from KEGG pipeline
+extender = RheaExtender(
+    MetList=MetList,
+    MetIdent=MetIdent,
+    MetEquiv=MetEquiv,
+    RxnList=RxnList,
+    RxnIdent=RxnIdent,
+    GPRList=GPRList,
+    GPRIdent=GPRIdent,
+    GeneList=GeneList,
+    GeneIdent=GeneIdent,
+    PathNameRxn=PathNameRxn,
+    impose_locations=1  # Use restricted compartmentalization
 )
-```
 
-### Example 2: Single Pathway Processing
-
-```python
-from generate_db import rxnsFromPathway, processReactions
-
-# Get reactions from glycolysis pathway
-glycolysis_rxns = rxnsFromPathway('hsa00010')
-print(f"Found {len(glycolysis_rxns)} reactions in glycolysis")
-
-# Process reactions
-processed = processReactions(glycolysis_rxns)
-```
-
-### Example 3: Compound Information Retrieval
-
-```python
-from functions.function_bm_gdb import getCompParamFromRestAPI
-
-# Get compound parameters from KEGG
-compound_data = getCompParamFromRestAPI('C00001')  # Water
-print(f"Name: {compound_data['NAME']}")
-print(f"Formula: {compound_data['FORMULA']}")
-```
-
-### Example 4: Mass Balance Check
-
-```python
-from functions.functions_mass_balance import check_mass_balance
-
-# Check mass balance for a reaction
-result = check_mass_balance(
-    substrates={'C00001': 1, 'C00002': 1},  # H2O + ATP
-    products={'C00008': 1, 'C00009': 1},    # ADP + Pi
-    formulas={'C00001': 'H2O', 'C00002': 'C10H16N5O13P3', 
-              'C00008': 'C10H15N5O10P2', 'C00009': 'H3O4P'}
+# Extend with specific Rhea IDs
+extended_data = extender.extend_with_rhea(
+    rhea_ids={'10040', '10112'},
+    session=biocyc_session
 )
-print(f"Mass balanced: {result['balanced']}")
-```
-
-### Example 5: Glycan Formula Calculation
-
-```python
-from functions.function_bm_gdb import calculate_glycan_formula
-
-# Calculate formula from composition
-composition = "(Glc)3 (GlcNAc)2 (Man)9"
-formula = calculate_glycan_formula(composition)
-print(f"Glycan formula: {formula}")  # C80H132N2O61
 ```
 
 ## Output Files
 
 ### Generated Models
 
-| File Pattern | Description |
-|--------------|-------------|
-| `Human_database_YYYYMMDD.xml` | Full SBML model |
-| `Human_database_YYYYMMDD.json` | JSON format model |
-| `Human_database_YYYYMMDD_report.xlsx` | Validation report |
+| File | Description |
+|------|-------------|
+| `models/Human_Database.xml` | Full SBML model (COBRApy compatible) |
 
-### Report Contents
+### Error Reports
 
-The Excel report (`*_report.xlsx`) contains:
+| File | Description |
+|------|-------------|
+| `logs/error_report.txt` | Detailed error report with all warnings and issues |
+| `logs/error_report.json` | JSON format error data for programmatic analysis |
+| `logs/generate_db.log` | Full pipeline execution log |
 
-1. **Summary Sheet**: Overall statistics
-   - Total reactions, metabolites, genes
-   - Mass balance pass/fail counts
-   - Pathway coverage
+### Intermediate Files (in `files/`)
 
-2. **Reactions Sheet**: Detailed reaction information
-   - Reaction ID, name, equation
-   - EC number, pathway associations
-   - Mass balance status
+| File | Description |
+|------|-------------|
+| `pre_sbml_raw.pk` | Pickle checkpoint before compartmentalization |
+| `pre_sbml_pos_comp.pk` | Pickle checkpoint after compartmentalization |
+| `gene_location_cache.pkl` | Cached gene location data from BioCyc |
 
-3. **Metabolites Sheet**: Compound information
-   - KEGG ID, name, formula
-   - Charge, compartment
-   - External database cross-references
+### Error Report Contents
 
-4. **Errors Sheet**: Issues encountered
-   - Failed API calls
-   - Unparseable formulas
-   - Missing data warnings
+The error report (`logs/error_report.txt` and `.json`) contains:
+
+1. **Overall Statistics**:
+   - Total errors by category
+   - Success/failure rates
+   - Processing summary
+
+2. **Error Categories**:
+   - API connection failures
+   - Mass balance issues
+   - Missing formula warnings
+   - GPR retrieval errors
+   - Compartmentalization issues
+
+3. **Recommendations**:
+   - Suggested fixes for common issues
+   - Manual overrides needed
 
 ## Troubleshooting
 
@@ -406,11 +438,7 @@ The Excel report (`*_report.xlsx`) contains:
 Error: Failed to fetch data from KEGG REST API
 ```
 
-**Solution**: Check internet connection and increase retry count:
-```python
-CONFIG['max_retries'] = 5
-CONFIG['kegg_delay'] = 1.0  # Increase delay
-```
+**Solution**: Check internet connection. The pipeline includes automatic retries with delays.
 
 #### 2. Missing Formulas for Glycans
 
@@ -440,98 +468,68 @@ Warning: Reaction R00001 is mass-imbalanced
 MemoryError: Unable to allocate array
 ```
 
-**Solution**: Process pathways in batches:
+**Solution**: Use the `MAX_REACTIONS` variable in `generate_db.py` to limit processing:
 ```python
-for pathway_batch in chunks(pathways, 10):
-    process_batch(pathway_batch)
-    gc.collect()
+MAX_REACTIONS = 100  # Process only first 100 reactions for testing
+```
+
+Or process a subset of pathways via environment variable:
+```bash
+export PATHWAY_SUBSET="../files/human_kegg_pathways_subset.txt"
 ```
 
 ### Debug Mode
 
-Enable debug logging:
+Enable debug logging by modifying `generate_db.py`:
 
 ```python
-import logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.DEBUG)  # Already default
+# Change to logging.INFO for less verbose output
 ```
 
 ### Cache Reset
 
 Clear cached data if experiencing stale data issues:
 
-```python
-from generate_db import clear_cache
-clear_cache()
+```bash
+# Remove checkpoint and cache files
+rm -f ../files/pre_sbml_raw.pk ../files/pre_sbml_pos_comp.pk
+rm -f ../files/gene_location_cache.pkl
+rm -f ../files/checkpoint_progress.pkl
 ```
 
-## API Reference
+## Key Functions and Classes
 
-### Main Functions
+### `generate_db.py`
 
-#### `run_pipeline(pathway_file, output_dir, model_name, **kwargs)`
-Run the complete database generation pipeline.
+#### `cobra_reconstruction(ModName, ModID, MetList_CL, RxnList_CL, GeneList, PathNameRxn, LocVar, MetEquiv, MetList)`
+Assemble the final COBRA model from processed data structures.
 
-**Parameters:**
-- `pathway_file` (str): Path to file containing KEGG pathway IDs
-- `output_dir` (str): Output directory for generated files
-- `model_name` (str): Base name for output files
-- `**kwargs`: Additional configuration options
+#### `process_reaction_gpr(rxn, gpr_list, gpr_ident, session, impose_locations)`
+Process GPR (Gene-Protein-Reaction) associations for a reaction via BioCyc.
 
-**Returns:**
-- `cobra.Model`: Generated metabolic model
+### `rhea_extension.py`
 
-#### `rxnsFromPathway(pathway_id)`
-Extract reactions from a KEGG pathway.
-
-**Parameters:**
-- `pathway_id` (str): KEGG pathway ID (e.g., 'hsa00010')
-
-**Returns:**
-- `list`: List of reaction IDs
-
-#### `getCompParamFromRestAPI(compound_id)`
-Fetch compound parameters from KEGG REST API.
-
-**Parameters:**
-- `compound_id` (str): KEGG compound ID (e.g., 'C00001')
-
-**Returns:**
-- `dict`: Compound parameters including NAME, FORMULA, etc.
-
-### Classes
-
-#### `KEGGPWYS`
-Class for managing KEGG pathway data.
+#### `RheaExtender`
+Main class for extending KEGG-based models with Rhea reactions.
 
 ```python
-class KEGGPWYS:
-    def __init__(self, rxnsFile=None):
-        """Initialize with optional cached reactions file."""
-        
-    def get_reactions(self, pathway_id):
-        """Get reactions for a pathway."""
-        
-    def get_all_compounds(self):
-        """Get all unique compounds across pathways."""
+extender = RheaExtender(
+    MetList, MetIdent, MetEquiv, RxnList, RxnIdent,
+    GPRList, GPRIdent, GeneList, GeneIdent, PathNameRxn,
+    impose_locations=1
+)
+result = extender.extend_with_rhea(rhea_ids, session)
 ```
 
-#### `ModelBuilder`
-Class for assembling COBRA models.
+### `transport_utils.py`
+
+#### `TransportBoundaryManager`
+Manages compartment boundaries and transport reaction logic.
 
 ```python
-class ModelBuilder:
-    def __init__(self, model_id, model_name):
-        """Initialize model builder."""
-        
-    def add_metabolite(self, met_id, **kwargs):
-        """Add metabolite to model."""
-        
-    def add_reaction(self, rxn_id, **kwargs):
-        """Add reaction to model."""
-        
-    def export_sbml(self, filepath):
-        """Export model to SBML."""
+manager = TransportBoundaryManager(excel_file)
+allowed_pairs = manager.get_allowed_transport_pairs('mitochondria')
 ```
 
 ## Contributing
@@ -543,13 +541,9 @@ class ModelBuilder:
    ```bash
    git checkout -b feature/my-feature
    ```
-3. Install development dependencies:
+3. Install dependencies:
    ```bash
-   pip install -r requirements-dev.txt
-   ```
-4. Run tests:
-   ```bash
-   pytest tests/
+   pip install -r generate_data-base/requirements.txt
    ```
 
 ### Code Style
@@ -557,11 +551,10 @@ class ModelBuilder:
 - Follow PEP 8 guidelines
 - Use type hints for function signatures
 - Document all public functions with docstrings
-- Add tests for new functionality
 
 ### Submitting Changes
 
-1. Ensure all tests pass
+1. Test your changes with a subset of pathways
 2. Update documentation if needed
 3. Create a pull request with a clear description
 

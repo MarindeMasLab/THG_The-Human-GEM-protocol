@@ -48,6 +48,34 @@ project_root = os.path.join(current_dir, "..")
 if project_root not in sys.path:
     sys.path.append(project_root)
 
+
+# =============================================================================
+# COMPARTMENT ABBREVIATION MAPPING
+# =============================================================================
+# Maps full compartment names to single-letter codes used by Human-GEM/KEGG model.
+# This ensures consistency between the database and the model compartments.
+COMPARTMENT_NAME_TO_ABBREV = {
+    "extracellular": "e",
+    "peroxisome": "x",
+    "mitochondria": "m",
+    "cytosol": "c",
+    "lysosome": "l",
+    "endoplasmic reticulum": "r",
+    "golgi apparatus": "g",
+    "nucleus": "n",
+    "inner mitochondria": "i",
+    # Additional mappings for common variations
+    "cytoplasm": "c",
+    "cell membrane": "cm",
+    "vesicle": "ve",
+    "cilium": "ci",
+    "cytoskeleton": "cy2",
+    "glycocalix": "gl",
+}
+
+# Reverse mapping: abbreviation -> full name
+COMPARTMENT_ABBREV_TO_NAME = {v: k for k, v in COMPARTMENT_NAME_TO_ABBREV.items()}
+
 # Import existing classes - REUSE, don't recreate!
 from functions.class_generate_database import reaction, compound, gene, gpr
 from functions.function_bm_gdb import getHtml, batch_fetch_kegg_entries
@@ -60,6 +88,22 @@ from functions.metabolite_matching import (
     find_equivalent_metabolite,
     METABOLITE_MATCH_ATTRIBUTES
 )
+
+# Import transport reaction handling utilities
+# Note: transport_utils.py is in the same directory as this file
+try:
+    from transport_utils import (
+        is_transport_reaction,
+        TransportBoundaryManager,
+        TransportReactionProcessor,
+        get_transport_processor,
+        TRANSPORT_OMIT_METABOLITES
+    )
+    TRANSPORT_UTILS_AVAILABLE = True
+except ImportError:
+    TRANSPORT_UTILS_AVAILABLE = False
+    LOGGER_INIT = logging.getLogger(__name__)
+    LOGGER_INIT.warning("transport_utils not available - transport reactions will use standard compartmentalization")
 
 # Configure logging
 logging.basicConfig(
@@ -364,6 +408,7 @@ class HumanProteomeFilter:
         self.uniprot_to_kegg: Dict[str, str] = {}         # UniProt -> KEGG gene ID
         self.uniprot_to_geneid: Dict[str, str] = {}       # UniProt -> NCBI GeneID
         self.uniprot_to_ec: Dict[str, List[str]] = {}     # UniProt -> EC numbers
+        self.uniprot_to_location: Dict[str, List[str]] = {}  # UniProt -> subcellular locations
         # Statistics for diagnostics
         self.uniprot_mapping_stats: Dict[str, int] = {}
         
@@ -500,6 +545,32 @@ class HumanProteomeFilter:
                             if ec_list:
                                 self.uniprot_to_ec[uniprot] = ec_list
                                 stats['has_ec'] += 1
+                    
+                    # Subcellular location (important for transport reactions)
+                    if 'Subcellular location [CC]' in col_idx:
+                        idx = col_idx['Subcellular location [CC]']
+                        loc_ref = parts[idx].strip() if len(parts) > idx else ""
+                        if loc_ref:
+                            # Parse subcellular locations from UniProt format
+                            # Format: "SUBCELLULAR LOCATION: Location1 {evidence}. Location2 {evidence}."
+                            # or just "Location1; Location2"
+                            locations = []
+                            # Remove "SUBCELLULAR LOCATION:" prefix if present
+                            loc_clean = loc_ref.replace("SUBCELLULAR LOCATION:", "").strip()
+                            # Remove evidence annotations like {ECO:...}
+                            import re
+                            loc_clean = re.sub(r'\{[^}]+\}', '', loc_clean)
+                            # Split by periods and semicolons
+                            for part in re.split(r'[.;]', loc_clean):
+                                part = part.strip()
+                                # Remove "Note:" sections
+                                if part.lower().startswith('note'):
+                                    continue
+                                if part:
+                                    locations.append(part)
+                            if locations:
+                                self.uniprot_to_location[uniprot] = locations
+                                stats['has_location'] = stats.get('has_location', 0) + 1
             
             return processed
         
@@ -508,7 +579,7 @@ class HumanProteomeFilter:
             url = f"{UNIPROT_API_BASE}/stream"
             params = {
                 "query": " OR ".join([f"accession:{acc}" for acc in batch_ids]),
-                "fields": "accession,gene_primary,xref_kegg,xref_geneid,xref_ensembl,ec",
+                "fields": "accession,gene_primary,xref_kegg,xref_geneid,xref_ensembl,ec,cc_subcellular_location",
                 "format": "tsv",
             }
             try:
@@ -580,6 +651,13 @@ class HumanProteomeFilter:
                 
         self.uniprot_to_gene_symbol.update(mapping)
         
+        # Build reverse mapping: gene symbol -> UniProt IDs
+        self.gene_symbol_to_uniprots: Dict[str, Set[str]] = {}
+        for uniprot, symbol in self.uniprot_to_gene_symbol.items():
+            if symbol not in self.gene_symbol_to_uniprots:
+                self.gene_symbol_to_uniprots[symbol] = set()
+            self.gene_symbol_to_uniprots[symbol].add(uniprot)
+        
         # Log detailed statistics
         LOGGER.info(f"  UniProt mapping statistics:")
         LOGGER.info(f"    Total queried:     {stats['total_queried']}")
@@ -589,6 +667,7 @@ class HumanProteomeFilter:
         LOGGER.info(f"    Has GeneID xref:   {stats['has_geneid']} ({100*stats['has_geneid']/max(1,stats['total_queried']):.1f}%)")
         LOGGER.info(f"    Has Ensembl xref:  {stats['has_ensembl']} ({100*stats['has_ensembl']/max(1,stats['total_queried']):.1f}%)")
         LOGGER.info(f"    Has EC number:     {stats['has_ec']} ({100*stats['has_ec']/max(1,stats['total_queried']):.1f}%)")
+        LOGGER.info(f"    Has location:      {stats.get('has_location', 0)} ({100*stats.get('has_location', 0)/max(1,stats['total_queried']):.1f}%)")
         LOGGER.info(f"    API errors:        {stats['api_errors']}")
         if stats['failed_ids'] > 0:
             LOGGER.warning(f"    Failed after retries: {stats['failed_ids']}")
@@ -732,6 +811,44 @@ class HumanProteomeFilter:
             self.uniprot_mapping_stats['kegg_fallback_recovered'] = len(mapping)
         
         return mapping
+
+    def get_subcellular_locations(self, gene_symbol: str) -> List[str]:
+        """
+        Get subcellular locations for a gene symbol from UniProt data.
+        
+        This uses the location data fetched during batch UniProt mapping.
+        Falls back to empty list if no location data available.
+        
+        Args:
+            gene_symbol: Gene symbol (e.g., "SLC25A3", "ADH1B")
+            
+        Returns:
+            List of subcellular location strings (e.g., ["Mitochondrion inner membrane"])
+        """
+        if not hasattr(self, 'gene_symbol_to_uniprots') or not self.gene_symbol_to_uniprots:
+            return []
+            
+        # Get UniProt IDs for this gene symbol
+        uniprots = self.gene_symbol_to_uniprots.get(gene_symbol, set())
+        
+        if not uniprots:
+            return []
+            
+        # Collect all locations from all UniProt entries for this gene
+        locations = []
+        for uniprot in uniprots:
+            locs = self.uniprot_to_location.get(uniprot, [])
+            locations.extend(locs)
+        
+        # Deduplicate while preserving order
+        seen = set()
+        unique_locs = []
+        for loc in locations:
+            if loc not in seen:
+                seen.add(loc)
+                unique_locs.append(loc)
+        
+        return unique_locs
 
 
 # =============================================================================
@@ -2264,8 +2381,8 @@ class RheaExtender:
                     
                     LOGGER.debug(f"  RHEA:{rhea_id} - no genes found, adding with default cytosol location")
                     
-                    # Create empty GPR data (reaction goes to cytosol by default)
-                    gpr_data = ('', '', {'cytosol': ''}, {'cytosol': ''})
+                    # Create empty GPR data (reaction goes to cytosol by default - abbreviated 'c')
+                    gpr_data = ('', '', {'c': ''}, {'c': ''})
                     self.stats['reactions_added_no_genes'] = self.stats.get('reactions_added_no_genes', 0) + 1
                     # Don't continue - fall through to add the reaction!
                     
@@ -2290,7 +2407,7 @@ class RheaExtender:
                     if not gpr_data or not gpr_data[0]:
                         # GPR build failed but we still want the reaction
                         LOGGER.debug(f"  RHEA:{rhea_id} - GPR build failed, adding with default cytosol location")
-                        gpr_data = ('', '', {'cytosol': ''}, {'cytosol': ''})
+                        gpr_data = ('', '', {'c': ''}, {'c': ''})  # Use 'c' for cytosol
                         self.stats['reactions_added_no_genes'] = self.stats.get('reactions_added_no_genes', 0) + 1
                     else:
                         self.stats['reactions_via_rhea_genes'] += 1
@@ -2307,10 +2424,10 @@ class RheaExtender:
                 GPR_by_comp = gpr_data[3]   # {compartment: GPR}
                 rxn_adapter._subcel_data = [sGPR_by_comp, GPR_by_comp]
             else:
-                # Fallback: use general GPR for cytosol
+                # Fallback: use general GPR for cytosol (abbreviated 'c')
                 rxn_adapter._subcel_data = [
-                    {'cytosol': gpr_data[0]},
-                    {'cytosol': gpr_data[1]}
+                    {'c': gpr_data[0]},
+                    {'c': gpr_data[1]}
                 ]
             
             # Add to RxnList (base reaction)
@@ -2357,6 +2474,61 @@ class RheaExtender:
                                 met.AssRxn2.append(rxn_key)
                             else:
                                 met.AssRxn2 = [met.AssRxn2, rxn_key] if met.AssRxn2 else [rxn_key]
+            
+            # ================================================================
+            # Step 5d: Check if this is a transport reaction
+            # ================================================================
+            # Transport reactions have (in)/(out) in their equation and need
+            # special compartmentalization logic based on Transport_Boundaries
+            is_transport = False
+            if TRANSPORT_UTILS_AVAILABLE and equation:
+                is_transport = is_transport_reaction(equation)
+                
+            if is_transport:
+                LOGGER.info(f"  RHEA:{rhea_id} detected as transport reaction")
+                LOGGER.debug(f"  RHEA:{rhea_id} gpr_data for transport: {gpr_data}")
+                self.stats['transport_reactions_detected'] = self.stats.get('transport_reactions_detected', 0) + 1
+                
+                try:
+                    # Process transport reaction with special logic
+                    transport_results = self._process_transport_reaction(
+                        rhea_id=rhea_id,
+                        rxn_key=rxn_key,
+                        rxn_adapter=rxn_adapter,
+                        equation=equation,
+                        substrates=substrates,
+                        products=products,
+                        gpr_data=gpr_data,
+                        uniprots=uniprots,
+                        RxnList_CL=RxnList_CL,
+                        MetList_CL=MetList_CL,
+                        RxnIdent_CL=RxnIdent_CL,
+                        MetIdent_CL=MetIdent_CL,
+                        Compartment_CL=Compartment_CL,
+                        MetList=MetList,
+                        MetEquiv=MetEquiv,
+                        GeneList=GeneList,
+                        GeneIdent=GeneIdent,
+                    )
+                    
+                    if transport_results:
+                        # Transport was processed - extend identifiers
+                        rxn_cl, comp_cl = transport_results
+                        RxnIdent_CL.extend(rxn_cl)
+                        MetIdent_CL.extend(comp_cl)
+                        self.stats['transport_reactions_processed'] = self.stats.get('transport_reactions_processed', 0) + 1
+                        self.stats['compartmentalized_reactions'] += len(rxn_cl)
+                        
+                        # Extract genes from GPR
+                        self._extract_and_add_genes(gpr_data, GeneList, GeneIdent, EnsblDB=None)
+                        continue  # Skip standard compartmentalization
+                    else:
+                        # Transport processing returned None - fall through to standard
+                        LOGGER.debug(f"  RHEA:{rhea_id} transport processing returned None, using standard compartmentalization")
+                        
+                except Exception as e:
+                    LOGGER.warning(f"  RHEA:{rhea_id} transport processing failed: {e}, falling back to standard compartmentalization")
+                    self.stats['transport_reactions_fallback'] = self.stats.get('transport_reactions_fallback', 0) + 1
             
             # ================================================================
             # Step 6: Compartmentalize the reaction using rxnSubcel
@@ -2441,17 +2613,21 @@ class RheaExtender:
                     # Location might be a string or list
                     loc = gene_obj.Location
                     if isinstance(loc, str):
-                        gene_to_compartments[gene_symbol] = {loc}
+                        # Convert to abbreviation if it's a full name
+                        abbr = COMPARTMENT_NAME_TO_ABBREV.get(loc.lower(), loc)
+                        gene_to_compartments[gene_symbol] = {abbr}
                     elif isinstance(loc, (list, set)):
-                        gene_to_compartments[gene_symbol] = set(loc)
+                        # Convert each location to abbreviation
+                        abbr_locs = {COMPARTMENT_NAME_TO_ABBREV.get(l.lower(), l) for l in loc}
+                        gene_to_compartments[gene_symbol] = abbr_locs
                     else:
-                        gene_to_compartments[gene_symbol] = {'cytosol'}
+                        gene_to_compartments[gene_symbol] = {'c'}  # Default cytosol
                 else:
                     # Default to cytosol if no location
-                    gene_to_compartments[gene_symbol] = {'cytosol'}
+                    gene_to_compartments[gene_symbol] = {'c'}
             else:
                 # Shouldn't happen, but fallback to cytosol
-                gene_to_compartments[gene_symbol] = {'cytosol'}
+                gene_to_compartments[gene_symbol] = {'c'}
         
         # Build by-compartment GPR dictionaries
         compartment_to_genes = {}
@@ -2461,9 +2637,9 @@ class RheaExtender:
                     compartment_to_genes[comp] = set()
                 compartment_to_genes[comp].add(gene)
         
-        # If no compartments found, use cytosol
+        # If no compartments found, use cytosol (abbreviated 'c')
         if not compartment_to_genes:
-            compartment_to_genes = {'cytosol': gene_symbols}
+            compartment_to_genes = {'c': gene_symbols}
         
         # Build sGPR and GPR for each compartment
         sGPR_by_comp = {}
@@ -2481,12 +2657,130 @@ class RheaExtender:
         
         return (sgpr_general, gpr_general, sGPR_by_comp, GPR_by_comp)
 
+    def _load_compartment_mapping(self, excel_file: str) -> Dict[str, str]:
+        """
+        Load compartment name mapping from Def-Compartments sheet.
+        
+        Maps UniProt/GO subcellular location names to model compartment codes.
+        
+        Args:
+            excel_file: Path to ListOfCompartments Excel file
+            
+        Returns:
+            Dict mapping lowercase location name -> model compartment code
+        """
+        if hasattr(self, '_compartment_mapping_cache'):
+            return self._compartment_mapping_cache
+        
+        mapping = {}
+        try:
+            import pandas as pd
+            df = pd.read_excel(excel_file, sheet_name='Def-Compartments')
+            
+            # Map "Compartment Name" (col A) -> "Endo1-a" (col D)
+            for _, row in df.iterrows():
+                name = row.get('Compartment Name', '')
+                model_comp = row.get('Endo1-a', '')
+                
+                if name and model_comp and pd.notna(name) and pd.notna(model_comp):
+                    # Normalize to lowercase for matching
+                    mapping[str(name).lower().strip()] = str(model_comp).strip()
+            
+            LOGGER.debug(f"Loaded {len(mapping)} compartment mappings from {excel_file}")
+            
+        except Exception as e:
+            LOGGER.warning(f"Failed to load compartment mapping: {e}")
+        
+        self._compartment_mapping_cache = mapping
+        return mapping
+
+    def _map_uniprot_location_to_model(self, uniprot_location: str, mapping: Dict[str, str]) -> Optional[str]:
+        """
+        Map a UniProt subcellular location to a model compartment abbreviation code.
+        
+        Uses fuzzy matching if exact match not found.
+        
+        Args:
+            uniprot_location: Location string from UniProt (e.g., "Mitochondrion inner membrane")
+            mapping: Dict from _load_compartment_mapping()
+            
+        Returns:
+            Model compartment abbreviation (e.g., "m", "c", "i") or None if not mapped
+        """
+        if not uniprot_location:
+            return None
+        
+        loc_lower = uniprot_location.lower().strip()
+        
+        # Helper function to convert full name to abbreviation
+        def to_abbreviation(full_name: str) -> str:
+            """Convert full compartment name to single-letter abbreviation."""
+            full_name_lower = full_name.lower().strip()
+            return COMPARTMENT_NAME_TO_ABBREV.get(full_name_lower, full_name_lower)
+        
+        # Try exact match first (if mapping provided)
+        if mapping and loc_lower in mapping:
+            return to_abbreviation(mapping[loc_lower])
+        
+        # Try partial matching for common patterns (if mapping provided)
+        # e.g., "Mitochondrion inner membrane" should match "mitochondrion inner membrane"
+        if mapping:
+            for key, value in mapping.items():
+                if key == loc_lower:
+                    return to_abbreviation(value)
+                # Check if UniProt location contains the mapping key
+                if key in loc_lower:
+                    return to_abbreviation(value)
+        
+        # Special handling for common UniProt location patterns
+        # Maps UniProt terms directly to abbreviations
+        # IMPORTANT: More specific patterns must be checked first!
+        # Order matters: check longer/more specific patterns before shorter ones
+        location_aliases_ordered = [
+            # Inner mitochondria patterns (check before general mitochondrion)
+            ('mitochondrion inner membrane', 'i'),
+            ('mitochondrial inner membrane', 'i'),
+            ('mitochondrion matrix', 'i'),
+            ('mitochondrial matrix', 'i'),
+            ('inner mitochondria', 'i'),
+            # ER membrane (check before general ER)
+            ('endoplasmic reticulum membrane', 'r'),
+            # General patterns
+            ('cytoplasm', 'c'),
+            ('cytosol', 'c'),
+            ('nucleus', 'n'),
+            ('nuclear', 'n'),
+            ('mitochondrion', 'm'),
+            ('mitochondria', 'm'),
+            ('mitochondrial', 'm'),
+            ('endoplasmic reticulum', 'r'),
+            ('golgi apparatus', 'g'),
+            ('golgi', 'g'),
+            ('cell membrane', 'cm'),
+            ('plasma membrane', 'cm'),
+            ('membrane', 'cm'),
+            ('extracellular', 'e'),
+            ('secreted', 'e'),
+            ('peroxisome', 'x'),
+            ('lysosome', 'l'),
+            ('vesicle', 've'),
+            ('cilium', 'ci'),
+        ]
+        
+        for alias, abbrev in location_aliases_ordered:
+            if alias in loc_lower:
+                return abbrev
+        
+        # Default: return None (caller will use fallback)
+        LOGGER.debug(f"No mapping found for UniProt location: {uniprot_location}")
+        return None
+
     def _build_gpr_from_rhea_genes(self, gene_symbols: Set[str], session) -> tuple:
         """
         Build GPR data from Rhea's gene list using OR assumption.
         
-        Uses getLocationnew() to get subcellular locations for each gene,
-        which tries BioCyc first, then UniProt, then defaults to cytosol.
+        Uses UniProt subcellular locations first (from batch query during initialization),
+        then falls back to getLocationnew() (BioCyc → web UniProt → cytosol).
         
         IMPORTANT: Uses gene symbols (e.g., "ADH1B") to match KEGG's format,
         NOT Ensembl IDs. This ensures genes can be found in GeneList.
@@ -2523,19 +2817,41 @@ class RheaExtender:
         # Get impose_locations setting (default to restricted if not set)
         impose_locations = getattr(self, '_impose_locations', 1)
         
+        # Load compartment mapping for UniProt location normalization
+        compartment_mapping = self._load_compartment_mapping(excel_file)
+        
         # Collect gene locations
         gene_to_compartments = {}
         
         for gene_symbol in gene_symbols:
             try:
-                # Build single-gene sGPR in the expected format
+                # FIRST: Try UniProt locations from our batch query (fast, already fetched)
+                uniprot_locs = []
+                if hasattr(self, 'human_filter') and self.human_filter:
+                    uniprot_locs = self.human_filter.get_subcellular_locations(gene_symbol)
+                    LOGGER.debug(f"  {gene_symbol}: UniProt lookup returned {uniprot_locs}")
+                else:
+                    LOGGER.debug(f"  {gene_symbol}: No human_filter available")
+                
+                if uniprot_locs:
+                    # Map UniProt locations to model compartments using Def-Compartments
+                    model_compartments = []
+                    for loc in uniprot_locs:
+                        mapped = self._map_uniprot_location_to_model(loc, compartment_mapping)
+                        if mapped:
+                            model_compartments.append(mapped)
+                    
+                    if model_compartments:
+                        gene_to_compartments[gene_symbol] = list(set(model_compartments))
+                        LOGGER.debug(f"  {gene_symbol}: UniProt locations {uniprot_locs} -> {model_compartments}")
+                        continue
+                    else:
+                        LOGGER.debug(f"  {gene_symbol}: UniProt locations {uniprot_locs} -> NO MODEL MAPPING")
+                
+                # FALLBACK: Use getLocationnew (BioCyc → web UniProt → cytosol)
+                LOGGER.debug(f"  {gene_symbol}: Falling back to getLocationnew")
                 single_gene_sgpr = f"([{gene_symbol}*1])"
                 
-                # Use getLocationnew which handles BioCyc → UniProt → cytosol fallback
-                # Parameters:
-                #   gpr: sGPR string like "([GENE*1])"
-                #   genelist1: list of gene names (NOT a string)
-                #   genelist2: list of BioCyc IDs (use gene symbol as dummy since Rhea has no BioCyc IDs)
                 locations = getLocationnew(
                     single_gene_sgpr,       # sGPR for this gene
                     [gene_symbol],          # genes_list as LIST (not string!)
@@ -2554,13 +2870,18 @@ class RheaExtender:
                 if locations and len(locations) >= 2 and locations[0]:
                     # locations[0] is sGPR by compartment dict
                     compartments = list(locations[0].keys())
-                    gene_to_compartments[gene_symbol] = compartments if compartments else ['cytosol']
+                    # Convert compartment names to abbreviations
+                    abbr_compartments = []
+                    for comp in compartments:
+                        abbr = COMPARTMENT_NAME_TO_ABBREV.get(comp.lower(), comp)
+                        abbr_compartments.append(abbr)
+                    gene_to_compartments[gene_symbol] = abbr_compartments if abbr_compartments else ['c']
                 else:
-                    gene_to_compartments[gene_symbol] = ['cytosol']
+                    gene_to_compartments[gene_symbol] = ['c']  # Use 'c' for cytosol
                     
             except Exception as e:
                 LOGGER.debug(f"  Location lookup failed for {gene_symbol}: {e}")
-                gene_to_compartments[gene_symbol] = ['cytosol']
+                gene_to_compartments[gene_symbol] = ['c']  # Use 'c' for cytosol
         
         # Build compartment-specific GPRs
         compartment_to_genes = defaultdict(set)
@@ -2584,6 +2905,221 @@ class RheaExtender:
             GPR_by_comp[comp] = " or ".join(sorted_comp_genes)
         
         return (sgpr_general, gpr_general, sGPR_by_comp, GPR_by_comp)
+    
+    def _process_transport_reaction(
+        self,
+        rhea_id: str,
+        rxn_key: str,
+        rxn_adapter,
+        equation: str,
+        substrates: List,
+        products: List,
+        gpr_data: tuple,
+        uniprots: Set[str],
+        RxnList_CL: Dict,
+        MetList_CL: Dict,
+        RxnIdent_CL: List,
+        MetIdent_CL: List,
+        Compartment_CL: List,
+        MetList: Dict,
+        MetEquiv: Dict,
+        GeneList: Dict,
+        GeneIdent: List,
+    ) -> Optional[Tuple[List[str], List[str]]]:
+        """
+        Process a transport reaction with special compartmentalization logic.
+        
+        Transport reactions in Rhea have (in)/(out) markers in the equation,
+        indicating metabolites on different sides of a membrane. These require
+        special handling:
+        
+        Case A (Membrane compartment):
+            - Gene is localized to a membrane compartment (a, ca, cb, cj)
+            - Use Transport_Boundaries sheet to get Side1 and Side2
+            - Create direct transport: substrates from Side1, products to Side2
+            
+        Case B (Non-membrane compartment):
+            - Gene is localized to non-membrane compartments
+            - Get allowed pairs from EndoA matrix
+            - Match existing species in model
+            - Assign GPR based on genes localized to each compartment pair
+        
+        Args:
+            rhea_id: The Rhea reaction ID
+            rxn_key: The reaction key (e.g., "RHEA12345")
+            rxn_adapter: The RheaReactionAdapter object
+            equation: The human-readable equation (contains (in)/(out))
+            substrates: List of substrate tuples [(coef, url, kegg_id), ...]
+            products: List of product tuples [(coef, url, kegg_id), ...]
+            gpr_data: Tuple of GPR data (sGPR_general, GPR_general, sGPR_by_comp, GPR_by_comp)
+            uniprots: Set of UniProt IDs for this reaction
+            RxnList_CL: Compartmentalized reaction dictionary
+            MetList_CL: Compartmentalized metabolite dictionary
+            RxnIdent_CL: List of compartmentalized reaction IDs
+            MetIdent_CL: List of compartmentalized metabolite IDs
+            Compartment_CL: List of compartment tuples
+            MetList: Base metabolite dictionary
+            MetEquiv: Metabolite equivalence dictionary
+            GeneList: Gene dictionary
+            GeneIdent: List of gene identifiers
+            
+        Returns:
+            Tuple of (new_rxn_ids, new_met_ids) or None if processing failed
+        """
+        if not TRANSPORT_UTILS_AVAILABLE:
+            return None
+            
+        # Get the transport processor (lazy load with Excel path)
+        excel_path = os.path.join(project_root, "files", "ListOfCompartments_sept2024.xlsx")
+        
+        try:
+            transport_processor = get_transport_processor(excel_path)
+        except Exception as e:
+            LOGGER.warning(f"Could not initialize transport processor: {e}")
+            return None
+        
+        LOGGER.debug(f"Processing transport reaction RHEA:{rhea_id}")
+        LOGGER.debug(f"Equation: {equation}")
+        LOGGER.debug(f"_process_transport gpr_data[2] = {gpr_data[2] if gpr_data and len(gpr_data) >= 4 else 'N/A'}")
+        
+        # Build gene → locations mapping from GPR data
+        gene_locations: Dict[str, List[str]] = {}
+        
+        if gpr_data and len(gpr_data) >= 4:
+            sGPR_by_comp = gpr_data[2]  # {compartment: sGPR}
+            
+            # Invert the mapping: for each compartment, extract genes
+            # and map them to that compartment's location
+            for comp_name, sgpr_str in sGPR_by_comp.items():
+                # Extract gene symbols from sGPR string
+                gene_matches = re.findall(
+                    r"\[([A-Za-z0-9\-]+)\*",
+                    sgpr_str
+                )
+                for gene_symbol in gene_matches:
+                    if gene_symbol not in gene_locations:
+                        gene_locations[gene_symbol] = []
+                    # Map compartment name to UniProt-style location
+                    # (the TransportBoundaryManager will convert back)
+                    gene_locations[gene_symbol].append(comp_name)
+        
+        if not gene_locations:
+            LOGGER.debug(f"RHEA:{rhea_id} - no gene locations available for transport processing")
+            return None
+        
+        LOGGER.debug(f"Gene locations for RHEA:{rhea_id}: {gene_locations}")
+        
+        # Process the transport reaction
+        try:
+            transport_results = transport_processor.process_transport_reaction(
+                reaction_id=rxn_key,
+                equation=equation,
+                gene_locations=gene_locations,
+                substrates=[(s[0], s[1], s[2]) for s in substrates],
+                products=[(p[0], p[1], p[2]) for p in products],
+                MetList_CL=MetList_CL,
+                MetList=MetList,
+                MetEquiv=MetEquiv
+            )
+        except Exception as e:
+            LOGGER.warning(f"Transport processing failed for RHEA:{rhea_id}: {e}")
+            return None
+        
+        if not transport_results:
+            LOGGER.debug(f"RHEA:{rhea_id} - transport processing returned no results")
+            return None
+        
+        # Convert transport results to compartmentalized reactions
+        new_rxn_ids = []
+        new_met_ids = []
+        
+        for result in transport_results:
+            rxn_cl_id = result['reaction_id']
+            comp_pair = result['compartment_pair']
+            comp1, comp2 = comp_pair
+            
+            LOGGER.info(f"  Creating transport reaction {rxn_cl_id} ({comp1} <-> {comp2})")
+            
+            # Create compartmentalized reaction adapter
+            # Clone the original reaction with new ID and compartmentalization
+            rxn_cl = RheaReactionAdapter(
+                rhea_id=rhea_id,
+                master_id=rhea_id,
+                ec_numbers=rxn_adapter._ec_numbers,
+                ensembl_ids=rxn_adapter._ensembl_ids,
+                substrates=result['substrates'],
+                products=result['products'],
+                kegg_reaction_id=rxn_adapter._kegg_reaction_id,
+            )
+            
+            # Set the name with compartment info
+            rxn_cl._name = f"{rxn_adapter.Name()} ({comp1}->{comp2})"
+            
+            # Set GPR from transport result
+            gpr_str = result.get('gpr', '')
+            if gpr_str:
+                # Build sGPR format
+                genes = gpr_str.split(' or ')
+                sgpr_parts = [f"([{g.strip()}*1])" for g in genes if g.strip()]
+                if len(sgpr_parts) == 1:
+                    sgpr = f"([{sgpr_parts[0]}])"
+                else:
+                    sgpr = "([" + " or ".join(sgpr_parts) + "])"
+                
+                rxn_cl._gpr_data = (sgpr, gpr_str, {}, {})
+                rxn_cl._subcel_data = [{comp1: sgpr, comp2: sgpr}, {comp1: gpr_str, comp2: gpr_str}]
+            
+            # Add to RxnList_CL
+            RxnList_CL[rxn_cl_id] = rxn_cl
+            new_rxn_ids.append(rxn_cl_id)
+            
+            # Add/ensure metabolites exist in MetList_CL
+            for coef, url, met_cl_id in result['substrates'] + result['products']:
+                if met_cl_id not in MetList_CL:
+                    # Extract base metabolite ID and compartment
+                    parts = met_cl_id.rsplit('_', 1)
+                    if len(parts) == 2:
+                        base_met_id, comp = parts
+                    else:
+                        base_met_id = met_cl_id
+                        comp = 'cytosol'  # Default to cytosol (full name for consistency with KEGG)
+                    
+                    # Get base metabolite if it exists
+                    if base_met_id in MetList:
+                        base_met = MetList[base_met_id]
+                        # Create compartmentalized version using class method
+                        met_cl = compound.from_compartmentalized_copy(base_met, met_cl_id, comp)
+                        MetList_CL[met_cl_id] = met_cl
+                        new_met_ids.append(met_cl_id)
+                    else:
+                        # Create minimal metabolite placeholder
+                        # Use a simple object to avoid KEGG fetch
+                        met_cl = type('MinimalMetabolite', (), {
+                            'ident': met_cl_id,
+                            'Name': f"{base_met_id} [{comp}]",
+                            'Formula1': '',
+                            'Formula2': '',
+                            'charge': '',
+                            'ID1': base_met_id,
+                            'ID2': '',
+                        })()
+                        MetList_CL[met_cl_id] = met_cl
+                        new_met_ids.append(met_cl_id)
+            
+            # Add to Compartment_CL
+            for coef, url, met_cl_id in result['substrates'] + result['products']:
+                parts = met_cl_id.rsplit('_', 1)
+                if len(parts) == 2:
+                    base_met_id, comp = parts
+                    comp_tuple = (base_met_id, comp)
+                    if comp_tuple not in Compartment_CL:
+                        Compartment_CL.append(comp_tuple)
+        
+        if new_rxn_ids:
+            LOGGER.info(f"  Created {len(new_rxn_ids)} transport reactions for RHEA:{rhea_id}")
+            return (new_rxn_ids, new_met_ids)
+        
+        return None
     
     def _extract_and_add_genes(self, gpr_data: tuple, GeneList: Dict, GeneIdent: List, EnsblDB=None) -> None:
         """

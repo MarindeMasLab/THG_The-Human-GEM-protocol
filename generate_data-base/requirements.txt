@@ -40,8 +40,9 @@ tqdm>=4.65.0
 # Extended pickling support for caching complex objects
 dill>=0.3.6
 
-# Excel report generation
+# Excel file I/O
 XlsxWriter>=3.0.0
+openpyxl>=3.0.0
 
 # Symbolic mathematics for formula parsing
 sympy>=1.12
@@ -52,6 +53,13 @@ python-dotenv>=1.0.0
 # =============================================================================
 # Optional Dependencies (for full functionality)
 # =============================================================================
+
+# Visualization
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Model quality assessment
+memote>=0.16.0
 
 # Escher for pathway visualization (optional)
 # escher>=1.7.3

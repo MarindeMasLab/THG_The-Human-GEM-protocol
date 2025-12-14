@@ -409,9 +409,14 @@ def cobra_reconstruction(
                 continue
             x.id = new_id            
     def normalize_id(reac_id: str):
-        iden, comp_desc = reac_id.split("_")
-        comp = location_dict[comp_desc.lower()]
-        return f"{iden}_{comp}"
+        # Handle reaction IDs with multiple underscores (e.g., RHEA11484_e_c for transport)
+        parts = reac_id.rsplit("_", 1)  # Split from right, max 1 split
+        if len(parts) == 2:
+            iden, comp_desc = parts
+            comp = location_dict.get(comp_desc.lower(), comp_desc)
+            return f"{iden}_{comp}"
+        # No underscore - return as is
+        return reac_id
 
     from functions.gpr.ast_gpr import sanitize_gpr
 
@@ -585,7 +590,13 @@ def cobra_reconstruction(
                 # Fallback: leave gene reaction rule empty so processing continues
                 reac.gene_reaction_rule = ""
             reac.annotation["sGPR"] = sgpr
-        reac.id = kegg_id + comp_id
+        new_id = kegg_id + comp_id
+        # Only rename if ID is different and not already in model
+        if reac.id != new_id:
+            if new_id in model.reactions:
+                LOGGER.warning(f"Skipping rename of {reac.id} to {new_id} - target ID already exists")
+            else:
+                reac.id = new_id
 
     # add a group per pathway
     LOGGER.info(f"Adding {len(pathways)} pathway groups")
@@ -2101,7 +2112,16 @@ Environment variables:
             f,
         )
 
-    Compartment_CL = sorted(Compartment_CL)
+    # Handle both string and tuple compartment entries (Rhea extension may add tuples)
+    # Convert everything to strings for sorting
+    Compartment_CL_clean = []
+    for comp in Compartment_CL:
+        if isinstance(comp, tuple):
+            # Tuple format: (compartment_name, abbreviation) - use the name
+            Compartment_CL_clean.append(comp[0] if comp else "")
+        else:
+            Compartment_CL_clean.append(comp)
+    Compartment_CL = sorted(set(Compartment_CL_clean))
 
     listOfID = list(CSL_ID.values())  # abbr. id
     LipidMasterlistOfID = []

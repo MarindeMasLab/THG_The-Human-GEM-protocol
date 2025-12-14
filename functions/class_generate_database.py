@@ -468,6 +468,46 @@ class compound(object):
 
         return obj
 
+    @classmethod
+    def from_compartmentalized_copy(cls, base_compound, new_ident, compartment_suffix):
+        """
+        Create a compartmentalized copy of an existing compound.
+        
+        This is used for transport reactions where metabolites need to exist
+        in multiple compartments. Instead of fetching from KEGG again,
+        we copy the attributes from the base compound and update the ID/name.
+        
+        Args:
+            base_compound: The source compound object to copy from
+            new_ident: The new identifier (e.g., 'C00001_m')
+            compartment_suffix: The compartment suffix (e.g., 'm', 'c', 'e')
+            
+        Returns:
+            A new compound object with compartmentalized identity
+        """
+        obj = cls.__new__(cls)  # Create instance without calling __init__
+        obj.ident = new_ident
+        obj.pagina = getattr(base_compound, 'pagina', '')
+        obj.atributes = getattr(base_compound, 'atributes', [])
+        obj.newparam = getattr(base_compound, 'newparam', ())
+        
+        # Copy all attributes from base compound
+        for attr in ['ID1', 'ID2', 'Formula1', 'Formula2', 'Formula3', 'Formula4',
+                     'AssRxn1', 'AssRxn2', 'AssRxn3', 'Subcel',
+                     'PubChem', 'CheBI', 'LIPIDMAPS', 'LipidBank', 'GlyDB', 'JCGGDB',
+                     'charge', 'inchikey', 'inchi', 'CID',
+                     'Atom1', 'Atom2', 'Atom3']:
+            setattr(obj, attr, getattr(base_compound, attr, ''))
+        
+        # Update name with compartment info
+        base_name = getattr(base_compound, 'Name', '')
+        if base_name:
+            obj.Name = f"{base_name} [{compartment_suffix}]"
+        else:
+            obj.Name = f"{new_ident}"
+        
+        return obj
+
     def _populate_attributes(self):
         """Populate plain attributes from self.atributes and self.newparam."""
         bm = _bm()

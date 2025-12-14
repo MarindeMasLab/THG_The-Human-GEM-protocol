@@ -637,6 +637,16 @@ def extend_model_with_rhea(
                 continue
                 
             try:
+                # Detect if this is a transport reaction (format: RHEA12345_c1_c2)
+                # Transport reactions have format RHEAxxxxx_e_c or similar (two compartment suffixes)
+                parts = rxn_id.split('_')
+                is_transport_rxn = (
+                    len(parts) >= 3 and 
+                    parts[0].startswith('RHEA') and
+                    len(parts[-1]) <= 2 and  # compartment codes are short
+                    len(parts[-2]) <= 2      # two compartment codes
+                )
+                
                 # Get reaction compartment
                 comp_name = rxn_id.split('_', 1)[1] if '_' in rxn_id else 'cytosol'
                 comp_id = location_dict.get(comp_name.lower(), 'c')
@@ -653,14 +663,22 @@ def extend_model_with_rhea(
                     # Build reaction metabolites dict
                     metabolites = {}
                     for stoich, _, met_id_base in substrates:
-                        met_id_full = f"{met_id_base}_{comp_name}"
+                        # For transport reactions, metabolites already have compartment suffix
+                        if is_transport_rxn:
+                            met_id_full = met_id_base
+                        else:
+                            met_id_full = f"{met_id_base}_{comp_name}"
                         if met_id_full in model.metabolites:
                             metabolites[model.metabolites.get_by_id(met_id_full)] = -float(stoich)
                         else:
                             LOGGER.warning(f"Substrate {met_id_full} not found for reaction {rxn_id}")
                     
                     for stoich, _, met_id_base in products:
-                        met_id_full = f"{met_id_base}_{comp_name}"
+                        # For transport reactions, metabolites already have compartment suffix
+                        if is_transport_rxn:
+                            met_id_full = met_id_base
+                        else:
+                            met_id_full = f"{met_id_base}_{comp_name}"
                         if met_id_full in model.metabolites:
                             metabolites[model.metabolites.get_by_id(met_id_full)] = float(stoich)
                         else:
