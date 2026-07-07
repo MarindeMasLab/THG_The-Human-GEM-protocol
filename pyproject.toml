@@ -1,0 +1,74 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "thg-protocol"
+version = "0.1.0"
+description = "Protocol tools for constructing and analyzing human genome-scale metabolic models."
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+license = { file = "LICENSE" }
+authors = [
+  { name = "THG contributors" },
+]
+dependencies = [
+  "cobra>=0.26",
+  "networkx>=2.6",
+  "numpy",
+  "pandas",
+  "python-libsbml",
+  "requests",
+  "scipy",
+  "tqdm",
+]
+
+[project.optional-dependencies]
+dev = [
+  "black",
+  "pytest",
+  "pytest-cov",
+  "ruff",
+]
+docs = [
+  "mkdocs",
+  "mkdocs-material",
+]
+memote = [
+  "memote",
+]
+solver = [
+  "pulp>=2.7",
+  "swiglpk",
+]
+cell-specific = [
+  "pathos",
+  "troppo",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra --strict-markers"
+markers = [
+  "slow: long-running model or workflow test",
+  "online: requires external network service",
+  "solver: requires an optimization solver",
+  "gurobi: requires Gurobi",
+  "memote: requires memote",
+]
+
+[tool.black]
+line-length = 88
+target-version = ["py310"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
