@@ -76,6 +76,34 @@ if __name__ == "__main__":
 
     handle = open(Output2, "w")
 
+    # Track any exchange reactions that have EC annotations so we can warn and inspect
+    exchange_ec_warnings = []
+
+    def warn_if_ec_on_exchange(rxn_obj, annotation_obj, context=""):
+        try:
+            if not annotation_obj:
+                return False
+            ec = annotation_obj.get("ec-code")
+            if not ec:
+                return False
+            is_exchange_local = (
+                len(rxn_obj.reactants) == 0
+                or len(rxn_obj.products) == 0
+                or str(rxn_obj.id).upper().startswith("EX_")
+                or str(rxn_obj.id).upper().startswith("EX")
+            )
+            if is_exchange_local:
+                print(
+                    f"Warning: EC annotation on exchange reaction {rxn_obj.id} ({context}): {ec}"
+                )
+                exchange_ec_warnings.append(
+                    {"reaction": rxn_obj.id, "context": context, "ec": ec}
+                )
+                return True
+        except Exception:
+            print(f"Failed checking EC on exchange for {rxn_obj.id}")
+        return False
+
     # Parameters about the compartments (change according to your model)
     excel_file = os.path.join(
         project_root, "files", "ListOfCompartments_sept2024.xlsx"
@@ -212,11 +240,20 @@ if __name__ == "__main__":
             try:
                 listOfgeneList5 = []
                 if "ec-code" in x2.annotation:
-                    EC = x.annotation["ec-code"]
+                    EC = x2.annotation["ec-code"]
                 else:
                     EC = ""
                 if type(EC) == str:
                     EC = [EC]
+                # Warn if the original reaction (x2) is an exchange and has EC annotation
+                try:
+                    if EC:
+                        # Build a dummy annotation mapping to pass into the checker
+                        annot = x2.annotation if x2.annotation else {}
+                        if annot:
+                            warn_if_ec_on_exchange(x2, annot, context="original")
+                except Exception:
+                    pass
                 species = [s.id for s in x2.reactants] + [s.id for s in x2.products]
                 species3 = [
                     (
@@ -237,7 +274,11 @@ if __name__ == "__main__":
                         1
                     ].split(" + ")
                 ]
-                species3 = dict(ChainMap(*species3))
+                # Prefer direct stoichiometry mapping from the reaction object
+                try:
+                    species3 = {m.id: coeff for m, coeff in x2.metabolites.items()}
+                except Exception:
+                    species3 = dict(ChainMap(*species3))
                 mb = x2.check_mass_balance()
                 bounds = x2.bounds
                 gpr = x2.gpr
@@ -320,7 +361,12 @@ if __name__ == "__main__":
                                 " --> | <=> ", re.sub("[a-z]+", "", x2.reaction)
                             )[1].split(" + ")
                         ]
-                        species3 = dict(ChainMap(*species3))
+                        try:
+                            species3 = {
+                                m.id: coeff for m, coeff in x2.metabolites.items()
+                            }
+                        except Exception:
+                            species3 = dict(ChainMap(*species3))
 
                 if (
                     EC[0] and len(locations) == 1
@@ -527,12 +573,9 @@ if __name__ == "__main__":
                                         model2.compartments[ID] = CSL2
 
                                     # Add the metabolite "species2" to the reaction x
+                                    # Add metabolites using explicit stoichiometry mapping
                                     reaction2.add_metabolites(
-                                        {
-                                            m: species3[
-                                                re.sub("[a-z]+[0-9]*", "", species2[0])
-                                            ]
-                                        }
+                                        {m: species3.get(species2[1], 1)}
                                     )
 
                                 if (
@@ -552,7 +595,13 @@ if __name__ == "__main__":
                                         CSL2
                                     ]
 
-                                reaction2.annotation = annotation2
+                                annotation_copy = (
+                                    annotation2.copy() if annotation2 else {}
+                                )
+                                warn_if_ec_on_exchange(
+                                    x2, annotation_copy, context="original->new"
+                                )
+                                reaction2.annotation = annotation_copy
                                 # add the sGPR to the annotation of the reaction
 
                                 # extract the compartment from the reaction
@@ -658,6 +707,12 @@ if __name__ == "__main__":
 
                                 # upload the reaction in the model
                                 try:
+                                    # Warn if existing reaction is an exchange and has EC annotation
+                                    warn_if_ec_on_exchange(
+                                        model2.reactions.get_by_id(x2.id),
+                                        model2.reactions.get_by_id(x2.id).annotation,
+                                        context="existing",
+                                    )
                                     model2.reactions.get_by_id(x2.id).annotation[
                                         "sGPR"
                                     ] = variables[x2.id][0][compartment_name]
@@ -969,3 +1024,18 @@ if __name__ == "__main__":
 
     test1 = read_sbml_model(Output4)
     test2 = read_sbml_model(Output5)
+
+    # Persist EC-on-exchange warnings recorded during this run
+    try:
+        if exchange_ec_warnings:
+            import pandas as pd
+
+            out_warn = os.path.join(
+                project_root, "files", f"exchange_ec_warnings{_date_tag}.csv"
+            )
+            pd.DataFrame(exchange_ec_warnings).to_csv(out_warn, index=False)
+            print(
+                f"Saved {len(exchange_ec_warnings)} EC-on-exchange warnings to {out_warn}"
+            )
+    except Exception:
+        print("Failed to save EC-on-exchange warnings")

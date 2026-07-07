@@ -1220,6 +1220,42 @@ def main():
 
     variables = defaultdict(list)
 
+    # Track any exchange reactions that have EC annotations so we can warn and inspect
+    exchange_ec_warnings = []
+
+    def warn_if_ec_on_exchange(rxn_obj, annotation_obj, context=""):
+        """Log a warning if an exchange reaction has an EC annotation.
+
+        Returns True if a warning was logged.
+        """
+        try:
+            if not annotation_obj:
+                return False
+            ec = annotation_obj.get("ec-code")
+            if not ec:
+                return False
+            # Heuristic: exchange if no reactants or no products, or typical EX id
+            is_exchange_local = (
+                len(rxn_obj.reactants) == 0
+                or len(rxn_obj.products) == 0
+                or str(rxn_obj.id).upper().startswith("EX_")
+                or str(rxn_obj.id).upper().startswith("EX")
+            )
+            if is_exchange_local:
+                LOGGER.warning(
+                    "EC annotation on exchange reaction %s (%s): %r",
+                    rxn_obj.id,
+                    context,
+                    ec,
+                )
+                exchange_ec_warnings.append(
+                    {"reaction": rxn_obj.id, "context": context, "ec": ec}
+                )
+                return True
+        except Exception:
+            LOGGER.exception("Failed checking EC on exchange for %s", rxn_obj.id)
+        return False
+
     # Precompute helper structures from original model
     RxnPath = defaultdict(list)
     for p in model.groups:
@@ -1262,6 +1298,14 @@ def main():
 
         # collect ECs
         ec_value = annotation2.get("ec-code") if annotation2 else None
+        # Warn early if the source reaction is an exchange and has EC annotation
+        try:
+            if annotation2 and ec_value:
+                warn_if_ec_on_exchange(x2, annotation2, context="original")
+        except Exception:
+            LOGGER.debug(
+                "Failed to check original reaction EC on exchange", exc_info=True
+            )
         ecs = []
         if isinstance(ec_value, (list, tuple)):
             ecs = [e for e in ec_value if e]
@@ -1318,28 +1362,11 @@ def main():
             geneList5 = meltGeneList(listOfgeneList5)
             variables[x.id] = geneList5
 
-            # species and species3 are as in original script
+            # Use explicit metabolite stoichiometries from the Reaction object
+            # instead of fragile string parsing. This avoids incorrect coefficients
+            # (e.g., exchange reactions being parsed incorrectly as coefficient 2.0).
             species = [s.id for s in x2.reactants] + [s.id for s in x2.products]
-            species3 = [
-                (
-                    {s.split(" ")[0]: -1}
-                    if len(s.split(" ")) == 1
-                    else {s.split(" ")[1]: -abs(float(s.split(" ")[0]))}
-                )
-                for s in re.split(" --> | <=> ", re.sub("[a-z]+", "", x2.reaction))[
-                    0
-                ].split(" + ")
-            ] + [
-                (
-                    {s.split(" ")[0]: 1}
-                    if len(s.split(" ")) == 1
-                    else {s.split(" ")[1]: float(s.split(" ")[0])}
-                )
-                for s in re.split(" --> | <=> ", re.sub("[a-z]+", "", x2.reaction))[
-                    1
-                ].split(" + ")
-            ]
-            species3 = dict(ChainMap(*species3))
+            species_coeffs = {m.id: coeff for m, coeff in x2.metabolites.items()}
 
             for CSL in [*geneList5[0]]:
                 CSL2 = CSL
@@ -1400,9 +1427,9 @@ def main():
                         if not model2.compartments.get(ID):
                             model2.compartments[ID] = CSL2
 
-                        # add stoichiometry
-                        key = re.sub(r"[a-z]+[0-9]*", "", species2[0])
-                        stoich = species3.get(key, 1)
+                        # add stoichiometry using original metabolite id mapping
+                        # default to 1 if unexpected
+                        stoich = species_coeffs.get(species2[1], 1)
                         reaction2.add_metabolites({m: stoich})
 
                     # set gene_reaction_rule
@@ -1417,7 +1444,10 @@ def main():
                     except Exception:
                         reaction2.gene_reaction_rule = ""
 
-                    reaction2.annotation = annotation2.copy() if annotation2 else {}
+                    # Preserve annotations but warn if this looks like an exchange reaction
+                    annotation_copy = annotation2.copy() if annotation2 else {}
+                    warn_if_ec_on_exchange(x2, annotation_copy, context="original->new")
+                    reaction2.annotation = annotation_copy
 
                     # set sGPR annotation if available
                     try:
@@ -1484,17 +1514,31 @@ def main():
                 else:
                     # existing reaction: try to set sGPR on existing reaction
                     try:
-                        model2.reactions.get_by_id(
-                            x2.id
-                        ).gene_reaction_rule = geneList5[2].get(
-                            CSL2, model2.reactions.get_by_id(x2.id).gene_reaction_rule
+                        existing_rxn = model2.reactions.get_by_id(x2.id)
+                        # If this is an exchange/boundary reaction, make sure we don't keep ec-code
+                        is_exchange_existing = (
+                            len(existing_rxn.reactants) == 0
+                            or len(existing_rxn.products) == 0
+                            or len(species) == 1
+                            or str(existing_rxn.id).lower().startswith("ex")
+                        )
+                        # Warn if existing exchange reaction has EC annotation but do not alter it
+                        if is_exchange_existing and existing_rxn.annotation:
+                            warn_if_ec_on_exchange(
+                                existing_rxn,
+                                existing_rxn.annotation,
+                                context="existing",
+                            )
+
+                        existing_rxn.gene_reaction_rule = geneList5[2].get(
+                            CSL2, existing_rxn.gene_reaction_rule
                         )
                         comp = list(model2.reactions.get_by_id(x2.id).compartments)
                         compartment_name = (
                             comp_dict.get(comp[0], comp[0]) if comp else ""
                         )
-                        model2.reactions.get_by_id(x2.id).annotation["sGPR"] = (
-                            geneList5[0].get(compartment_name, "")
+                        existing_rxn.annotation["sGPR"] = geneList5[0].get(
+                            compartment_name, ""
                         )
                     except Exception:
                         pass
@@ -1670,6 +1714,22 @@ def main():
     LOGGER.info("Writing output model to %s", OUTPUT_MODEL_FINAL)
     cobra.io.write_sbml_model(model4, OUTPUT_MODEL_FINAL)
     LOGGER.info("Done. Wrote %s", OUTPUT_MODEL_FINAL)
+
+    # Save any EC-on-exchange warnings to CSV for review
+    if exchange_ec_warnings:
+        try:
+            warn_path = os.path.join(
+                project_root, "files", f"exchange_ec_warnings{_date_tag}.csv"
+            )
+            df_warn = pd.DataFrame(exchange_ec_warnings)
+            df_warn.to_csv(warn_path, index=False)
+            LOGGER.info(
+                "Saved %d EC-on-exchange warnings to %s",
+                len(exchange_ec_warnings),
+                warn_path,
+            )
+        except Exception:
+            LOGGER.exception("Failed to save EC-on-exchange warnings CSV")
 
 
 if __name__ == "__main__":
